@@ -211,6 +211,37 @@ export async function submitKoden(
   };
 }
 
+// ---------------------------------------------------------------------------
+// WEB出欠（RSVP）。受付QR・香典帳統合の起点（原典にない差別化機能）。
+// ---------------------------------------------------------------------------
+const rsvpSchema = z.object({
+  slug: z.string().min(1),
+  attendeeName: z.string().trim().min(1, "お名前をご入力ください").max(40),
+  kana: z.string().trim().max(40).optional().or(z.literal("")),
+  mode: z.enum(["real", "online"]),
+  event: z.string().trim().max(40).optional().or(z.literal("")),
+  headcount: z.coerce.number().int().min(1).max(20),
+});
+
+export async function submitRsvp(
+  _prev: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const parsed = rsvpSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
+  const d = parsed.data;
+  const m = await getPublicMemorial(d.slug);
+  if (!m) return { ok: false, errors: { _form: "対象が見つかりませんでした。" } };
+  // TODO(supabase): rsvp テーブルへINSERT。受付QR・香典帳と統合。
+  return {
+    ok: true,
+    message:
+      d.mode === "online"
+        ? "オンライン参列のご登録を承りました。"
+        : "ご参列のご登録を承りました。当日は受付にてお名前をお伝えください。",
+  };
+}
+
 function isPastIso(iso?: string): boolean {
   return iso ? new Date(iso).getTime() < Date.now() : false;
 }
