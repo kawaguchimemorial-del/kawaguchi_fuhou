@@ -4,6 +4,7 @@ import { getPublicMemorial } from "@/lib/memorial/data";
 import { getFuneralHomeName, listOrders, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
 import { getMournerAccount } from "@/lib/admin/mourner-actions";
 import { MournerAccount } from "@/components/admin/MournerAccount";
+import { getSiteOrigin } from "@/lib/site-url";
 import { toWarekiDate } from "@/lib/wareki";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function CeremonyDetail({ params }: Params) {
     getMournerAccount(id),
   ]);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const appUrl = await getSiteOrigin();
   const obituaryUrl = `${appUrl}/m/${id}`;
   const venueUrl = `${appUrl}/m/${id}/venue`;
   const editBase = `/admin/ceremonies/${id}/edit`;

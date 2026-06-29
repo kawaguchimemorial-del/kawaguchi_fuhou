@@ -4,6 +4,7 @@ import { getPublicMemorial } from "@/lib/memorial/data";
 import { formatJpTime, isPast } from "@/lib/format";
 import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { TestBanner, GoldButton, ShareRow, SiteFooter } from "@/components/guest/parts";
+import { getSiteOrigin } from "@/lib/site-url";
 import type { Memorial } from "@/lib/memorial/types";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -24,7 +25,7 @@ export default async function ObituaryPage({ params }: Params) {
   const m = await getPublicMemorial(slug);
   if (!m) notFound();
 
-  const shareUrl = `https://example.com/m/${m.slug}`;
+  const shareUrl = `${await getSiteOrigin()}/m/${m.slug}`;
   const flowerOpen = !m.flowerDecline && !isPast(m.offeringAcceptUntil);
 
   return (

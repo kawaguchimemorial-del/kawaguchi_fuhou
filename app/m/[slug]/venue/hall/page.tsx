@@ -4,6 +4,7 @@ import { religionVocab } from "@/lib/memorial/religion";
 import { TestBanner, GoldButton, ShareRow, SiteFooter } from "@/components/guest/parts";
 import { AltarView } from "@/components/guest/AltarView";
 import { logView } from "@/lib/memorial/db";
+import { getSiteOrigin } from "@/lib/site-url";
 import type { Memorial } from "@/lib/memorial/types";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -113,7 +114,7 @@ export default async function VenueHall({ params }: Params) {
 
         <div className="mt-8">
           <ShareRow
-            url={`https://example.com/m/${m.slug}/venue`}
+            url={`${await getSiteOrigin()}/m/${m.slug}/venue`}
             title={`${m.deceased.nameKanji} 様 オンライン式場`}
           />
         </div>
