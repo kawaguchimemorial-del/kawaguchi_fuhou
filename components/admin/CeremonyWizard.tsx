@@ -61,7 +61,8 @@ export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTe
       placeMode: g("placeMode"), venueId: g("venueId"), venueName: g("venueName"), venuePostal: g("venuePostal"), venueAddress: g("venueAddress"),
       kodenOption: g("kodenOption"), flowerAccept: g("flowerAccept"),
       venueOnlineName: g("venueOnlineName") || defaultVenueName(deceasedFull),
-      greetingHeading: g("greetingHeading") || "喪主挨拶", greetingBody: g("greetingBody"), greetingSign: g("greetingSign"),
+      greetingHeading: g("greetingHeading") || "喪主挨拶", greetingBody: g("greetingBody"),
+      greetingSign: g("greetingSign") || (mournerFull ? `喪主 ${mournerFull}` : ""),
       publishImmediately: g("publishImmediately"), openFrom: g("openFrom"), openDays: g("openDays"),
       mgmtNo: g("mgmtNo"), attendeeName: g("attendeeName"), showOfferings: g("showOfferings"),
       frame: g("frame"), side: g("side"), center: g("center"), top: g("top"), background: g("background"),
@@ -110,7 +111,7 @@ export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTe
         {step === 1 && <StepObituary g={g} set={set} tvars={tvars} mournerFull={mournerFull} />}
         {step === 2 && <StepGuestbook />}
         {step === 3 && <StepFlowers g={g} set={set} />}
-        {step === 4 && <StepVenue g={g} set={set} tvars={tvars} deceasedFull={deceasedFull} />}
+        {step === 4 && <StepVenue g={g} set={set} tvars={tvars} deceasedFull={deceasedFull} mournerFull={mournerFull} />}
       </div>
 
       <div className="mt-6 flex justify-between">
@@ -296,8 +297,9 @@ function StepFlowers({ g, set }: { g: (k: string) => string; set: (k: string, v:
 }
 
 // ---- ステップ5: オンライン式場 ----
-function StepVenue({ g, set, tvars, deceasedFull }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; deceasedFull: string }) {
+function StepVenue({ g, set, tvars, deceasedFull, mournerFull }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; deceasedFull: string; mournerFull: string }) {
   const venueName = g("venueOnlineName") || defaultVenueName(deceasedFull);
+  const greetingSign = g("greetingSign") || (mournerFull ? `喪主 ${mournerFull}` : "");
   return (
     <>
       <Sec title="オンライン式名">
@@ -318,7 +320,11 @@ function StepVenue({ g, set, tvars, deceasedFull }: { g: (k: string) => string; 
           </div>
           <textarea rows={6} value={g("greetingBody")} onChange={(e) => set("greetingBody", e.target.value)} className="mt-2 w-full rounded border p-3 focus:border-[#9b2fae] focus:outline-none" />
         </div>
-        <Text label="挨拶文右下の喪主名" k="greetingSign" g={g} set={set} required />
+        <label className="block">
+          <span className="text-sm text-gray-600">挨拶文右下の喪主名<Req /></span>
+          <input value={greetingSign} onChange={(e) => set("greetingSign", e.target.value)} className="mt-1 w-full border-b py-2 focus:border-[#9b2fae] focus:outline-none" placeholder="喪主 ●● ●●" />
+          <span className="text-xs text-gray-400">※ 喪主氏名から自動表示。必要に応じて編集できます。</span>
+        </label>
       </Sec>
       <Sec title="公開日時">
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s_bool(g, "publishImmediately")} onChange={(e) => set("publishImmediately", e.target.checked ? "1" : "")} /> 喪主の同意後、すぐに公開する</label>
