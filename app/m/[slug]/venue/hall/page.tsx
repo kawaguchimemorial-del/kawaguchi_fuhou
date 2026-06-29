@@ -28,7 +28,7 @@ export default async function VenueHall({ params }: Params) {
         <header className="text-center">
           <p className="text-[var(--accent-strong)]">🏵️</p>
           <h1 className="mt-2 font-serif text-2xl text-[var(--primary)]">
-            故 {m.deceased.nameKana ?? m.deceased.nameKanji} 儀
+            故 {m.deceased.nameKanji} 儀
           </h1>
           <p className="font-serif text-xl text-[var(--primary)]">葬儀会場</p>
         </header>

@@ -18,7 +18,7 @@ export default async function VenueEntry({ params }: Params) {
       {m.testMode && <TestBanner />}
       <main className="mx-auto max-w-xl px-6 py-20 text-center">
         <p className="font-serif text-2xl text-[var(--primary)]">
-          故 {m.deceased.nameKana ?? m.deceased.nameKanji} 儀
+          故 {m.deceased.nameKanji} 儀
         </p>
         <h1 className="mt-3 font-serif text-3xl text-[var(--primary)]">
           葬儀会場

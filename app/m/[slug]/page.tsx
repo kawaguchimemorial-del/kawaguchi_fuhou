@@ -72,7 +72,7 @@ function ObituaryHero({ m }: { m: Memorial }) {
           <h1 className="font-serif text-3xl tracking-[0.4em] text-[var(--primary)]">
             {m.obituaryTitle}
           </h1>
-          <p className="mt-6 font-serif text-lg">故 {d.nameKana ?? d.nameKanji} 儀</p>
+          <p className="mt-6 font-serif text-lg">故 {d.nameKanji} 儀</p>
           {m.obituaryBody ? (
             <div className="mt-3 space-y-1 font-serif leading-loose text-[var(--foreground)]">
               {m.obituaryBody.split("\n").map((line, i) => (

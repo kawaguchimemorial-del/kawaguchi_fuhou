@@ -35,7 +35,7 @@ export default async function CeremonyDetail({ params }: Params) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">
           {m.testMode && <span className="mr-2 rounded bg-red-100 px-2 py-0.5 text-xs text-red-600">テスト葬儀</span>}
-          故 {m.deceased.nameKana ?? m.deceased.nameKanji} 儀　葬儀詳細
+          故 {m.deceased.nameKanji} 儀　葬儀詳細
         </h1>
         <div className="flex gap-2 text-sm">
           <Link href="/admin/ceremonies" className="rounded border px-3 py-1.5">一覧へ</Link>
