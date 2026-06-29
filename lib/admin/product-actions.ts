@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 
 const DEMO_FUNERAL_HOME_ID = "11111111-1111-1111-1111-111111111111";
@@ -48,10 +49,14 @@ export async function uploadProductImage(formData: FormData): Promise<{ ok: bool
   if (!file.type.startsWith("image/")) return { ok: false, error: "画像ファイルを選んでください" };
   if (file.size > 5 * 1024 * 1024) return { ok: false, error: "画像は5MBまで" };
 
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${DEMO_FUNERAL_HOME_ID}/${randomUUID()}.${ext}`;
-  const buf = Buffer.from(await file.arrayBuffer());
-  const { error } = await db().storage.from(BUCKET).upload(path, buf, { contentType: file.type, upsert: false });
+  // WebP変換＋リサイズで軽量化（表示速度向上）
+  const original = Buffer.from(await file.arrayBuffer());
+  const optimized = await sharp(original)
+    .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer();
+  const path = `${DEMO_FUNERAL_HOME_ID}/${randomUUID()}.webp`;
+  const { error } = await db().storage.from(BUCKET).upload(path, optimized, { contentType: "image/webp", upsert: false });
   if (error) return { ok: false, error: "アップロード失敗: " + error.message };
   const { data } = db().storage.from(BUCKET).getPublicUrl(path);
   return { ok: true, url: data.publicUrl };
