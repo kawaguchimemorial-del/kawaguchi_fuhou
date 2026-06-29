@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { createCeremony, type CeremonyPayload } from "@/lib/admin/actions";
 import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { render } from "@/lib/template";
 import { VENUE_MASTER } from "@/lib/admin/venues";
@@ -41,6 +43,35 @@ export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTe
   });
   const set = (k: string, v: string | boolean) => setS((p) => ({ ...p, [k]: v }));
   const g = (k: string) => (s[k] as string) ?? "";
+
+  const router = useRouter();
+  const [saving, startSave] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function handleSave() {
+    setSaveError(null);
+    const announce = g("announceMourner") || (mournerFull ? `喪主 ${mournerFull}` : "");
+    const payload: CeremonyPayload = {
+      withVenue,
+      isTest,
+      dSei: g("dSei"), dMei: g("dMei"), dSeiKana: g("dSeiKana"), dMeiKana: g("dMeiKana"),
+      deathDate: g("deathDate"), deathTime: g("deathTime"), ageKazoe: g("ageKazoe"), relation: g("relation"),
+      obituaryTitle: g("obituaryTitle"), obituaryBody: g("obituaryBody"), announceMourner: announce, religion: g("religion"),
+      eventType: g("eventType"), dateAdjusting: g("dateAdjusting"), eventDate: g("eventDate"), startTime: g("startTime"), endTime: g("endTime"),
+      placeMode: g("placeMode"), venueId: g("venueId"), venueName: g("venueName"), venuePostal: g("venuePostal"), venueAddress: g("venueAddress"),
+      kodenOption: g("kodenOption"), flowerAccept: g("flowerAccept"),
+      venueOnlineName: g("venueOnlineName") || defaultVenueName(deceasedFull),
+      greetingHeading: g("greetingHeading") || "喪主挨拶", greetingBody: g("greetingBody"), greetingSign: g("greetingSign"),
+      publishImmediately: g("publishImmediately"), openFrom: g("openFrom"), openDays: g("openDays"),
+      mgmtNo: g("mgmtNo"), attendeeName: g("attendeeName"), showOfferings: g("showOfferings"),
+      frame: g("frame"), side: g("side"), center: g("center"), top: g("top"), background: g("background"),
+    };
+    startSave(async () => {
+      const res = await createCeremony(payload);
+      if (res.ok) router.push(`/m/${res.slug}`);
+      else setSaveError(res.error);
+    });
+  }
 
   // 派生値
   const deceasedFull = [g("dSei"), g("dMei")].filter(Boolean).join(" ");
@@ -87,9 +118,12 @@ export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTe
         {step < last ? (
           <button onClick={() => setStep((x) => Math.min(last, x + 1))} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white">保存して次へ →</button>
         ) : (
-          <button onClick={() => alert("（デモ）保存しました。Supabase接続後に永続化します。")} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white">保存して葬儀詳細へ →</button>
+          <button onClick={handleSave} disabled={saving} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">
+            {saving ? "保存中…" : "保存して公開する →"}
+          </button>
         )}
       </div>
+      {saveError && <p className="mt-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{saveError}</p>}
     </div>
   );
 }

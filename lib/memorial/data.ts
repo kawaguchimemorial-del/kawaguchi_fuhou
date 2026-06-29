@@ -112,6 +112,10 @@ interface RpcObituary {
   koden_accept_until?: string;
   offering_accept_until?: string;
   published_at?: string;
+  obituary_title?: string;
+  obituary_body?: string;
+  announce_mourner_name?: string;
+  venue?: Memorial["venue"];
   funeral_home_name?: string;
   fh_phone?: string;
   fh_email?: string;
@@ -137,7 +141,8 @@ function mapRpcToMemorial(slug: string, r: RpcObituary): Memorial {
     noindex: r.noindex_flag,
     religionType: r.religion_type,
     funeralStyle: r.funeral_style,
-    obituaryTitle: "訃報",
+    obituaryTitle: r.obituary_title || "訃報",
+    obituaryBody: r.obituary_body || undefined,
     kodenDecline: r.koden_decline,
     flowerDecline: r.flower_decline,
     attendDecline: r.attend_decline,
@@ -146,6 +151,10 @@ function mapRpcToMemorial(slug: string, r: RpcObituary): Memorial {
     publishedAt: r.published_at,
     funeralHomeName: r.funeral_home_name,
     funeralHomeContact: { phone: r.fh_phone, email: r.fh_email },
+    chiefMourner: r.announce_mourner_name
+      ? { nameKanji: r.announce_mourner_name.replace(/^喪主\s*/, "") }
+      : undefined,
+    venue: r.venue ?? undefined,
     deceased: {
       nameKanji: r.name_kanji,
       nameKana: r.name_kana,
