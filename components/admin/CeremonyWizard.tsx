@@ -274,11 +274,7 @@ function StepObituary({ g, set, tvars, mournerFull }: { g: (k: string) => string
         <VenuePicker g={g} set={set} />
       </Sec>
 
-      <Sec title="香典決済オプション">
-        <p className="text-xs text-gray-500">喪主の口座設定完了後、初回香典受付から30日後に受付終了します。</p>
-        <Pills label="香典決済" k="kodenOption" options={["不要", "必要"]} g={g} set={set} required />
-        <Pills label="返礼品" k="returnGift" options={["不要", "必要"]} g={g} set={set} required />
-      </Sec>
+      {/* 香典決済・返礼品は今回非対応のため非表示 */}
     </>
   );
 }
@@ -368,7 +364,7 @@ function StepVenue({ g, set, tvars, deceasedFull, mournerFull }: { g: (k: string
       <Sec title="入場画面の表示・入力制御">
         <Pills label="管理番号" k="mgmtNo" options={["不要", "必要"]} g={g} set={set} />
         <Pills label="参列者名" k="attendeeName" options={["不要", "必要"]} g={g} set={set} />
-        <Pills label="供花供物/贈答品の表示" k="showOfferings" options={["表示しない", "表示する"]} g={g} set={set} />
+        <Pills label="供花・供物の表示" k="showOfferings" options={["表示しない", "表示する"]} g={g} set={set} />
       </Sec>
       <Sec title="祭壇設定（レイヤー）">
         <p className="text-xs text-gray-500">※ 遺影写真と各レイヤーの画像素材は最後にまとめて差し込みます。</p>

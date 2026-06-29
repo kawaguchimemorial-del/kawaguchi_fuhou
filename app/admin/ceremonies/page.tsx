@@ -38,7 +38,7 @@ export default async function CeremoniesPage() {
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-600">
             <tr>
-              {["", "喪主名", "故人名", "式1", "式2", "オンライン会場公開期間", "注文受付終了", "ステータス", "香典決済", ""].map((h, i) => (
+              {["", "喪主名", "故人名", "式1", "式2", "オンライン会場公開期間", "注文受付終了", "ステータス", ""].map((h, i) => (
                 <th key={i} className="px-3 py-3 font-medium">{h}</th>
               ))}
             </tr>
@@ -61,13 +61,11 @@ export default async function CeremoniesPage() {
                 <td className="px-3 py-4 text-xs">{r.publishFrom}<br />〜 {r.publishUntil}</td>
                 <td className="px-3 py-4 text-xs">
                   供花：{r.flowerDeadline ?? "-"}<br />
-                  供物：{r.offeringDeadline ?? "-"}<br />
-                  贈答品：{r.giftDeadline ?? "-"}
+                  供物：{r.offeringDeadline ?? "-"}
                 </td>
                 <td className="px-3 py-4">
                   <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">{r.status}</span>
                 </td>
-                <td className="px-3 py-4 text-xs">{r.kodenOption}</td>
                 <td className="px-3 py-4">
                   <Link href={`/admin/ceremonies/${r.id}`} className="text-[#9b2fae] underline">編集</Link>
                   <br />

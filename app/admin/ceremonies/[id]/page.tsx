@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicMemorial } from "@/lib/memorial/data";
-import { getFuneralHomeName, listOrders, listKodenForMemorial, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
+import { getFuneralHomeName, listOrders, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
 import { toWarekiDate } from "@/lib/wareki";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +16,11 @@ export default async function CeremonyDetail({ params }: Params) {
   const m = await getPublicMemorial(id);
   if (!m) notFound();
   const homeName = await getFuneralHomeName();
-  const [orders, koden, views, guestbook] = await Promise.all([
+  const [orders, views, guestbook] = await Promise.all([
     listOrders(id),
-    listKodenForMemorial(id),
     countViews(id),
     listGuestbook(id),
   ]);
-  const kodenTotal = koden.reduce((s, k) => s + k.amountJpy, 0);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
   const obituaryUrl = `${appUrl}/m/${id}`;
@@ -109,17 +107,9 @@ export default async function CeremonyDetail({ params }: Params) {
         </Section>
       )}
 
-      <Section title="香典" status={`${koden.length}件`} editHref={`${editBase}?step=1`}>
-        <Row label="受付件数">{koden.length}件</Row>
-        <Row label="合計金額">{kodenTotal.toLocaleString()}円</Row>
-        {koden.slice(0, 5).map((k, i) => (
-          <Row key={i} label={new Date(k.createdAt).toLocaleDateString("ja-JP")}>{k.donorName}　{k.amountJpy.toLocaleString()}円（{k.hyogaki}）</Row>
-        ))}
-      </Section>
       <Section title="動画" status="0件" editHref={editBase} />
       <Section title="故人の写真" status={`${m.venue?.ceremonyPhotoPath ? 1 : 0}件`} editHref={editBase} />
       <Section title="アルバム" status={`${m.venue?.albumPaths.length ?? 0}件`} editHref={editBase} />
-      <Section title="贈答品" status="未登録" editHref={editBase} />
       <Section title="YouTubeライブ配信" status="0件" editHref={editBase} />
 
       {/* 閲覧数一覧 */}
@@ -132,10 +122,8 @@ export default async function CeremonyDetail({ params }: Params) {
         </div>
       </div>
 
-      {/* 各注文一覧 */}
-      <OrderListBlock title="供花の注文一覧" id={id} kind="flower" rows={orders} />
-      <OrderListBlock title="供物の注文一覧" id={id} kind="offering" rows={[]} />
-      <OrderListBlock title="贈答品の注文一覧" id={id} kind="gift" rows={[]} />
+      {/* 注文一覧（供花・供物のみ。香典決済・贈答品は非対応） */}
+      <OrderListBlock title="供花・供物の注文一覧" id={id} kind="flower" rows={orders} />
 
       <div className="rounded-lg bg-white p-5 shadow-sm">
         <p className="font-bold">注文メール通知先追加</p>
