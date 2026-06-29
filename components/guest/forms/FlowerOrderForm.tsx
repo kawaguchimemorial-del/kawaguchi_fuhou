@@ -61,11 +61,24 @@ export function FlowerOrderForm({
                 onChange={() => setProductId(p.id)}
                 className="accent-[var(--accent)]"
               />
+              {p.imagePath ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.imagePath}
+                  alt={p.name}
+                  className="h-20 w-20 flex-none rounded object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <span className="flex h-20 w-20 flex-none items-center justify-center rounded bg-[var(--card)] text-[10px] text-[var(--muted)]">
+                  画像準備中
+                </span>
+              )}
               <span className="flex-1">
                 <span className="font-medium">{p.name}</span>
                 <span className="block text-xs text-[var(--muted)]">{p.description}</span>
               </span>
-              <span className="text-sm">{p.priceJpy.toLocaleString()}円<span className="text-xs">（税込）</span></span>
+              <span className="flex-none text-sm">{p.priceJpy.toLocaleString()}円<span className="text-xs">（税込）</span></span>
             </label>
           ))}
         </div>

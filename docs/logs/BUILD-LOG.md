@@ -147,3 +147,9 @@
   - `lib/memorial/actions.ts`(submitOrder): 注文確定の商品名・価格をクライアント送信値でなくDBから再取得して照合（価格改ざん防止）。
 - **Supabase実接続を確認**: `.env.local` の URL/SERVICE_ROLE_KEY 有効。REST直叩きで `offering_products_master` 取得→HTTP200・**9商品**（洋花23100/29400/44000・枕花12100/18150・バラ供花24200/31900/46200・棺中花22000、全て active）取得成功。スクショの供花一覧と完全一致。
 - `npx tsc --noEmit` パス。コミット&プッシュ済み。
+
+## 2026-06-29 — 供花注文フォームに商品画像サムネイルを追加
+- ユーザー指摘: 注文フォームが文字と金額だけで画像が無く、客が選びにくい。
+- 修正: `components/guest/forms/FlowerOrderForm.tsx` の商品選択リスト各行に80×80のサムネイル表示を追加（`imagePath`、object-cover・lazy）。画像未設定時は「画像準備中」プレースホルダ。
+- 画像は `public/products/*.webp`（9枚実在）を商品マスタ `image_path`（例 `/products/yoka-23100.webp`）が参照。
+- `npx tsc --noEmit` パス。コミット&プッシュ済み。
