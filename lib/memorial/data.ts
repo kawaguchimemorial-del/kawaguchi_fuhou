@@ -1,5 +1,6 @@
 import "server-only";
 import type { Memorial } from "./types";
+import { createAnonServerClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 
 // =============================================================================
 // 訃報データアクセス層。
@@ -77,12 +78,85 @@ const SEED: Record<string, Memorial> = {
   },
 };
 
-/** 公開訃報を取得（匿名閲覧）。見つからない/非公開なら null。 */
+/** 公開訃報を取得（匿名閲覧）。見つからない/非公開なら null。
+ *  Supabaseが設定されていれば RPC get_public_obituary を参照、
+ *  未設定 or 取得失敗時はシードにフォールバック（ローカル開発・オフライン耐性）。
+ *  TODO: passcode/invite_only はトークン検証RPCを別途用意。 */
 export async function getPublicMemorial(slug: string): Promise<Memorial | null> {
-  // TODO(supabase): obituary_public_view を slug で参照し、
-  //   access_level=passcode/invite_only は別途RPCトークン検証に置き換える。
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAnonServerClient();
+      const { data, error } = await supabase.rpc("get_public_obituary", {
+        p_slug: slug,
+      });
+      if (!error && data) return mapRpcToMemorial(slug, data as RpcObituary);
+    } catch {
+      // ネットワーク不通等はシードにフォールバック
+    }
+  }
   const m = SEED[slug];
-  if (!m) return null;
-  if (m.status !== "published") return null;
+  if (!m || m.status !== "published") return null;
   return m;
+}
+
+interface RpcObituary {
+  slug: string;
+  status: string;
+  access_level: string;
+  noindex_flag: boolean;
+  religion_type: Memorial["religionType"];
+  funeral_style?: Memorial["funeralStyle"];
+  koden_decline: boolean;
+  flower_decline: boolean;
+  attend_decline: boolean;
+  koden_accept_until?: string;
+  offering_accept_until?: string;
+  published_at?: string;
+  funeral_home_name?: string;
+  fh_phone?: string;
+  fh_email?: string;
+  name_kanji: string;
+  name_kana?: string;
+  age_kazoe?: number;
+  age_full?: number;
+  death_date?: string;
+  portrait_path?: string;
+  portrait_alt?: string;
+  relation_to_mourner?: string;
+  bio_text?: string;
+  events: Memorial["events"];
+}
+
+function mapRpcToMemorial(slug: string, r: RpcObituary): Memorial {
+  return {
+    id: slug,
+    slug: r.slug,
+    status: "published",
+    testMode: false,
+    accessLevel: r.access_level as Memorial["accessLevel"],
+    noindex: r.noindex_flag,
+    religionType: r.religion_type,
+    funeralStyle: r.funeral_style,
+    obituaryTitle: "訃報",
+    kodenDecline: r.koden_decline,
+    flowerDecline: r.flower_decline,
+    attendDecline: r.attend_decline,
+    kodenAcceptUntil: r.koden_accept_until,
+    offeringAcceptUntil: r.offering_accept_until,
+    publishedAt: r.published_at,
+    funeralHomeName: r.funeral_home_name,
+    funeralHomeContact: { phone: r.fh_phone, email: r.fh_email },
+    deceased: {
+      nameKanji: r.name_kanji,
+      nameKana: r.name_kana,
+      ageKazoe: r.age_kazoe,
+      ageFull: r.age_full,
+      deathDate: r.death_date,
+      portraitPath: r.portrait_path,
+      portraitAlt: r.portrait_alt,
+      relationToMourner: r.relation_to_mourner,
+      bioText: r.bio_text,
+    },
+    events: r.events ?? [],
+  };
 }
