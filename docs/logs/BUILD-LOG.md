@@ -161,3 +161,12 @@
   - 画像はボタン化し**ライトボックス拡大**（`max-h-[85vh]` の元画像）。背景タップ・✕ボタン・Escキーで閉じる。ラジオ選択とは独立（preventDefault/stopPropagation）。
   - 「タップで拡大」バッジ／案内文を追加。選択中カードは accent リング表示。
 - `npx tsc --noEmit` パス。コミット&プッシュ済み。
+
+## 2026-06-29 — SNS共有ボタンを新ボタン画像に差し替え
+- ユーザー提供: `tmp/ボタン/` に新しい共有ボタン画像（Facebook/LINE/MAIL/SMS/X）。
+- 対応:
+  - 各PNG(約900KB)を sharp で160pxの透過webp(約4-5KB)に最適化し `public/share/`（facebook/x/line/mail/sms.webp）に配置。
+  - `components/guest/parts.tsx` の `ShareRow` を lucideアイコン+紺丸背景 → 新ボタン画像(`<img className="h-10 w-10">`)に差し替え。lucide import削除。
+  - リンク先(facebook sharer / x intent / line.me / mailto / sms)は従来どおり。
+- 反映先: 共通部品のため**訃報案内ページ `/m/[slug]`** と **オンライン式場 `/venue/hall`** の両方に自動反映。
+- `npx tsc --noEmit` パス。コミット&プッシュ済み。

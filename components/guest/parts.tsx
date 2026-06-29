@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Share2, Mail, MessageSquare, MessageCircle } from "lucide-react";
 
 /** テスト案件の赤帯 */
 export function TestBanner() {
@@ -38,26 +37,27 @@ export function ShareRow({ url, title }: { url: string; title: string }) {
   const u = encodeURIComponent(url);
   const t = encodeURIComponent(title);
   const items = [
-    { label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, node: <Share2 size={18} /> },
-    { label: "X", href: `https://twitter.com/intent/tweet?url=${u}&text=${t}`, node: <span className="text-sm font-bold">X</span> },
-    { label: "LINE", href: `https://line.me/R/msg/text/?${t}%0A${u}`, node: <MessageCircle size={18} /> },
-    { label: "メール", href: `mailto:?subject=${t}&body=${u}`, node: <Mail size={18} /> },
-    { label: "SMS", href: `sms:?body=${t}%20${u}`, node: <MessageSquare size={18} /> },
+    { label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, icon: "/share/facebook.webp" },
+    { label: "X", href: `https://twitter.com/intent/tweet?url=${u}&text=${t}`, icon: "/share/x.webp" },
+    { label: "LINE", href: `https://line.me/R/msg/text/?${t}%0A${u}`, icon: "/share/line.webp" },
+    { label: "メール", href: `mailto:?subject=${t}&body=${u}`, icon: "/share/mail.webp" },
+    { label: "SMS", href: `sms:?body=${t}%20${u}`, icon: "/share/sms.webp" },
   ];
   return (
     <div className="flex items-center justify-between border-t py-5">
       <span className="text-[var(--primary)]">知人にお知らせ</span>
       <div className="flex gap-3">
-        {items.map(({ label, href, node }) => (
+        {items.map(({ label, href, icon }) => (
           <a
             key={label}
             href={href}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${label}で知らせる`}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary)] text-white"
+            className="transition-opacity hover:opacity-80"
           >
-            {node}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={icon} alt={label} className="h-10 w-10" />
           </a>
         ))}
       </div>
