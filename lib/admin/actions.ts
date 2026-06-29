@@ -31,19 +31,8 @@ export interface CeremonyPayload {
   frame?: string; side?: string; center?: string; top?: string; background?: string;
 }
 
-export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> {
-  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { ok: false, error: "Supabaseが未設定です（環境変数を確認してください）。" };
-  }
-  if (!p.dSei && !p.dMei) {
-    return { ok: false, error: "故人のお名前をご入力ください。" };
-  }
-
-  const supabase = createAdminClient();
-  const slug = randomUUID().replace(/-/g, "");
-  const memorialId = randomUUID();
-
-  // 会場（マスタ選択 or 手入力）を解決
+// フォーム状態(payload) → DB各テーブルの行へ変換（create/updateで共通利用）
+function buildRows(p: CeremonyPayload) {
   let venueName = p.venueName ?? null;
   let venueAddress = p.venueAddress ?? null;
   let mapUrl: string | null = null;
@@ -56,7 +45,6 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
     }
   }
 
-  const deathDate = p.deathDate || null;
   const startAt =
     p.dateAdjusting !== "1" && p.eventDate
       ? new Date(`${p.eventDate}T${p.startTime || "00:00"}:00+09:00`).toISOString()
@@ -88,14 +76,7 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
       }
     : null;
 
-  // 1) memorial
-  const { error: mErr } = await supabase.from("memorials").insert({
-    id: memorialId,
-    funeral_home_id: DEMO_FUNERAL_HOME_ID,
-    slug,
-    status: "published", // デモ: すぐ閲覧できるよう公開
-    access_level: "unlisted",
-    noindex_flag: true,
+  const memorial = {
     religion_type: p.religion || "仏式",
     koden_decline: p.kodenOption === "不要",
     flower_decline: p.flowerAccept === "受け付けない",
@@ -103,26 +84,16 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
     obituary_body: p.obituaryBody || null,
     announce_mourner_name: p.announceMourner || null,
     venue: venueJson,
-    published_at: new Date().toISOString(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
-  if (mErr) return { ok: false, error: "保存に失敗しました: " + mErr.message };
-
-  // 2) deceased
-  const { error: dErr } = await supabase.from("deceased").insert({
-    memorial_id: memorialId,
+    form_state: p as unknown as Record<string, unknown>, // 編集で完全復元するため丸ごと保存
+  };
+  const deceased = {
     name_kanji: [p.dSei, p.dMei].filter(Boolean).join(" "),
     name_kana: [p.dSeiKana, p.dMeiKana].filter(Boolean).join(" ") || null,
     age_kazoe: p.ageKazoe ? Number(p.ageKazoe) : null,
-    death_date: deathDate,
+    death_date: p.deathDate || null,
     relation_to_mourner: p.relation || null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
-  if (dErr) return { ok: false, error: "故人情報の保存に失敗: " + dErr.message };
-
-  // 3) funeral_event（式1）
-  const { error: eErr } = await supabase.from("funeral_events").insert({
-    memorial_id: memorialId,
+  };
+  const event = {
     event_type: p.eventType || "通夜式",
     start_at: startAt,
     end_at: endAt,
@@ -130,9 +101,90 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
     venue_name: venueName,
     venue_address: venueAddress,
     map_url: mapUrl,
+  };
+  return { memorial, deceased, event };
+}
+
+function guard(p: CeremonyPayload): string | null {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+    return "Supabaseが未設定です（環境変数を確認してください）。";
+  if (!p.dSei && !p.dMei) return "故人のお名前をご入力ください。";
+  return null;
+}
+
+// 新規作成
+export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> {
+  const err = guard(p);
+  if (err) return { ok: false, error: err };
+
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const slug = randomUUID().replace(/-/g, "");
+  const memorialId = randomUUID();
+  const { memorial, deceased, event } = buildRows(p);
+
+  const { error: mErr } = await supabase.from("memorials").insert({
+    id: memorialId,
+    funeral_home_id: DEMO_FUNERAL_HOME_ID,
+    slug,
+    status: "published",
+    access_level: "unlisted",
+    noindex_flag: true,
+    published_at: new Date().toISOString(),
+    ...memorial,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
+  if (mErr) return { ok: false, error: "保存に失敗しました: " + mErr.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: dErr } = await supabase.from("deceased").insert({ memorial_id: memorialId, ...deceased } as any);
+  if (dErr) return { ok: false, error: "故人情報の保存に失敗: " + dErr.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: eErr } = await supabase.from("funeral_events").insert({ memorial_id: memorialId, ...event } as any);
   if (eErr) return { ok: false, error: "式情報の保存に失敗: " + eErr.message };
 
   return { ok: true, slug };
+}
+
+// 既存案件の更新（slug指定）
+export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<CreateResult> {
+  const err = guard(p);
+  if (err) return { ok: false, error: err };
+
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: mem, error: findErr } = await (supabase.from("memorials").select("id").eq("slug", slug).single() as any);
+  if (findErr || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
+  const memorialId = mem.id as string;
+  const { memorial, deceased, event } = buildRows(p);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: mErr } = await (supabase.from("memorials").update(memorial as any).eq("id", memorialId) as any);
+  if (mErr) return { ok: false, error: "更新に失敗しました: " + mErr.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("deceased").update(deceased as any).eq("memorial_id", memorialId) as any);
+  // 式は単純化のため一旦削除して入れ直し（式1のみ管理）
+  await supabase.from("funeral_events").delete().eq("memorial_id", memorialId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await supabase.from("funeral_events").insert({ memorial_id: memorialId, ...event } as any);
+
+  return { ok: true, slug };
+}
+
+// 編集用：保存済みフォーム状態を取得
+export async function getCeremonyFormState(
+  slug: string
+): Promise<{ withVenue: boolean; isTest: boolean; state: Record<string, string> } | null> {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from("memorials").select("form_state,venue").eq("slug", slug).single() as any);
+  if (error || !data) return null;
+  const fs = (data.form_state ?? {}) as Record<string, string> & { withVenue?: boolean; isTest?: boolean };
+  return {
+    withVenue: Boolean(fs.withVenue ?? data.venue != null),
+    isTest: Boolean(fs.isTest),
+    state: fs as Record<string, string>,
+  };
 }

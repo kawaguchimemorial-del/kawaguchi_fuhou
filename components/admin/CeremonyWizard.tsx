@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createCeremony, type CeremonyPayload } from "@/lib/admin/actions";
+import { createCeremony, updateCeremony, type CeremonyPayload } from "@/lib/admin/actions";
 import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { render } from "@/lib/template";
 import { VENUE_MASTER } from "@/lib/admin/venues";
@@ -23,7 +23,17 @@ const BACKGROUNDS = ["七宝", "菊", "波", "ドレープ(ベージュ)", "ド�
 
 type State = Record<string, string | boolean>;
 
-export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTest: boolean }) {
+export function CeremonyWizard({
+  withVenue,
+  isTest,
+  editSlug,
+  initialState,
+}: {
+  withVenue: boolean;
+  isTest: boolean;
+  editSlug?: string; // 指定時は編集モード（更新）
+  initialState?: State;
+}) {
   const [step, setStep] = useState(0);
   const last = withVenue ? 4 : 2;
   const [s, setS] = useState<State>({
@@ -40,6 +50,7 @@ export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTe
     center: "焼香(黒)",
     top: "黒",
     background: "七宝",
+    ...(initialState ?? {}), // 編集時は保存済みフォーム状態で上書き
   });
   const set = (k: string, v: string | boolean) => setS((p) => ({ ...p, [k]: v }));
   const g = (k: string) => (s[k] as string) ?? "";
@@ -68,8 +79,10 @@ export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTe
       frame: g("frame"), side: g("side"), center: g("center"), top: g("top"), background: g("background"),
     };
     startSave(async () => {
-      const res = await createCeremony(payload);
-      if (res.ok) router.push(`/m/${res.slug}`);
+      const res = editSlug
+        ? await updateCeremony(editSlug, payload)
+        : await createCeremony(payload);
+      if (res.ok) router.push(`/admin/ceremonies/${res.slug}`);
       else setSaveError(res.error);
     });
   }
@@ -120,7 +133,7 @@ export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTe
           <button onClick={() => setStep((x) => Math.min(last, x + 1))} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white">保存して次へ →</button>
         ) : (
           <button onClick={handleSave} disabled={saving} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">
-            {saving ? "保存中…" : "保存して公開する →"}
+            {saving ? "保存中…" : editSlug ? "更新して保存 →" : "保存して公開する →"}
           </button>
         )}
       </div>
