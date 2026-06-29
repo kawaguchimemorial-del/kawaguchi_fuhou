@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicMemorial } from "@/lib/memorial/data";
 import { getFuneralHomeName, listOrders, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
+import { getMournerAccount } from "@/lib/admin/mourner-actions";
+import { MournerAccount } from "@/components/admin/MournerAccount";
 import { toWarekiDate } from "@/lib/wareki";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +18,11 @@ export default async function CeremonyDetail({ params }: Params) {
   const m = await getPublicMemorial(id);
   if (!m) notFound();
   const homeName = await getFuneralHomeName();
-  const [orders, views, guestbook] = await Promise.all([
+  const [orders, views, guestbook, mourner] = await Promise.all([
     listOrders(id),
     countViews(id),
     listGuestbook(id),
+    getMournerAccount(id),
   ]);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -41,18 +44,15 @@ export default async function CeremonyDetail({ params }: Params) {
         </div>
       </div>
 
-      {/* 公開前の注意帯＋喪主アカウント発行 */}
-      <div className="mb-6 rounded bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        ページの公開には喪主アカウントの発行が必要です。電話番号またはメールアドレスで発行してください。
-        <button className="ml-3 rounded bg-[#9b2fae] px-3 py-1.5 text-white">▶ 喪主アカウントを発行</button>
-      </div>
+      {/* 喪主アカウント発行 */}
+      <MournerAccount slug={id} issued={mourner.issued} loginId={mourner.loginId} />
 
       {/* === セクション群 === */}
       <Section title="喪主／故人" status="登録済" editHref={`${editBase}?step=0`}>
         <Row label="故人">{m.deceased.nameKanji}{m.deceased.nameKana ? `（${m.deceased.nameKana}）` : ""}</Row>
         <Row label="没日">{m.deceased.deathDate ? `${toWarekiDate(m.deceased.deathDate)}${m.deceased.ageKazoe ? `　享年${m.deceased.ageKazoe}` : ""}` : "—"}</Row>
         <Row label="喪主">{m.chiefMourner?.nameKanji ?? "—"}</Row>
-        <Row label="ログインID">{/* TODO: 喪主アカウント発行後に表示 */}未発行</Row>
+        <Row label="ログインID">{mourner.issued ? mourner.loginId : "未発行"}</Row>
       </Section>
 
       <Section title="訃報・香典" status="登録済" editHref={`${editBase}?step=1`}>
