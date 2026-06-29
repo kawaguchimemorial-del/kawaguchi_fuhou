@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { submitOrder, type ActionResult } from "@/lib/memorial/actions";
 import type { OfferingProduct } from "@/lib/memorial/products";
@@ -18,8 +18,20 @@ export function FlowerOrderForm({
   );
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [qty, setQty] = useState(1);
+  // 拡大表示（ライトボックス）対象の画像。null で非表示。
+  const [zoom, setZoom] = useState<{ src: string; alt: string } | null>(null);
   const product = products.find((p) => p.id === productId);
   const total = product ? product.priceJpy * qty : 0;
+
+  // 拡大表示中は Esc で閉じる
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoom(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom]);
 
   if (state?.ok) {
     return (
@@ -38,47 +50,74 @@ export function FlowerOrderForm({
   const err = state?.ok === false ? state.errors : {};
 
   return (
+    <>
     <form action={action} className="space-y-8">
       <input type="hidden" name="slug" value={slug} />
 
       {/* 商品選択 */}
       <section>
         <h2 className="mb-3 font-serif text-lg text-[var(--primary)]">ご注文商品</h2>
-        <div className="space-y-3">
+        <p className="mb-3 text-xs text-[var(--muted)]">画像をタップ／クリックすると拡大表示できます。</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {products.map((p) => (
             <label
               key={p.id}
               className={
-                "flex cursor-pointer items-center gap-3 rounded border p-3 " +
-                (productId === p.id ? "border-[var(--accent)] bg-[var(--card)]" : "border-[var(--border)]")
+                "flex cursor-pointer flex-col overflow-hidden rounded border " +
+                (productId === p.id ? "border-[var(--accent)] ring-1 ring-[var(--accent)]" : "border-[var(--border)]")
               }
             >
-              <input
-                type="radio"
-                name="productId"
-                value={p.id}
-                checked={productId === p.id}
-                onChange={() => setProductId(p.id)}
-                className="accent-[var(--accent)]"
-              />
-              {p.imagePath ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={p.imagePath}
-                  alt={p.name}
-                  className="h-20 w-20 flex-none rounded object-cover"
-                  loading="lazy"
+              {/* 画像（クリック/タップで拡大。ラジオ選択とは独立） */}
+              <div className="relative bg-[var(--card)]">
+                {p.imagePath ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setZoom({ src: p.imagePath!, alt: p.name });
+                    }}
+                    className="block w-full cursor-zoom-in"
+                    aria-label={`${p.name}の画像を拡大表示`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.imagePath}
+                      alt={p.name}
+                      className="h-44 w-full object-cover"
+                      loading="lazy"
+                    />
+                    <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">
+                      タップで拡大
+                    </span>
+                  </button>
+                ) : (
+                  <span className="flex h-44 w-full items-center justify-center text-xs text-[var(--muted)]">
+                    画像準備中
+                  </span>
+                )}
+              </div>
+
+              {/* 商品情報＋選択 */}
+              <div className="flex flex-1 items-start gap-2 p-3">
+                <input
+                  type="radio"
+                  name="productId"
+                  value={p.id}
+                  checked={productId === p.id}
+                  onChange={() => setProductId(p.id)}
+                  className="mt-1 flex-none accent-[var(--accent)]"
                 />
-              ) : (
-                <span className="flex h-20 w-20 flex-none items-center justify-center rounded bg-[var(--card)] text-[10px] text-[var(--muted)]">
-                  画像準備中
+                <span className="flex-1">
+                  <span className="font-medium">{p.name}</span>
+                  {p.description && (
+                    <span className="block text-xs text-[var(--muted)]">{p.description}</span>
+                  )}
+                  <span className="mt-1 block text-sm">
+                    {p.priceJpy.toLocaleString()}円<span className="text-xs">（税込）</span>
+                  </span>
                 </span>
-              )}
-              <span className="flex-1">
-                <span className="font-medium">{p.name}</span>
-                <span className="block text-xs text-[var(--muted)]">{p.description}</span>
-              </span>
-              <span className="flex-none text-sm">{p.priceJpy.toLocaleString()}円<span className="text-xs">（税込）</span></span>
+              </div>
             </label>
           ))}
         </div>
@@ -181,6 +220,37 @@ export function FlowerOrderForm({
         {pending ? "送信中…" : "入力内容を確認する"}
       </button>
     </form>
+
+    {/* 画像拡大ライトボックス（背景／✕／元画像クリックで閉じる） */}
+    {zoom && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${zoom.alt} 拡大画像`}
+        onClick={() => setZoom(null)}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      >
+        <button
+          type="button"
+          onClick={() => setZoom(null)}
+          aria-label="閉じる"
+          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-2xl leading-none text-black shadow"
+        >
+          ×
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={zoom.src}
+          alt={zoom.alt}
+          onClick={(e) => e.stopPropagation()}
+          className="max-h-[85vh] max-w-full rounded object-contain shadow-2xl"
+        />
+        <p className="absolute bottom-5 left-0 right-0 text-center text-sm text-white/90">
+          {zoom.alt}　／　画面をタップで閉じる
+        </p>
+      </div>
+    )}
+    </>
   );
 }
 

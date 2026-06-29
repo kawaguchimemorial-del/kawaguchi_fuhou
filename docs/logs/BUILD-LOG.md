@@ -153,3 +153,11 @@
 - 修正: `components/guest/forms/FlowerOrderForm.tsx` の商品選択リスト各行に80×80のサムネイル表示を追加（`imagePath`、object-cover・lazy）。画像未設定時は「画像準備中」プレースホルダ。
 - 画像は `public/products/*.webp`（9枚実在）を商品マスタ `image_path`（例 `/products/yoka-23100.webp`）が参照。
 - `npx tsc --noEmit` パス。コミット&プッシュ済み。
+
+## 2026-06-29 — 供花注文フォームを画像中心UIに刷新＋画像拡大ライトボックス
+- ユーザー要望: 供花画像が小さく選びにくい。PC/スマホとも中くらいに表示し、画像をタップ/クリックで元画像を拡大、✕や背景タップで閉じられるように。
+- 修正 `components/guest/forms/FlowerOrderForm.tsx`:
+  - 商品リストを縦並びの小サムネ→**レスポンシブカードグリッド**（mobile1列/sm2列）。画像は `h-44 w-full object-cover` の中サイズ。
+  - 画像はボタン化し**ライトボックス拡大**（`max-h-[85vh]` の元画像）。背景タップ・✕ボタン・Escキーで閉じる。ラジオ選択とは独立（preventDefault/stopPropagation）。
+  - 「タップで拡大」バッジ／案内文を追加。選択中カードは accent リング表示。
+- `npx tsc --noEmit` パス。コミット&プッシュ済み。
