@@ -4,12 +4,18 @@ import { CeremonyWizard } from "@/components/admin/CeremonyWizard";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: Promise<{ id: string }> };
+type Params = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ step?: string }>;
+};
 
-export default async function EditCeremonyPage({ params }: Params) {
-  const { id } = await params; // id = slug
+export default async function EditCeremonyPage({ params, searchParams }: Params) {
+  const { id } = await params;
+  const { step } = await searchParams;
   const fs = await getCeremonyFormState(id);
   if (!fs) notFound();
+
+  const focusStep = step != null && step !== "" ? Number(step) : undefined;
 
   return (
     <div>
@@ -19,6 +25,7 @@ export default async function EditCeremonyPage({ params }: Params) {
         isTest={fs.isTest}
         editSlug={id}
         initialState={fs.state}
+        focusStep={Number.isFinite(focusStep) ? focusStep : undefined}
       />
     </div>
   );

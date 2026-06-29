@@ -5,6 +5,7 @@ import { getPublicMemorial } from "./data";
 import { religionVocab } from "./religion";
 import { store, nextId } from "./store";
 import { OFFERING_PRODUCTS } from "./products";
+import { dbEnabled, resolveMemorialId, insertRow } from "./db";
 
 // 共通の戻り値型
 export type ActionResult =
@@ -35,6 +36,17 @@ export async function submitWorship(
     return { ok: false, errors: { _form: "現在この式場では参拝を受け付けておりません。" } };
   }
   const anon = isAnonymous === "on" || !displayName;
+  if (dbEnabled()) {
+    const mid = await resolveMemorialId(slug);
+    if (mid)
+      await insertRow("virtual_worships", {
+        memorial_id: mid,
+        worship_type: religionVocab(m.religionType).worshipLabel,
+        display_name: anon ? null : displayName!.trim(),
+        is_anonymous: anon,
+        message: message ? message.trim() : null,
+      });
+  }
   store.worships.push({
     id: nextId("wor"),
     memorialSlug: slug,
@@ -69,6 +81,16 @@ export async function submitMessage(
   const m = await getPublicMemorial(slug);
   if (!m) return { ok: false, errors: { _form: "対象が見つかりませんでした。" } };
 
+  if (dbEnabled()) {
+    const mid = await resolveMemorialId(slug);
+    if (mid)
+      await insertRow("condolence_messages", {
+        memorial_id: mid,
+        sender_name: senderName,
+        body,
+        moderation_status: "pending",
+      });
+  }
   store.messages.push({
     id: nextId("msg"),
     memorialSlug: slug,
@@ -127,6 +149,29 @@ export async function submitOrder(
   const product = OFFERING_PRODUCTS.find((p) => p.id === d.productId);
   if (!product) return { ok: false, errors: { productId: "商品が見つかりません" } };
 
+  if (dbEnabled()) {
+    const mid = await resolveMemorialId(d.slug);
+    if (mid)
+      await insertRow("offering_orders", {
+        memorial_id: mid,
+        product_id: d.productId,
+        product_name: product.name,
+        quantity: d.quantity,
+        unit_price_jpy: product.priceJpy,
+        orderer_name: d.ordererName,
+        orderer_kana: d.ordererKana,
+        company: d.company || null,
+        postal_code: d.postalCode,
+        address: d.address,
+        phone: d.phone,
+        email: d.email,
+        name_plate_text: d.namePlateText,
+        old_char: d.oldChar === "on",
+        invoice_name: d.invoiceName || null,
+        memo: d.memo || null,
+        status: "pending_confirm",
+      });
+  }
   store.orders.push({
     id: nextId("ord"),
     memorialSlug: d.slug,
@@ -188,6 +233,21 @@ export async function submitKoden(
   }
 
   const idempotencyKey = nextId("koden_idem");
+  if (dbEnabled()) {
+    const mid = await resolveMemorialId(d.slug);
+    if (mid)
+      await insertRow("koden_payments", {
+        memorial_id: mid,
+        donor_name: d.donorName,
+        donor_company: d.donorCompany || null,
+        amount_jpy: d.amount,
+        hyogaki: religionVocab(m.religionType).kodenHyogaki,
+        fee_payer: d.feePayer,
+        message: d.message || null,
+        is_amount_public: d.isAmountPublic === "on",
+        status: "requires_payment",
+      });
+  }
   store.koden.push({
     id: nextId("kod"),
     memorialSlug: d.slug,
@@ -232,7 +292,18 @@ export async function submitRsvp(
   const d = parsed.data;
   const m = await getPublicMemorial(d.slug);
   if (!m) return { ok: false, errors: { _form: "対象が見つかりませんでした。" } };
-  // TODO(supabase): rsvp テーブルへINSERT。受付QR・香典帳と統合。
+  if (dbEnabled()) {
+    const mid = await resolveMemorialId(d.slug);
+    if (mid)
+      await insertRow("rsvp", {
+        memorial_id: mid,
+        attendee_name: d.attendeeName,
+        kana: d.kana || null,
+        mode: d.mode,
+        event: d.event || null,
+        headcount: d.headcount,
+      });
+  }
   return {
     ok: true,
     message:

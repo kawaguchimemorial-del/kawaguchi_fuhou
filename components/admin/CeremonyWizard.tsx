@@ -28,13 +28,16 @@ export function CeremonyWizard({
   isTest,
   editSlug,
   initialState,
+  focusStep,
 }: {
   withVenue: boolean;
   isTest: boolean;
   editSlug?: string; // 指定時は編集モード（更新）
   initialState?: State;
+  focusStep?: number; // 指定時はそのステップのみ編集（セクション個別編集）
 }) {
-  const [step, setStep] = useState(0);
+  const singleStep = focusStep != null;
+  const [step, setStep] = useState(focusStep ?? 0);
   const last = withVenue ? 4 : 2;
   const [s, setS] = useState<State>({
     religion: "仏式",
@@ -109,6 +112,7 @@ export function CeremonyWizard({
     <div className="mx-auto max-w-3xl">
       {isTest && <p className="mb-4 rounded bg-red-100 px-4 py-2 text-sm text-red-700">テスト葬儀として作成します（無料）</p>}
 
+      {!singleStep && (
       <ol className="mb-8 flex items-center justify-between text-xs">
         {STEPS.slice(0, last + 1).map((label, i) => (
           <li key={label} className="flex flex-1 items-center">
@@ -118,6 +122,10 @@ export function CeremonyWizard({
           </li>
         ))}
       </ol>
+      )}
+      {singleStep && (
+        <p className="mb-4 text-sm text-gray-500">「{STEPS[focusStep!]}」を編集しています。</p>
+      )}
 
       <div className="rounded-lg bg-white p-6 shadow-sm">
         {step === 0 && <StepMourner g={g} set={set} />}
@@ -128,13 +136,24 @@ export function CeremonyWizard({
       </div>
 
       <div className="mt-6 flex justify-between">
-        <button onClick={() => setStep((x) => Math.max(0, x - 1))} disabled={step === 0} className="rounded border px-6 py-2.5 text-sm disabled:opacity-40">← 前に戻る</button>
-        {step < last ? (
-          <button onClick={() => setStep((x) => Math.min(last, x + 1))} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white">保存して次へ →</button>
+        {singleStep ? (
+          <>
+            <a href={editSlug ? `/admin/ceremonies/${editSlug}` : "/admin/ceremonies"} className="rounded border px-6 py-2.5 text-sm">← 戻る</a>
+            <button onClick={handleSave} disabled={saving} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">
+              {saving ? "保存中…" : "この内容で更新"}
+            </button>
+          </>
         ) : (
-          <button onClick={handleSave} disabled={saving} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">
-            {saving ? "保存中…" : editSlug ? "更新して保存 →" : "保存して公開する →"}
-          </button>
+          <>
+            <button onClick={() => setStep((x) => Math.max(0, x - 1))} disabled={step === 0} className="rounded border px-6 py-2.5 text-sm disabled:opacity-40">← 前に戻る</button>
+            {step < last ? (
+              <button onClick={() => setStep((x) => Math.min(last, x + 1))} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white">保存して次へ →</button>
+            ) : (
+              <button onClick={handleSave} disabled={saving} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">
+                {saving ? "保存中…" : editSlug ? "更新して保存 →" : "保存して公開する →"}
+              </button>
+            )}
+          </>
         )}
       </div>
       {saveError && <p className="mt-4 rounded bg-red-50 px-4 py-2 text-sm text-red-700">{saveError}</p>}

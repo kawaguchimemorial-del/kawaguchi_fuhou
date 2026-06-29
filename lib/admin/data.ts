@@ -143,3 +143,86 @@ export async function listKoden(): Promise<KodenEntry[]> {
 export async function getFuneralHomeName(): Promise<string> {
   return "株式会社川口典礼 本社";
 }
+
+// ===== 案件ごとの実データ取得（葬儀詳細・芳名録・注文一覧用） =====
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function db(): Promise<{ from: (t: string) => any } | null> {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return createAdminClient() as unknown as { from: (t: string) => any };
+}
+async function memorialIdBySlug(slug: string): Promise<string | null> {
+  const c = await db();
+  if (!c) return null;
+  const { data } = await c.from("memorials").select("id").eq("slug", slug).single();
+  return data?.id ?? null;
+}
+
+export interface GuestbookRow {
+  kind: "焼香" | "メッセージ";
+  name: string;
+  detail: string;
+  status: string;
+  createdAt: string;
+}
+export async function listGuestbook(slug: string): Promise<GuestbookRow[]> {
+  const c = await db();
+  if (!c) return [];
+  const mid = await memorialIdBySlug(slug);
+  if (!mid) return [];
+  const [w, m] = await Promise.all([
+    c.from("virtual_worships").select("worship_type,display_name,is_anonymous,message,created_at").eq("memorial_id", mid).order("created_at", { ascending: false }),
+    c.from("condolence_messages").select("sender_name,body,moderation_status,created_at").eq("memorial_id", mid).order("created_at", { ascending: false }),
+  ]);
+  const rows: GuestbookRow[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of (w.data ?? []) as any[])
+    rows.push({ kind: "焼香", name: r.is_anonymous ? "匿名" : r.display_name ?? "匿名", detail: r.worship_type + (r.message ? `／${r.message}` : ""), status: "—", createdAt: r.created_at });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of (m.data ?? []) as any[])
+    rows.push({ kind: "メッセージ", name: r.sender_name, detail: r.body, status: r.moderation_status === "approved" ? "公開" : r.moderation_status === "pending" ? "承認待ち" : "非公開", createdAt: r.created_at });
+  return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+export interface OrderRow {
+  productName: string;
+  quantity: number;
+  amountJpy: number;
+  ordererName: string;
+  email: string;
+  namePlate: string;
+  status: string;
+  createdAt: string;
+}
+export async function listOrders(slug: string): Promise<OrderRow[]> {
+  const c = await db();
+  if (!c) return [];
+  const mid = await memorialIdBySlug(slug);
+  if (!mid) return [];
+  const { data } = await c.from("offering_orders").select("product_name,quantity,unit_price_jpy,orderer_name,email,name_plate_text,status,created_at").eq("memorial_id", mid).order("created_at", { ascending: false });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => ({
+    productName: r.product_name ?? "—", quantity: r.quantity ?? 1, amountJpy: (r.unit_price_jpy ?? 0) * (r.quantity ?? 1),
+    ordererName: r.orderer_name ?? "—", email: r.email ?? "", namePlate: r.name_plate_text ?? "", status: r.status ?? "", createdAt: r.created_at,
+  }));
+}
+
+export interface KodenRow { donorName: string; amountJpy: number; hyogaki: string; status: string; createdAt: string }
+export async function listKodenForMemorial(slug: string): Promise<KodenRow[]> {
+  const c = await db();
+  if (!c) return [];
+  const mid = await memorialIdBySlug(slug);
+  if (!mid) return [];
+  const { data } = await c.from("koden_payments").select("donor_name,amount_jpy,hyogaki,status,created_at").eq("memorial_id", mid).order("created_at", { ascending: false });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => ({ donorName: r.donor_name, amountJpy: r.amount_jpy, hyogaki: r.hyogaki ?? "", status: r.status, createdAt: r.created_at }));
+}
+
+export async function countViews(slug: string): Promise<number> {
+  const c = await db();
+  if (!c) return 0;
+  const mid = await memorialIdBySlug(slug);
+  if (!mid) return 0;
+  const { count } = await c.from("memorial_views").select("id", { count: "exact", head: true }).eq("memorial_id", mid);
+  return count ?? 0;
+}
