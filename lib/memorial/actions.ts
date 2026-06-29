@@ -155,6 +155,66 @@ export async function submitOrder(
   };
 }
 
+// ---------------------------------------------------------------------------
+// 香典オンライン決済（金額はサーバ側で許可値を再検証。確定はWebhookが唯一の真実源）
+//   フェーズ3（法務確定後）に Stripe Connect で実決済。ここでは検証・記録まで。
+// ---------------------------------------------------------------------------
+const ALLOWED_AMOUNTS = [3000, 5000, 10000, 30000, 50000]; // 4・9を避けたプリセット
+const kodenSchema = z.object({
+  slug: z.string().min(1),
+  amount: z.coerce.number().int(),
+  donorName: z.string().trim().min(1, "ご芳名をご入力ください").max(40),
+  donorCompany: z.string().trim().max(60).optional().or(z.literal("")),
+  feePayer: z.enum(["sender", "recipient"]).default("recipient"),
+  message: z.string().trim().max(200).optional().or(z.literal("")),
+  isAmountPublic: z.enum(["on", ""]).optional(),
+});
+
+export async function submitKoden(
+  _prev: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const parsed = kodenSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
+  const d = parsed.data;
+
+  // サーバ側で金額を再検証（クライアント送信額を信用しない）
+  if (!ALLOWED_AMOUNTS.includes(d.amount)) {
+    return { ok: false, errors: { amount: "選択できない金額です" } };
+  }
+  const m = await getPublicMemorial(d.slug);
+  if (!m || m.kodenDecline || isPastIso(m.kodenAcceptUntil)) {
+    return { ok: false, errors: { _form: "現在この式場ではお香典を受け付けておりません。" } };
+  }
+
+  const idempotencyKey = nextId("koden_idem");
+  store.koden.push({
+    id: nextId("kod"),
+    memorialSlug: d.slug,
+    donorName: d.donorName,
+    donorCompany: d.donorCompany || null,
+    amountJpy: d.amount, // JPYは整数円（×100しない）
+    hyogaki: religionVocab(m.religionType).kodenHyogaki,
+    feePayer: d.feePayer,
+    message: d.message || null,
+    isAmountPublic: d.isAmountPublic === "on",
+    status: "requires_payment", // 実決済成功はWebhookで succeeded に更新
+    providerPaymentIntentId: null,
+    idempotencyKey,
+    createdAt: new Date().toISOString(),
+  });
+  // TODO(stripe): PaymentIntent作成(destination charge/application_fee, 冪等キー=idempotencyKey,
+  //   3DS必須)。確定は /api/webhooks/stripe の payment_intent.succeeded で行う。
+  return {
+    ok: true,
+    message: `お香典（${d.amount.toLocaleString()}円）のお申し込みを受け付けました。決済画面は準備中です。`,
+  };
+}
+
+function isPastIso(iso?: string): boolean {
+  return iso ? new Date(iso).getTime() < Date.now() : false;
+}
+
 function fieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
   for (const issue of error.issues) {

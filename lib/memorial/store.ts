@@ -44,6 +44,23 @@ export interface OrderRecord {
   createdAt: string;
 }
 
+export interface KodenRecord {
+  id: string;
+  memorialSlug: string;
+  donorName: string;
+  donorCompany: string | null;
+  amountJpy: number;
+  hyogaki: string; // 表書き（御霊前/御仏前/御花料 等）
+  feePayer: "sender" | "recipient"; // 手数料負担者
+  message: string | null;
+  isAmountPublic: boolean;
+  // 決済状態（実際の確定はWebhookが唯一の真実源）
+  status: "requires_payment" | "processing" | "succeeded" | "refunded" | "failed";
+  providerPaymentIntentId: string | null;
+  idempotencyKey: string;
+  createdAt: string;
+}
+
 declare global {
   // eslint-disable-next-line no-var
   var __memorialStore:
@@ -51,6 +68,7 @@ declare global {
         worships: WorshipRecord[];
         messages: MessageRecord[];
         orders: OrderRecord[];
+        koden: KodenRecord[];
         seq: number;
       }
     | undefined;
@@ -58,7 +76,13 @@ declare global {
 
 export const store =
   globalThis.__memorialStore ??
-  (globalThis.__memorialStore = { worships: [], messages: [], orders: [], seq: 1 });
+  (globalThis.__memorialStore = {
+    worships: [],
+    messages: [],
+    orders: [],
+    koden: [],
+    seq: 1,
+  });
 
 export function nextId(prefix: string): string {
   return `${prefix}_${store.seq++}_${Date.now().toString(36)}`;
