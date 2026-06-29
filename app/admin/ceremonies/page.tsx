@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { listCeremonies } from "@/lib/admin/data";
 
+// 作成直後の案件を常に反映するため動的レンダリング
+export const dynamic = "force-dynamic";
+
 export default async function CeremoniesPage() {
   const rows = await listCeremonies();
   return (
