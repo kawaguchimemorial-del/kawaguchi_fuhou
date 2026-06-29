@@ -52,7 +52,9 @@ export default async function CeremoniesPage() {
                     <span className="mt-1 inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-600">テスト</span>
                   )}
                 </td>
-                <td className="px-3 py-4">{r.mournerName}</td>
+                <td className="px-3 py-4">
+                  <Link href={`/admin/ceremonies/${r.id}`} className="text-[#9b2fae] underline">{r.mournerName}</Link>
+                </td>
                 <td className="px-3 py-4">{r.deceasedName}</td>
                 <td className="px-3 py-4">{r.event1.name}<br /><span className="text-xs text-gray-500">{r.event1.date}</span></td>
                 <td className="px-3 py-4">{r.event2 ? <>{r.event2.name}<br /><span className="text-xs text-gray-500">{r.event2.date}</span></> : "-"}</td>
@@ -67,7 +69,7 @@ export default async function CeremoniesPage() {
                 </td>
                 <td className="px-3 py-4 text-xs">{r.kodenOption}</td>
                 <td className="px-3 py-4">
-                  <Link href={`/admin/ceremonies/${r.id}/edit`} className="text-[#9b2fae] underline">編集</Link>
+                  <Link href={`/admin/ceremonies/${r.id}`} className="text-[#9b2fae] underline">編集</Link>
                   <br />
                   <Link href={`/m/${r.slug}`} className="text-xs text-gray-500 underline">公開ページ</Link>
                 </td>
