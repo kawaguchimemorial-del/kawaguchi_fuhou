@@ -1,83 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { toWareki, toWarekiDate } from "@/lib/wareki";
+import { render } from "@/lib/template";
+import { VENUE_MASTER } from "@/lib/admin/venues";
+import {
+  OBITUARY_TEMPLATES,
+  GREETING_TEMPLATES,
+  defaultVenueName,
+} from "@/lib/memorial/copy-templates";
 
-// 作成ウィザード（実画面の5ステップ構成を踏襲）
-// ① 喪主／故人 → ② 訃報・香典 → ③ 記帳 → ④ 供花・供物 → ⑤ オンライン式場
+// 作成ウィザード（5ステップ／状態保持・入力補助つき）
 // TODO(supabase): 最終保存で memorials/deceased/funeral_events/venue 等へINSERT。
-//   現状はクライアント状態のみ（保存はalertでダミー）。祭壇画像レイヤーは素材導入後。
-
 const STEPS = ["喪主／故人", "訃報・香典", "記帳", "供花・供物", "オンライン式場"];
 const EVENT_TYPES = ["通夜式", "告別式", "葬儀告別式", "一日葬", "お別れの会", "火葬式"];
 const FRAMES = ["黒", "黒(リボン)", "白", "白(花)", "グレー", "紫", "ピンク"];
+const SIDE = ["黒", "白", "花(1)", "花(2)"];
 const CENTERS = ["焼香(黒)", "焼香(白)", "線香(1本)", "線香(2本)", "線香(3本)", "花(1)", "花(2)", "非表示"];
 const BACKGROUNDS = ["七宝", "菊", "波", "ドレープ(ベージュ)", "ドレープ(ピンク)"];
 
+type State = Record<string, string | boolean>;
+
 export function CeremonyWizard({ withVenue, isTest }: { withVenue: boolean; isTest: boolean }) {
   const [step, setStep] = useState(0);
-  const last = withVenue ? 4 : 2; // 訃報のみは③まで
+  const last = withVenue ? 4 : 2;
+  const [s, setS] = useState<State>({
+    religion: "仏式",
+    eventType: "通夜式",
+    placeMode: "master", // master | manual
+    venueId: VENUE_MASTER[0]?.id ?? "",
+    kodenOption: "必要",
+    returnGift: "必要",
+    publishImmediately: "1",
+    openDays: "60",
+    frame: "黒",
+    side: "黒",
+    center: "焼香(黒)",
+    top: "黒",
+    background: "七宝",
+  });
+  const set = (k: string, v: string | boolean) => setS((p) => ({ ...p, [k]: v }));
+  const g = (k: string) => (s[k] as string) ?? "";
+
+  // 派生値
+  const deceasedFull = [g("dSei"), g("dMei")].filter(Boolean).join(" ");
+  const deceasedKana = [g("dSeiKana"), g("dMeiKana")].filter(Boolean).join(" ");
+  const mournerFull = [g("mSei"), g("mMei")].filter(Boolean).join(" ");
+  const tvars = useMemo(
+    () => ({
+      故人続柄: g("relation"),
+      故人名: deceasedFull,
+      故人カナ: deceasedKana,
+      没年月日和暦: toWarekiDate(g("deathDate")),
+      没時刻: g("deathTime"),
+      享年: g("ageKazoe"),
+      喪主名: mournerFull,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [s]
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
-      {isTest && (
-        <p className="mb-4 rounded bg-red-100 px-4 py-2 text-sm text-red-700">テスト葬儀として作成します（無料）</p>
-      )}
+      {isTest && <p className="mb-4 rounded bg-red-100 px-4 py-2 text-sm text-red-700">テスト葬儀として作成します（無料）</p>}
 
-      {/* ステッパー */}
       <ol className="mb-8 flex items-center justify-between text-xs">
-        {STEPS.slice(0, last + 1).map((s, i) => (
-          <li key={s} className="flex flex-1 items-center">
-            <span
-              className={
-                "flex h-7 w-7 items-center justify-center rounded-full text-white " +
-                (i <= step ? "bg-[#9b2fae]" : "bg-gray-300")
-              }
-            >
-              {i + 1}
-            </span>
-            <span className="ml-2 hidden sm:inline">{s}</span>
+        {STEPS.slice(0, last + 1).map((label, i) => (
+          <li key={label} className="flex flex-1 items-center">
+            <span className={"flex h-7 w-7 items-center justify-center rounded-full text-white " + (i <= step ? "bg-[#9b2fae]" : "bg-gray-300")}>{i + 1}</span>
+            <span className="ml-2 hidden sm:inline">{label}</span>
             {i < last && <span className="mx-2 h-px flex-1 bg-gray-300" />}
           </li>
         ))}
       </ol>
 
       <div className="rounded-lg bg-white p-6 shadow-sm">
-        {step === 0 && <StepMournerDeceased />}
-        {step === 1 && <StepObituaryKoden />}
+        {step === 0 && <StepMourner g={g} set={set} />}
+        {step === 1 && <StepObituary g={g} set={set} tvars={tvars} mournerFull={mournerFull} />}
         {step === 2 && <StepGuestbook />}
-        {step === 3 && <StepFlowers />}
-        {step === 4 && <StepVenue />}
+        {step === 3 && <StepFlowers g={g} set={set} />}
+        {step === 4 && <StepVenue g={g} set={set} tvars={tvars} deceasedFull={deceasedFull} />}
       </div>
 
       <div className="mt-6 flex justify-between">
-        <button
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
-          className="rounded border px-6 py-2.5 text-sm disabled:opacity-40"
-        >
-          ← 前に戻る
-        </button>
+        <button onClick={() => setStep((x) => Math.max(0, x - 1))} disabled={step === 0} className="rounded border px-6 py-2.5 text-sm disabled:opacity-40">← 前に戻る</button>
         {step < last ? (
-          <button
-            onClick={() => setStep((s) => Math.min(last, s + 1))}
-            className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white"
-          >
-            保存して次へ →
-          </button>
+          <button onClick={() => setStep((x) => Math.min(last, x + 1))} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white">保存して次へ →</button>
         ) : (
-          <button
-            onClick={() => alert("（デモ）保存しました。Supabase接続後に永続化します。")}
-            className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white"
-          >
-            保存して葬儀詳細へ →
-          </button>
+          <button onClick={() => alert("（デモ）保存しました。Supabase接続後に永続化します。")} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white">保存して葬儀詳細へ →</button>
         )}
       </div>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// ---- 共通UI ----
+function Sec({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="mb-6">
       <legend className="mb-3 border-l-4 border-[#9b2fae] pl-2 font-bold">{title}</legend>
@@ -88,153 +106,210 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Req() {
   return <span className="ml-1 text-xs text-red-500">必須</span>;
 }
-function TextField({ label, required, placeholder }: { label: string; required?: boolean; placeholder?: string }) {
+function Text({ label, k, g, set, required, placeholder, type = "text" }: { label: string; k: string; g: (k: string) => string; set: (k: string, v: string) => void; required?: boolean; placeholder?: string; type?: string }) {
   return (
     <label className="block">
       <span className="text-sm text-gray-600">{label}{required && <Req />}</span>
-      <input placeholder={placeholder} className="mt-1 w-full border-b py-2 focus:border-[#9b2fae] focus:outline-none" />
+      <input type={type} value={g(k)} placeholder={placeholder} onChange={(e) => set(k, e.target.value)} className="mt-1 w-full border-b py-2 focus:border-[#9b2fae] focus:outline-none" />
     </label>
   );
 }
-function Choices({ label, options, required }: { label: string; options: string[]; required?: boolean }) {
+function Pills({ label, k, options, g, set, required }: { label: string; k: string; options: string[]; g: (k: string) => string; set: (k: string, v: string) => void; required?: boolean }) {
+  const cur = g(k) || options[0];
   return (
     <div>
       <p className="text-sm text-gray-600">{label}{required && <Req />}</p>
       <div className="mt-2 flex flex-wrap gap-2">
-        {options.map((o, i) => (
-          <label key={o} className={"cursor-pointer rounded border px-3 py-1.5 text-sm " + (i === 0 ? "border-[#9b2fae] bg-[#f3e9f6]" : "")}>
-            <input type="radio" name={label} defaultChecked={i === 0} className="sr-only" />
-            {o}
-          </label>
+        {options.map((o) => (
+          <button type="button" key={o} onClick={() => set(k, o)} className={"rounded border px-3 py-1.5 text-sm " + (cur === o ? "border-[#9b2fae] bg-[#f3e9f6]" : "")}>{o}</button>
         ))}
       </div>
     </div>
   );
 }
 
-function StepMournerDeceased() {
+// ---- ステップ1: 喪主／故人 ----
+function StepMourner({ g, set }: { g: (k: string) => string; set: (k: string, v: string) => void }) {
   return (
     <>
-      <Section title="喪主">
+      <Sec title="喪主">
         <div className="grid grid-cols-2 gap-4">
-          <TextField label="姓" required />
-          <TextField label="名" required />
-          <TextField label="セイ" required />
-          <TextField label="メイ" required />
+          <Text label="姓" k="mSei" g={g} set={set} required />
+          <Text label="名" k="mMei" g={g} set={set} required />
+          <Text label="セイ" k="mSeiKana" g={g} set={set} required />
+          <Text label="メイ" k="mMeiKana" g={g} set={set} required />
         </div>
-      </Section>
-      <Section title="喪主管理画面ログインIDの発行">
+      </Sec>
+      <Sec title="喪主管理画面ログインIDの発行">
         <p className="text-xs text-gray-500">※オンライン香典を受け付ける場合、ここの電話/メール宛に口座情報の連絡を行います。</p>
-        <Choices label="発行方法" options={["自動IDで発行（電話番号）", "喪主メールアドレスで発行"]} />
-        <TextField label="電話番号（ハイフンなし）/ メールアドレス" />
-      </Section>
-      <Section title="故人">
+        <Pills label="発行方法" k="idMethod" options={["自動ID（電話番号）", "メールアドレス"]} g={g} set={set} />
+        <Text label="電話番号（ハイフンなし）/ メールアドレス" k="idContact" g={g} set={set} />
+      </Sec>
+      <Sec title="故人">
         <div className="grid grid-cols-2 gap-4">
-          <TextField label="姓" required />
-          <TextField label="名" required />
-          <TextField label="セイ" required />
-          <TextField label="メイ" required />
+          <Text label="姓" k="dSei" g={g} set={set} required />
+          <Text label="名" k="dMei" g={g} set={set} required />
+          <Text label="セイ" k="dSeiKana" g={g} set={set} required />
+          <Text label="メイ" k="dMeiKana" g={g} set={set} required />
         </div>
         <div className="grid grid-cols-4 gap-4">
-          <TextField label="没年月日" />
-          <TextField label="没時間" />
-          <TextField label="享年" />
-          <TextField label="喪主との続柄" placeholder="父" />
+          <Text label="没年月日" k="deathDate" g={g} set={set} type="date" />
+          <Text label="没時間" k="deathTime" g={g} set={set} type="time" />
+          <Text label="享年" k="ageKazoe" g={g} set={set} type="number" />
+          <Text label="喪主との続柄" k="relation" g={g} set={set} placeholder="父" />
         </div>
-      </Section>
+        {g("deathDate") && (
+          <p className="text-xs text-gray-500">没日（和暦）：{toWarekiDate(g("deathDate"))}{g("deathTime") ? ` ${g("deathTime")}` : ""}</p>
+        )}
+      </Sec>
     </>
   );
 }
 
-function StepObituaryKoden() {
+// ---- ステップ2: 訃報・香典 ----
+function StepObituary({ g, set, tvars, mournerFull }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; mournerFull: string }) {
+  const announce = g("announceMourner") || (mournerFull ? `喪主 ${mournerFull}` : "");
   return (
     <>
-      <Section title="訃報案内">
-        <TextField label="訃報タイトル" placeholder="訃報" />
-        <label className="block">
-          <span className="text-sm text-gray-600">訃報文（500字以内）</span>
-          <textarea rows={5} className="mt-1 w-full rounded border p-3 focus:border-[#9b2fae] focus:outline-none" />
-        </label>
-        <TextField label="訃報を案内される喪主名" required />
-        <Choices label="喪式形式" options={["仏式", "神式", "キリスト教式", "無宗教"]} />
-      </Section>
-      <Section title="式1">
-        <Choices label="式名" options={EVENT_TYPES} required />
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" /> 日程調整中</label>
-        <div className="grid grid-cols-3 gap-4">
-          <TextField label="式日" /><TextField label="開始時刻" /><TextField label="終了時刻" />
+      <Sec title="訃報案内">
+        <Text label="訃報タイトル" k="obituaryTitle" g={g} set={set} placeholder="訃報" />
+        <div>
+          <p className="text-sm text-gray-600">訃報文テンプレート</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {OBITUARY_TEMPLATES.map((t) => (
+              <button type="button" key={t.id} onClick={() => set("obituaryBody", render(t.body, tvars))} className="rounded border px-3 py-1.5 text-sm hover:bg-[#f3e9f6]">{t.label}を適用</button>
+            ))}
+            <span className="text-xs text-gray-400">※ 入力済みの故人・喪主・没日（和暦）が自動で反映されます</span>
+          </div>
+          <textarea rows={7} value={g("obituaryBody")} onChange={(e) => set("obituaryBody", e.target.value)} className="mt-2 w-full rounded border p-3 focus:border-[#9b2fae] focus:outline-none" placeholder="テンプレートを適用するか、直接ご入力ください。" />
         </div>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" /> 場所調整中</label>
-        <TextField label="場所（会館・ホール）" />
-        <TextField label="住所（郵便番号で検索）" />
-      </Section>
-      <Section title="式2（任意・最大5式まで）">
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" /> 場所はひとつ前の式情報と同じ</label>
-        <Choices label="式名" options={EVENT_TYPES} />
-      </Section>
-      <Section title="香典決済オプション">
+        <label className="block">
+          <span className="text-sm text-gray-600">訃報を案内される喪主名<Req /></span>
+          <input value={announce} onChange={(e) => set("announceMourner", e.target.value)} className="mt-1 w-full border-b py-2 focus:border-[#9b2fae] focus:outline-none" placeholder="喪主名（前ステップの喪主名を自動表示）" />
+          <span className="text-xs text-gray-400">※ 喪主氏名から自動表示。必要に応じて編集できます。</span>
+        </label>
+        <Pills label="喪式形式" k="religion" options={["仏式", "神式", "キリスト教式", "無宗教"]} g={g} set={set} />
+      </Sec>
+
+      <Sec title="式1">
+        <Pills label="式名" k="eventType" options={EVENT_TYPES} g={g} set={set} required />
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={g("dateAdjusting") === "1"} onChange={(e) => set("dateAdjusting", e.target.checked ? "1" : "")} /> 日程調整中</label>
+        {g("dateAdjusting") !== "1" && (
+          <>
+            <div className="grid grid-cols-3 gap-4">
+              <Text label="式日" k="eventDate" g={g} set={set} type="date" />
+              <Text label="開始時刻" k="startTime" g={g} set={set} type="time" />
+              <Text label="終了時刻" k="endTime" g={g} set={set} type="time" />
+            </div>
+            {g("eventDate") && <p className="text-xs text-gray-500">式日（和暦）：{toWareki(g("eventDate"))} {g("startTime")}{g("endTime") ? `〜${g("endTime")}` : ""}</p>}
+          </>
+        )}
+        <VenuePicker g={g} set={set} />
+      </Sec>
+
+      <Sec title="香典決済オプション">
         <p className="text-xs text-gray-500">喪主の口座設定完了後、初回香典受付から30日後に受付終了します。</p>
-        <Choices label="香典決済" options={["不要", "必要"]} required />
-        <Choices label="返礼品" options={["不要", "必要"]} required />
-      </Section>
+        <Pills label="香典決済" k="kodenOption" options={["不要", "必要"]} g={g} set={set} required />
+        <Pills label="返礼品" k="returnGift" options={["不要", "必要"]} g={g} set={set} required />
+      </Sec>
     </>
+  );
+}
+
+// 会館選択（マスタから選ぶ→なければ手入力）
+function VenuePicker({ g, set }: { g: (k: string) => string; set: (k: string, v: string) => void }) {
+  const mode = g("placeMode") || "master";
+  return (
+    <div>
+      <p className="text-sm text-gray-600">場所（式場）</p>
+      <div className="mt-2 flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-1"><input type="radio" name="placeMode" checked={mode === "master"} onChange={() => set("placeMode", "master")} /> 登録式場から選ぶ</label>
+        <label className="flex items-center gap-1"><input type="radio" name="placeMode" checked={mode === "manual"} onChange={() => set("placeMode", "manual")} /> その他（手入力）</label>
+      </div>
+      {mode === "master" ? (
+        <select value={g("venueId")} onChange={(e) => set("venueId", e.target.value)} className="mt-2 w-full rounded border px-3 py-2">
+          {VENUE_MASTER.map((v) => (
+            <option key={v.id} value={v.id}>{v.name}（{v.address}）</option>
+          ))}
+        </select>
+      ) : (
+        <div className="mt-2 space-y-3">
+          <Text label="会館・ホール名" k="venueName" g={g} set={set} />
+          <Text label="郵便番号" k="venuePostal" g={g} set={set} placeholder="3330833" />
+          <Text label="住所" k="venueAddress" g={g} set={set} />
+        </div>
+      )}
+    </div>
   );
 }
 
 function StepGuestbook() {
   return (
-    <Section title="記帳設定">
-      <Choices label="ご記帳（芳名録）" options={["受け付ける", "受け付けない"]} />
-      <Choices label="メッセージ・写真の受付" options={["承認後に公開", "受け付けない"]} />
+    <Sec title="記帳設定">
       <p className="text-xs text-gray-500">※ お悔やみメッセージは既定で承認制（公開前にご遺族が確認）。</p>
-    </Section>
+    </Sec>
   );
 }
 
-function StepFlowers() {
+function StepFlowers({ g, set }: { g: (k: string) => string; set: (k: string, v: string) => void }) {
   return (
-    <Section title="供花・供物">
-      <Choices label="供花・供物の受付" options={["受け付ける", "受け付けない"]} />
-      <TextField label="供花 受付終了日時" />
-      <TextField label="供物 受付終了日時" />
+    <Sec title="供花・供物">
+      <Pills label="供花・供物の受付" k="flowerAccept" options={["受け付ける", "受け付けない"]} g={g} set={set} />
+      <Text label="供花 受付終了日時" k="flowerDeadline" g={g} set={set} type="datetime-local" />
       <p className="text-xs text-gray-500">※ 商品マスタは「設定 › 供花・供物の設定・商品登録」で管理します。</p>
-    </Section>
+    </Sec>
   );
 }
 
-function StepVenue() {
+// ---- ステップ5: オンライン式場 ----
+function StepVenue({ g, set, tvars, deceasedFull }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; deceasedFull: string }) {
+  const venueName = g("venueOnlineName") || defaultVenueName(deceasedFull);
   return (
     <>
-      <Section title="オンライン式名">
-        <TextField label="オンライン式名" required placeholder="故 〇〇 儀 葬儀会場" />
-      </Section>
-      <Section title="オンライン式場挨拶文">
-        <TextField label="見出し" required placeholder="喪主挨拶" />
+      <Sec title="オンライン式名">
         <label className="block">
-          <span className="text-sm text-gray-600">挨拶文<Req /></span>
-          <textarea rows={5} className="mt-1 w-full rounded border p-3 focus:border-[#9b2fae] focus:outline-none" />
+          <span className="text-sm text-gray-600">オンライン式名<Req /></span>
+          <input value={venueName} onChange={(e) => set("venueOnlineName", e.target.value)} className="mt-1 w-full border-b py-2 focus:border-[#9b2fae] focus:outline-none" />
+          <span className="text-xs text-gray-400">※ 故人名から「故 ●● 儀　オンライン葬儀会場」を自動表示。編集可。</span>
         </label>
-        <TextField label="挨拶文右下の喪主名" required />
-      </Section>
-      <Section title="公開日時">
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" defaultChecked /> 喪主の同意後、すぐに公開する</label>
-        <div className="grid grid-cols-2 gap-4">
-          <TextField label="公開開始" /><TextField label="公開期間（1〜60日）" placeholder="60" />
+      </Sec>
+      <Sec title="オンライン式場挨拶文">
+        <Text label="見出し" k="greetingHeading" g={g} set={set} placeholder="喪主挨拶" required />
+        <div>
+          <p className="text-sm text-gray-600">挨拶文テンプレート</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {GREETING_TEMPLATES.map((t) => (
+              <button type="button" key={t.id} onClick={() => set("greetingBody", render(t.body, tvars))} className="rounded border px-3 py-1.5 text-sm hover:bg-[#f3e9f6]">{t.label}を適用</button>
+            ))}
+          </div>
+          <textarea rows={6} value={g("greetingBody")} onChange={(e) => set("greetingBody", e.target.value)} className="mt-2 w-full rounded border p-3 focus:border-[#9b2fae] focus:outline-none" />
         </div>
-      </Section>
-      <Section title="入場画面の表示・入力制御">
-        <Choices label="管理番号" options={["不要", "必要"]} />
-        <Choices label="参列者名" options={["不要", "必要"]} />
-        <Choices label="供花供物/贈答品の表示" options={["表示しない", "表示する"]} />
-      </Section>
-      <Section title="祭壇設定（レイヤー）">
+        <Text label="挨拶文右下の喪主名" k="greetingSign" g={g} set={set} required />
+      </Sec>
+      <Sec title="公開日時">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s_bool(g, "publishImmediately")} onChange={(e) => set("publishImmediately", e.target.checked ? "1" : "")} /> 喪主の同意後、すぐに公開する</label>
+        <div className="grid grid-cols-2 gap-4">
+          <Text label="公開開始" k="openFrom" g={g} set={set} type="datetime-local" />
+          <Text label="公開期間（1〜60日）" k="openDays" g={g} set={set} type="number" placeholder="60" />
+        </div>
+      </Sec>
+      <Sec title="入場画面の表示・入力制御">
+        <Pills label="管理番号" k="mgmtNo" options={["不要", "必要"]} g={g} set={set} />
+        <Pills label="参列者名" k="attendeeName" options={["不要", "必要"]} g={g} set={set} />
+        <Pills label="供花供物/贈答品の表示" k="showOfferings" options={["表示しない", "表示する"]} g={g} set={set} />
+      </Sec>
+      <Sec title="祭壇設定（レイヤー）">
         <p className="text-xs text-gray-500">※ 遺影写真と各レイヤーの画像素材は最後にまとめて差し込みます。</p>
-        <Choices label="額縁" options={FRAMES} required />
-        <Choices label="花飾り（左右）" options={["黒", "白", "花(1)", "花(2)"]} required />
-        <Choices label="祭壇（中央）" options={CENTERS} required />
-        <Choices label="天板" options={["黒", "木目"]} required />
-        <Choices label="背景" options={BACKGROUNDS} required />
-      </Section>
+        <Pills label="額縁" k="frame" options={FRAMES} g={g} set={set} required />
+        <Pills label="花飾り（左右）" k="side" options={SIDE} g={g} set={set} required />
+        <Pills label="祭壇（中央）" k="center" options={CENTERS} g={g} set={set} required />
+        <Pills label="天板" k="top" options={["黒", "木目"]} g={g} set={set} required />
+        <Pills label="背景" k="background" options={BACKGROUNDS} g={g} set={set} required />
+      </Sec>
     </>
   );
+}
+
+function s_bool(g: (k: string) => string, k: string): boolean {
+  return g(k) === "1" || g(k) === "true";
 }

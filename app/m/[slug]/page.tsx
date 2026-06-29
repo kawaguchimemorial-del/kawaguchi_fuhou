@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicMemorial } from "@/lib/memorial/data";
 import { formatJpTime, isPast } from "@/lib/format";
+import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { TestBanner, GoldButton, ShareRow, SiteFooter } from "@/components/guest/parts";
 import type { Memorial } from "@/lib/memorial/types";
 
@@ -72,12 +73,19 @@ function ObituaryHero({ m }: { m: Memorial }) {
             {m.obituaryTitle}
           </h1>
           <p className="mt-6 font-serif text-lg">故 {d.nameKana ?? d.nameKanji} 儀</p>
-          {m.obituaryBody && (
+          {m.obituaryBody ? (
             <div className="mt-3 space-y-1 font-serif leading-loose text-[var(--foreground)]">
               {m.obituaryBody.split("\n").map((line, i) => (
                 <p key={i}>{line}</p>
               ))}
             </div>
+          ) : (
+            d.deathDate && (
+              <p className="mt-3 font-serif leading-loose text-[var(--foreground)]">
+                {toWarekiDate(d.deathDate)} 永眠いたしました
+                {d.ageKazoe ? `（享年${d.ageKazoe}）` : ""}
+              </p>
+            )
           )}
           {m.chiefMourner && (
             <p className="mt-6 font-serif">喪主 {m.chiefMourner.nameKanji}</p>
@@ -101,7 +109,7 @@ function EventCard({ m, event: e }: { m: Memorial; event: Memorial["events"][num
   const dt =
     e.datetimeLabel ??
     (e.startAt
-      ? `${formatJpTime(e.startAt)}${e.endAt ? ` 〜 ${formatJpTime(e.endAt)}` : " 〜"}`
+      ? `${toWareki(e.startAt)} ${formatJpTime(e.startAt)}${e.endAt ? ` 〜 ${formatJpTime(e.endAt)}` : " 〜"}`
       : "日程調整中");
   return (
     <section className="mb-6 bg-[var(--card)] px-6 py-6">
