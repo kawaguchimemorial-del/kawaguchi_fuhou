@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getPublicMemorial } from "@/lib/memorial/data";
 import { isPast } from "@/lib/format";
 import { OFFERING_PRODUCTS } from "@/lib/memorial/products";
+import { getPublicProducts } from "@/lib/memorial/db";
 import { TestBanner, SiteFooter } from "@/components/guest/parts";
 import { FlowerOrderForm } from "@/components/guest/forms/FlowerOrderForm";
 
@@ -14,6 +15,11 @@ export default async function FlowerPage({ params }: Params) {
   if (!m) notFound();
 
   const closed = m.flowerDecline || isPast(m.offeringAcceptUntil);
+
+  // 管理画面（オンライン供花・品物設定）で登録した実商品を表示。
+  // 未登録・DB未設定時のみ暫定ダミーにフォールバック。
+  const dbProducts = await getPublicProducts();
+  const products = dbProducts.length > 0 ? dbProducts : OFFERING_PRODUCTS;
 
   return (
     <div className="min-h-screen">
@@ -28,7 +34,7 @@ export default async function FlowerPage({ params }: Params) {
             申し訳ございません。供花・供物のご注文受付は終了いたしました。
           </p>
         ) : (
-          <FlowerOrderForm slug={slug} products={OFFERING_PRODUCTS} />
+          <FlowerOrderForm slug={slug} products={products} />
         )}
       </main>
       <SiteFooter />

@@ -5,7 +5,7 @@ import { getPublicMemorial } from "./data";
 import { religionVocab } from "./religion";
 import { store, nextId } from "./store";
 import { OFFERING_PRODUCTS } from "./products";
-import { dbEnabled, resolveMemorialId, insertRow } from "./db";
+import { dbEnabled, resolveMemorialId, insertRow, getPublicProducts } from "./db";
 
 // 共通の戻り値型
 export type ActionResult =
@@ -146,7 +146,11 @@ export async function submitOrder(
   if (!m || m.flowerDecline) {
     return { ok: false, errors: { _form: "現在この式場では供花のご注文を受け付けておりません。" } };
   }
-  const product = OFFERING_PRODUCTS.find((p) => p.id === d.productId);
+  // 価格・商品名は信頼できるDBの商品マスタから再取得（クライアント送信値を信用しない）。
+  // DB未設定時のみ暫定ダミーで照合。
+  const dbProducts = await getPublicProducts();
+  const catalog = dbProducts.length > 0 ? dbProducts : OFFERING_PRODUCTS;
+  const product = catalog.find((p) => p.id === d.productId);
   if (!product) return { ok: false, errors: { productId: "商品が見つかりません" } };
 
   if (dbEnabled()) {

@@ -137,3 +137,13 @@
 - [ ] 2-12 バーチャル参拝、2-13 お悔やみメッセージ（承認制）
 - [ ] 0-3 法務3点セット、Supabase実接続（ローカル/本番プロジェクト）
 - [ ] ⏸ フェーズ3決済は法務レビュー後（Stripe Connect）
+
+## 2026-06-29 — 供花注文フォームを本番運用化（ダミー→実商品マスタ）
+- ユーザー指摘: 「ご注文はこちら」→注文フォームの**ご注文商品が設定した供花でなくダミーのまま**。
+- 原因: 管理画面の供花は Supabase `offering_products_master` に保存済みだが、**公開側がDBを読まずハードコードのダミー `lib/memorial/products.ts`（棺中花/供花一基/供花一対の3点）を参照していた**。
+- 修正:
+  - `lib/memorial/db.ts`: 公開用 `getPublicProducts(type?)` を追加（`funeral_home_id`=デモID・`is_active=true`・`sort_order`順、service_roleで読取）。
+  - `app/m/[slug]/flower/page.tsx`: DBから実商品を取得して `FlowerOrderForm` へ。未登録/DB未接続時のみダミーにフォールバック。
+  - `lib/memorial/actions.ts`(submitOrder): 注文確定の商品名・価格をクライアント送信値でなくDBから再取得して照合（価格改ざん防止）。
+- **Supabase実接続を確認**: `.env.local` の URL/SERVICE_ROLE_KEY 有効。REST直叩きで `offering_products_master` 取得→HTTP200・**9商品**（洋花23100/29400/44000・枕花12100/18150・バラ供花24200/31900/46200・棺中花22000、全て active）取得成功。スクショの供花一覧と完全一致。
+- `npx tsc --noEmit` パス。コミット&プッシュ済み。
