@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  /* アット葬儀 実画面の配色を踏襲（紺×金茶×生成り・明朝見出し） */
+  --background: #faf8f3;        /* 生成り */
+  --foreground: #1f2430;        /* 濃墨 */
+  --muted: #6b6862;
+  --border: #e4ddcd;
+  --card: #f4f1e8;             /* 式カードの淡色 */
+  --primary: #1b2a4a;          /* 紺（フッター・見出し濃色） */
+  --primary-foreground: #f7f3e8;
+  --accent: #a8842f;           /* 金茶（ボタン・枠・リンク） */
+  --accent-strong: #b8943f;
+  --danger: #d8443c;           /* テスト帯 */
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-serif: var(--font-serif), serif;
+  --radius-lg: var(--radius);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "palt";
+  /* 高齢者にも読みやすい基準サイズ */
+  font-size: 17px;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { line-height: 1.5; font-weight: 600; }
