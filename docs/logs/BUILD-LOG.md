@@ -214,3 +214,10 @@
 - 解決: フォーム全体保存に依存せず、**アップロード成功時点で遺影だけを即DB保存**する `savePortrait(slug, url|null)` を追加。`venue.altar.portraitPath`・`form_state.portraitPath`・`deceased.portrait_path` を更新。`PortraitUpload` に `editSlug` を渡し、編集中の案件はアップロード/削除の直後に即保存（「保存しました」表示）。新規作成時は従来どおり最終保存で確定。
 - 検証(Playwright・dev, form_state空の実案件 cb4cea): アップロード→緑「保存しました」→DBに altar/form_state 保存確認→公開式場 `/m/[slug]/venue/hall` の祭壇遺影に表示、すべてOK。テストデータ/Storage片付け済み。
 - `npx tsc --noEmit` パス。
+
+## 2026-06-30 — 「やはり表示されない」の真因＝デプロイ反映前のアップロード（本番で実動作を確認）
+- 調査: Storageにユーザー由来の `0ba23764….jpg` が存在するがDBの portraitPath は空。ファイル作成 16:46:38 JST に対し savePortrait修正(47ad689)のpushは 16:44:24 JST。**Vercelビルド完了前(約2分後)にアップロードしたため旧コード(保存処理なし版)が稼働**していた＝Storageには上がるがDB未保存。
+- 本番URL特定: `https://kawaguchi-fuhou.vercel.app`。
+- 本番(Playwright)で実検証: 編集step4でアップロード→緑「保存しました」→プレビュー表示→本番式場 `/m/[slug]/venue/hall` の祭壇遺影に表示、**すべてOK**。最新コードはデプロイ済みで正常動作。テストデータ/Storageは片付け済み。
+- 結論: コードは正しく本番で動作する。ユーザーは**最新デプロイ後に再アップロード**すれば反映される（push直後の即アップロードはビルド未完了で旧コードに当たる点に注意）。
+- `next build` 成功。venue/hall は ƒ(動的) でキャッシュなし。
