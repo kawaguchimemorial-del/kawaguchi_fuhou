@@ -34,8 +34,8 @@ export default async function VenueHall({ params }: Params) {
           <p className="font-serif text-xl text-[var(--primary)]">葬儀会場</p>
         </header>
 
-        {/* 祭壇 */}
-        <div className="mt-6">
+        {/* 祭壇（PCでは本文より広く表示して遺影を大きく見せる） */}
+        <div className="mt-6 md:relative md:left-1/2 md:w-[90vw] md:max-w-none md:-translate-x-1/2">
           <AltarView altar={v.altar} portraitAlt={m.deceased.portraitAlt} />
         </div>
 

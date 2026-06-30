@@ -43,18 +43,18 @@ export function AltarView({
   const frame = FRAME_COLOR[altar.frame] ?? "#1a1a1a";
   return (
     <div
-      className="relative mx-auto flex aspect-[4/5] w-full max-w-md flex-col items-center justify-end overflow-hidden rounded-md"
+      className="relative mx-auto flex aspect-[4/5] w-full max-w-md flex-col items-center justify-end overflow-hidden rounded-md sm:max-w-lg md:max-w-2xl"
       style={{ background: BG_STYLE[altar.background] ?? "#efe9da" }}
       role="img"
       aria-label="オンライン祭壇"
     >
       {/* 遺影＋額縁＋左右花 */}
-      <div className="absolute top-[12%] flex items-end gap-2">
-        <span className="text-4xl" aria-hidden>
+      <div className="absolute top-[10%] flex items-end gap-2 sm:gap-3">
+        <span className="text-4xl sm:text-5xl md:text-6xl" aria-hidden>
           {altar.sideFlower.startsWith("花") ? "💐" : "🏵️"}
         </span>
         <div
-          className="flex h-40 w-32 items-center justify-center bg-[var(--card)]"
+          className="flex h-48 w-40 items-center justify-center bg-[var(--card)] sm:h-64 sm:w-52 md:h-80 md:w-64"
           style={{ border: `8px solid ${frame}` }}
         >
           {altar.portraitPath ? (
@@ -65,10 +65,10 @@ export function AltarView({
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="text-xs text-[var(--muted)]">ご遺影</span>
+            <span className="text-sm text-[var(--muted)]">ご遺影</span>
           )}
         </div>
-        <span className="text-4xl" aria-hidden>
+        <span className="text-4xl sm:text-5xl md:text-6xl" aria-hidden>
           {altar.sideFlower.startsWith("花") ? "💐" : "🏵️"}
         </span>
       </div>
