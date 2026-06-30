@@ -180,3 +180,12 @@
   - `main` に `min-w-0` を付与しflex子要素の横はみ出しを防止。
 - 葬儀一覧テーブルは既に `overflow-x-auto` 済みで問題なし。
 - `npx tsc --noEmit` パス。コミット&プッシュ済み。
+
+## 2026-06-30 — 遺影写真アップロード機能を実装（オンライン式場の祭壇に表示）
+- ユーザー要望: 遺影写真(jpg/png)をアップロードしオンライン会場の写真部分に表示。アップロードは「葬儀詳細 › オンライン式場 › 登録内容を編集」に。5MB超は不可。
+- 実装:
+  - `lib/admin/actions.ts`: `uploadPortrait(formData)` 追加。jpg/png限定・**5MB上限**を検証、sharpでEXIF回転反映＋長辺1200pxにリサイズしWebP(q85)化、`product-images` バケットの `portraits/<fh>/<uuid>.webp` に保存し公開URLを返す。`CeremonyPayload.portraitPath` を追加し `venue.altar.portraitPath` に保存。
+  - `components/admin/CeremonyWizard.tsx`: StepVenue（オンライン式場）の「祭壇設定」に `PortraitUpload`（プレビュー＋選択/変更/削除、クライアント側でも5MB・形式チェック）を追加。handleSaveのpayloadに `portraitPath` を連携。
+  - 表示: `venue` jsonb はRPC `get_public_obituary`(0004)が返却→`AltarView` が既存の `altar.portraitPath` を参照して祭壇の遺影枠に表示。バケットは公開読取(0007)済み。
+- form_state に丸ごと保存されるため編集再開時もプレビュー復元。
+- `npx tsc --noEmit` パス。コミット&プッシュ済み。

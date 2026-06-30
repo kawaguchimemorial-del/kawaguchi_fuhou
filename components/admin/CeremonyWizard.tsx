@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createCeremony, updateCeremony, type CeremonyPayload } from "@/lib/admin/actions";
+import { createCeremony, updateCeremony, uploadPortrait, type CeremonyPayload } from "@/lib/admin/actions";
 import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { render } from "@/lib/template";
 import { VENUE_MASTER } from "@/lib/admin/venues";
@@ -80,6 +80,7 @@ export function CeremonyWizard({
       publishImmediately: g("publishImmediately"), openFrom: g("openFrom"), openDays: g("openDays"),
       mgmtNo: g("mgmtNo"), attendeeName: g("attendeeName"), showOfferings: g("showOfferings"),
       frame: g("frame"), side: g("side"), center: g("center"), top: g("top"), background: g("background"),
+      portraitPath: g("portraitPath"),
     };
     startSave(async () => {
       const res = editSlug
@@ -324,6 +325,76 @@ function StepFlowers({ g, set }: { g: (k: string) => string; set: (k: string, v:
   );
 }
 
+// 遺影写真アップロード（jpg/png・5MBまで）。オンライン式場の祭壇に表示される。
+const MAX_PORTRAIT_MB = 5;
+function PortraitUpload({ g, set }: { g: (k: string) => string; set: (k: string, v: string) => void }) {
+  const current = g("portraitPath");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      setError("JPGまたはPNG画像を選択してください。");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_PORTRAIT_MB * 1024 * 1024) {
+      setError(`画像は${MAX_PORTRAIT_MB}MBまでです。サイズの小さい画像をお選びください。`);
+      e.target.value = "";
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadPortrait(fd);
+      if (res.ok && res.url) set("portraitPath", res.url);
+      else setError(res.error ?? "アップロードに失敗しました。");
+    } catch {
+      setError("アップロード中にエラーが発生しました。");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-gray-600">遺影写真（JPG / PNG・5MBまで）</p>
+      <p className="text-xs text-gray-400">アップロードした写真がオンライン式場の祭壇に表示されます。</p>
+      <div className="mt-2 flex items-start gap-4">
+        <div className="flex h-40 w-32 shrink-0 items-center justify-center overflow-hidden rounded border bg-gray-50">
+          {current ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={current} alt="遺影プレビュー" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-xs text-gray-400">未設定</span>
+          )}
+        </div>
+        <div className="space-y-2">
+          <label className="inline-block cursor-pointer rounded border border-[#9b2fae] px-4 py-2 text-sm text-[#9b2fae]">
+            {uploading ? "アップロード中…" : current ? "写真を変更" : "写真を選択"}
+            <input type="file" accept="image/jpeg,image/png" onChange={onChange} disabled={uploading} className="hidden" />
+          </label>
+          {current && (
+            <button
+              type="button"
+              onClick={() => set("portraitPath", "")}
+              className="block text-xs text-gray-500 underline"
+            >
+              写真を削除
+            </button>
+          )}
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- ステップ5: オンライン式場 ----
 function StepVenue({ g, set, tvars, deceasedFull, mournerFull }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; deceasedFull: string; mournerFull: string }) {
   const venueName = g("venueOnlineName") || defaultVenueName(deceasedFull);
@@ -367,7 +438,8 @@ function StepVenue({ g, set, tvars, deceasedFull, mournerFull }: { g: (k: string
         <Pills label="供花・供物の表示" k="showOfferings" options={["表示しない", "表示する"]} g={g} set={set} />
       </Sec>
       <Sec title="祭壇設定（レイヤー）">
-        <p className="text-xs text-gray-500">※ 遺影写真と各レイヤーの画像素材は最後にまとめて差し込みます。</p>
+        <PortraitUpload g={g} set={set} />
+        <p className="text-xs text-gray-500">※ 各レイヤー（額縁・花・背景）の画像素材は最後にまとめて差し込みます。</p>
         <Pills label="額縁" k="frame" options={FRAMES} g={g} set={set} required />
         <Pills label="花飾り（左右）" k="side" options={SIDE} g={g} set={set} required />
         <Pills label="祭壇（中央）" k="center" options={CENTERS} g={g} set={set} required />

@@ -1,11 +1,45 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 import { VENUE_MASTER } from "@/lib/admin/venues";
 
 // 既定の葬儀社（デモ）。TODO(auth): ログイン中ユーザーの funeral_home_id を使う。
 const DEMO_FUNERAL_HOME_ID = "11111111-1111-1111-1111-111111111111";
+const PHOTO_BUCKET = "product-images"; // 公開読取バケットを流用（遺影は portraits/ 配下）
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB上限
+
+/** 遺影写真アップロード（jpg/png、5MBまで）。WebP最適化して公開URLを返す。 */
+export async function uploadPortrait(
+  formData: FormData
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+    return { ok: false, error: "Supabaseが未設定です。" };
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) return { ok: false, error: "ファイルが選択されていません。" };
+  if (!["image/jpeg", "image/png"].includes(file.type))
+    return { ok: false, error: "JPGまたはPNG画像を選択してください。" };
+  if (file.size > MAX_PHOTO_BYTES)
+    return { ok: false, error: "画像は5MBまでです。サイズの小さい画像をお選びください。" };
+
+  // 遺影は縦長表示。長辺1200pxに収め WebP 化（高画質）。
+  const original = Buffer.from(await file.arrayBuffer());
+  const optimized = await sharp(original)
+    .rotate() // EXIF回転を反映
+    .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 85 })
+    .toBuffer();
+  const path = `portraits/${DEMO_FUNERAL_HOME_ID}/${randomUUID()}.webp`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createAdminClient() as unknown as { storage: any };
+  const { error } = await db.storage
+    .from(PHOTO_BUCKET)
+    .upload(path, optimized, { contentType: "image/webp", upsert: false });
+  if (error) return { ok: false, error: "アップロードに失敗しました: " + error.message };
+  const { data } = db.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+  return { ok: true, url: data.publicUrl };
+}
 
 export type CreateResult =
   | { ok: true; slug: string }
@@ -29,6 +63,7 @@ export interface CeremonyPayload {
   publishImmediately?: string; openFrom?: string; openDays?: string;
   mgmtNo?: string; attendeeName?: string; showOfferings?: string;
   frame?: string; side?: string; center?: string; top?: string; background?: string;
+  portraitPath?: string; // 遺影写真の公開URL
 }
 
 // フォーム状態(payload) → DB各テーブルの行へ変換（create/updateで共通利用）
@@ -72,6 +107,7 @@ function buildRows(p: CeremonyPayload) {
           center: p.center ?? "焼香(黒)",
           top: p.top ?? "黒",
           background: p.background ?? "七宝",
+          portraitPath: p.portraitPath || undefined, // 遺影写真
         },
       }
     : null;
