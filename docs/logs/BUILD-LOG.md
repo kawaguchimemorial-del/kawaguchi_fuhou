@@ -207,3 +207,10 @@
   - 新規アップロード時のみ更新: 保存時 `portraitPath=g("portraitPath")`（復元値を保持、新規アップロードで置換、削除ボタンで明示クリア）。
 - 検証(Playwright・dev, 2.69MB JPEG): ①アップロード→プレビュー表示 ②編集再開で既存写真プレビュー復元 ③公開式場 `/m/[slug]/venue/hall` の祭壇遺影に表示、すべてOK。テストデータ/Storageは片付け済み。
 - `npx tsc --noEmit` パス。
+
+## 2026-06-30 — 遺影がDBに保存されず式場に出ない不具合を修正（アップロード即時保存）
+- ユーザー報告: アップロードはされるが、オンライン式場の遺影部分に反映されない（松澤様の式・スクショで「ご遺影」プレースホルダのまま）。
+- 原因: 当該案件は `form_state` が空のため、フォーム全体保存(`updateCeremony`)が「故人名必須」guardで失敗し、遺影URLがDBに永続化されていなかった（Storageには上がっている）。`venue.altar.portraitPath`/`form_state.portraitPath` ともに未保存だった。
+- 解決: フォーム全体保存に依存せず、**アップロード成功時点で遺影だけを即DB保存**する `savePortrait(slug, url|null)` を追加。`venue.altar.portraitPath`・`form_state.portraitPath`・`deceased.portrait_path` を更新。`PortraitUpload` に `editSlug` を渡し、編集中の案件はアップロード/削除の直後に即保存（「保存しました」表示）。新規作成時は従来どおり最終保存で確定。
+- 検証(Playwright・dev, form_state空の実案件 cb4cea): アップロード→緑「保存しました」→DBに altar/form_state 保存確認→公開式場 `/m/[slug]/venue/hall` の祭壇遺影に表示、すべてOK。テストデータ/Storage片付け済み。
+- `npx tsc --noEmit` パス。

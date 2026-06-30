@@ -32,6 +32,48 @@ export async function createPortraitUploadUrl(
   return { ok: true, path: data.path ?? path, token: data.token, publicUrl: pub.publicUrl };
 }
 
+/**
+ * 遺影写真URLを既存案件へ即時保存する（slug指定）。
+ * フォーム全体の保存（guard）に依存せず、アップロード直後に確実に永続化するため。
+ * publicUrl=null で遺影を削除。venue.altar / form_state / deceased.portrait_path を更新。
+ */
+export async function savePortrait(
+  slug: string,
+  publicUrl: string | null
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+    return { ok: false, error: "Supabaseが未設定です。" };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const { data: mem, error } = await supabase
+    .from("memorials")
+    .select("id, venue, form_state")
+    .eq("slug", slug)
+    .single();
+  if (error || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
+
+  // venue.altar.portraitPath（オンライン式場の祭壇遺影）
+  const venue = mem.venue ?? null;
+  if (venue) {
+    venue.altar = venue.altar ?? {};
+    if (publicUrl) venue.altar.portraitPath = publicUrl;
+    else delete venue.altar.portraitPath;
+  }
+  // form_state.portraitPath（編集再開時のプレビュー復元用）
+  const formState = (mem.form_state ?? {}) as Record<string, unknown>;
+  formState.portraitPath = publicUrl ?? "";
+
+  const { error: upErr } = await supabase
+    .from("memorials")
+    .update({ venue, form_state: formState })
+    .eq("id", mem.id);
+  if (upErr) return { ok: false, error: "保存に失敗しました: " + upErr.message };
+
+  // 訃報側の遺影にも反映
+  await supabase.from("deceased").update({ portrait_path: publicUrl }).eq("memorial_id", mem.id);
+  return { ok: true };
+}
+
 export type CreateResult =
   | { ok: true; slug: string }
   | { ok: false; error: string };

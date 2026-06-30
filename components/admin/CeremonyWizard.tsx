@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createCeremony, updateCeremony, createPortraitUploadUrl, type CeremonyPayload } from "@/lib/admin/actions";
+import { createCeremony, updateCeremony, createPortraitUploadUrl, savePortrait, type CeremonyPayload } from "@/lib/admin/actions";
 import { createClient } from "@/lib/supabase/client";
 
 // 遺影画像の保存先バケット（公開読取）。署名付きURLでブラウザから直接アップロード。
@@ -137,7 +137,7 @@ export function CeremonyWizard({
         {step === 1 && <StepObituary g={g} set={set} tvars={tvars} mournerFull={mournerFull} />}
         {step === 2 && <StepGuestbook />}
         {step === 3 && <StepFlowers g={g} set={set} />}
-        {step === 4 && <StepVenue g={g} set={set} tvars={tvars} deceasedFull={deceasedFull} mournerFull={mournerFull} />}
+        {step === 4 && <StepVenue g={g} set={set} tvars={tvars} deceasedFull={deceasedFull} mournerFull={mournerFull} editSlug={editSlug} />}
       </div>
 
       <div className="mt-6 flex justify-between">
@@ -331,10 +331,11 @@ function StepFlowers({ g, set }: { g: (k: string) => string; set: (k: string, v:
 
 // 遺影写真アップロード（jpg/png・5MBまで）。オンライン式場の祭壇に表示される。
 const MAX_PORTRAIT_MB = 5;
-function PortraitUpload({ g, set }: { g: (k: string) => string; set: (k: string, v: string) => void }) {
+function PortraitUpload({ g, set, editSlug }: { g: (k: string) => string; set: (k: string, v: string) => void; editSlug?: string }) {
   const current = g("portraitPath");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
@@ -369,7 +370,17 @@ function PortraitUpload({ g, set }: { g: (k: string) => string; set: (k: string,
         return;
       }
       // 3) 新しい写真のみ反映（キャッシュ無効化のためクエリ付与）
-      set("portraitPath", `${sig.publicUrl}?v=${Date.now()}`);
+      const finalUrl = `${sig.publicUrl}?v=${Date.now()}`;
+      set("portraitPath", finalUrl);
+      setSaved(false);
+      // 4) 編集中の案件なら、フォーム全体の保存を待たずに遺影だけ即時保存
+      if (editSlug) {
+        const sv = await savePortrait(editSlug, finalUrl);
+        if (sv.ok) setSaved(true);
+        else setError("写真の保存に失敗しました: " + (sv.error ?? ""));
+      } else {
+        setSaved(true); // 新規作成時は「保存して公開」で確定
+      }
     } catch (err) {
       setError("アップロード中にエラーが発生しました。" + (err instanceof Error ? `（${err.message}）` : ""));
     } finally {
@@ -399,11 +410,20 @@ function PortraitUpload({ g, set }: { g: (k: string) => string; set: (k: string,
           {current && (
             <button
               type="button"
-              onClick={() => set("portraitPath", "")}
+              onClick={async () => {
+                set("portraitPath", "");
+                setSaved(false);
+                if (editSlug) await savePortrait(editSlug, null);
+              }}
               className="block text-xs text-gray-500 underline"
             >
               写真を削除
             </button>
+          )}
+          {saved && current && !error && (
+            <p className="text-xs text-green-600">
+              {editSlug ? "保存しました（オンライン式場に反映されます）" : "アップロードしました"}
+            </p>
           )}
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
@@ -413,7 +433,7 @@ function PortraitUpload({ g, set }: { g: (k: string) => string; set: (k: string,
 }
 
 // ---- ステップ5: オンライン式場 ----
-function StepVenue({ g, set, tvars, deceasedFull, mournerFull }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; deceasedFull: string; mournerFull: string }) {
+function StepVenue({ g, set, tvars, deceasedFull, mournerFull, editSlug }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; deceasedFull: string; mournerFull: string; editSlug?: string }) {
   const venueName = g("venueOnlineName") || defaultVenueName(deceasedFull);
   const greetingSign = g("greetingSign") || (mournerFull ? `喪主 ${mournerFull}` : "");
   return (
@@ -455,7 +475,7 @@ function StepVenue({ g, set, tvars, deceasedFull, mournerFull }: { g: (k: string
         <Pills label="供花・供物の表示" k="showOfferings" options={["表示しない", "表示する"]} g={g} set={set} />
       </Sec>
       <Sec title="祭壇設定（レイヤー）">
-        <PortraitUpload g={g} set={set} />
+        <PortraitUpload g={g} set={set} editSlug={editSlug} />
         <p className="text-xs text-gray-500">※ 各レイヤー（額縁・花・背景）の画像素材は最後にまとめて差し込みます。</p>
         <Pills label="額縁" k="frame" options={FRAMES} g={g} set={set} required />
         <Pills label="花飾り（左右）" k="side" options={SIDE} g={g} set={set} required />
