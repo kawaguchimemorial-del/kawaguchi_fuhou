@@ -189,3 +189,10 @@
   - 表示: `venue` jsonb はRPC `get_public_obituary`(0004)が返却→`AltarView` が既存の `altar.portraitPath` を参照して祭壇の遺影枠に表示。バケットは公開読取(0007)済み。
 - form_state に丸ごと保存されるため編集再開時もプレビュー復元。
 - `npx tsc --noEmit` パス。コミット&プッシュ済み。
+
+## 2026-06-30 — 遺影アップロードが反映されない不具合を修正（Server Actionボディ上限）
+- ユーザー報告: 遺影をアップロードしてもプレビューに出ず、更新しても式場に表示されない。
+- 原因: **Next.js Server Actions の既定ボディ上限が1MB**。数MBの写真をFormDataで渡すと拒否され、`uploadPortrait` が失敗していた（Supabase/sharp/Storageは正常）。
+- 修正: `next.config.ts` に `experimental.serverActions.bodySizeLimit: "8mb"` を設定（5MB画像＋オーバーヘッドを許容）。
+- 検証(Playwright・dev): 2.69MBのJPEGをアップロード→プレビューにSupabase webp URL表示・エラーなし。`venue.altar.portraitPath` を設定し公開式場 `/m/[slug]/venue/hall` で祭壇の遺影枠(alt=ご遺影)に画像描画を確認。検証用データ・Storageオブジェクトは片付け済み。
+- ※同上限は商品画像アップロードにも影響していたため併せて解消。
