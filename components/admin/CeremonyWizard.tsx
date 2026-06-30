@@ -2,7 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createCeremony, updateCeremony, uploadPortrait, type CeremonyPayload } from "@/lib/admin/actions";
+import { createCeremony, updateCeremony, createPortraitUploadUrl, type CeremonyPayload } from "@/lib/admin/actions";
+import { createClient } from "@/lib/supabase/client";
+
+// 遺影画像の保存先バケット（公開読取）。署名付きURLでブラウザから直接アップロード。
+const PHOTO_BUCKET = "product-images";
 import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { render } from "@/lib/template";
 import { VENUE_MASTER } from "@/lib/admin/venues";
@@ -348,13 +352,26 @@ function PortraitUpload({ g, set }: { g: (k: string) => string; set: (k: string,
     }
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await uploadPortrait(fd);
-      if (res.ok && res.url) set("portraitPath", res.url);
-      else setError(res.error ?? "アップロードに失敗しました。");
-    } catch {
-      setError("アップロード中にエラーが発生しました。");
+      // 1) サーバーで署名付きアップロードURLを発行（ファイルは送らないので上限回避）
+      const ext = file.type === "image/png" ? "png" : "jpg";
+      const sig = await createPortraitUploadUrl(ext);
+      if (!sig.ok || !sig.path || !sig.token || !sig.publicUrl) {
+        setError(sig.error ?? "アップロードURLの発行に失敗しました。");
+        return;
+      }
+      // 2) ブラウザから Supabase Storage へ直接アップロード
+      const supabase = createClient();
+      const { error: upErr } = await supabase.storage
+        .from(PHOTO_BUCKET)
+        .uploadToSignedUrl(sig.path, sig.token, file, { contentType: file.type });
+      if (upErr) {
+        setError("アップロードに失敗しました: " + upErr.message);
+        return;
+      }
+      // 3) 新しい写真のみ反映（キャッシュ無効化のためクエリ付与）
+      set("portraitPath", `${sig.publicUrl}?v=${Date.now()}`);
+    } catch (err) {
+      setError("アップロード中にエラーが発生しました。" + (err instanceof Error ? `（${err.message}）` : ""));
     } finally {
       setUploading(false);
       e.target.value = "";

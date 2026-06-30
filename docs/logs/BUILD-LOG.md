@@ -196,3 +196,14 @@
 - 修正: `next.config.ts` に `experimental.serverActions.bodySizeLimit: "8mb"` を設定（5MB画像＋オーバーヘッドを許容）。
 - 検証(Playwright・dev): 2.69MBのJPEGをアップロード→プレビューにSupabase webp URL表示・エラーなし。`venue.altar.portraitPath` を設定し公開式場 `/m/[slug]/venue/hall` で祭壇の遺影枠(alt=ご遺影)に画像描画を確認。検証用データ・Storageオブジェクトは片付け済み。
 - ※同上限は商品画像アップロードにも影響していたため併せて解消。
+
+## 2026-06-30 — 遺影アップロードを署名付き直接アップロードに刷新（本番の上限問題を根治）＋編集時プレビュー復元
+- ユーザー報告: 8MB設定後もプレビュー/式場に表示されない。編集時に既存写真もプレビュー表示が必要。新規アップロード時のみ更新したい。
+- 根本原因: Server Action経由のFormDataアップロードは **Vercelのサーバーレス関数ボディ上限(約4.5MB)** に阻まれ、本番で5MB級の写真が失敗していた（dev(8MB)では成功するため見抜きにくい）。
+- 解決（方式変更）:
+  - `lib/admin/actions.ts`: `uploadPortrait`(ファイル受信)を廃止し、**`createPortraitUploadUrl(ext)`**（署名付きアップロードURLを発行・ファイルは送らない極小ペイロード）に変更。sharp依存も削除。
+  - `components/admin/CeremonyWizard.tsx` `PortraitUpload`: ①サーバーで署名URL発行→②**ブラウザからSupabase Storageへ直接 `uploadToSignedUrl`**→③公開URLをstateに反映。Next/Vercelのボディ上限を完全回避。jpg/png・5MBの検証はクライアントで実施。キャッシュ対策に `?v=` 付与。
+  - 編集時の既存写真復元: `getCeremonyFormState` で form_state に portraitPath が無くても **`venue.altar.portraitPath` から補完**。→ 編集を開くと既存遺影がプレビュー表示。
+  - 新規アップロード時のみ更新: 保存時 `portraitPath=g("portraitPath")`（復元値を保持、新規アップロードで置換、削除ボタンで明示クリア）。
+- 検証(Playwright・dev, 2.69MB JPEG): ①アップロード→プレビュー表示 ②編集再開で既存写真プレビュー復元 ③公開式場 `/m/[slug]/venue/hall` の祭壇遺影に表示、すべてOK。テストデータ/Storageは片付け済み。
+- `npx tsc --noEmit` パス。

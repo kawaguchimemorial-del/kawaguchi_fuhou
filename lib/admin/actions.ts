@@ -1,44 +1,35 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import sharp from "sharp";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 import { VENUE_MASTER } from "@/lib/admin/venues";
 
 // 既定の葬儀社（デモ）。TODO(auth): ログイン中ユーザーの funeral_home_id を使う。
 const DEMO_FUNERAL_HOME_ID = "11111111-1111-1111-1111-111111111111";
 const PHOTO_BUCKET = "product-images"; // 公開読取バケットを流用（遺影は portraits/ 配下）
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB上限
 
-/** 遺影写真アップロード（jpg/png、5MBまで）。WebP最適化して公開URLを返す。 */
-export async function uploadPortrait(
-  formData: FormData
-): Promise<{ ok: boolean; url?: string; error?: string }> {
+/**
+ * 遺影写真アップロード用の署名付きURLを発行する。
+ * 実ファイルはブラウザから Supabase Storage へ直接アップロードするため、
+ * Next.js Server Action(1MB) や Vercel関数(4.5MB) のボディ上限を回避できる。
+ * 戻り値の path/token を使い、クライアントが uploadToSignedUrl で送信する。
+ */
+export async function createPortraitUploadUrl(
+  ext: string
+): Promise<{ ok: boolean; path?: string; token?: string; publicUrl?: string; error?: string }> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
     return { ok: false, error: "Supabaseが未設定です。" };
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0) return { ok: false, error: "ファイルが選択されていません。" };
-  if (!["image/jpeg", "image/png"].includes(file.type))
+  const clean = (ext || "").toLowerCase().replace(/[^a-z]/g, "");
+  if (!["jpg", "jpeg", "png"].includes(clean))
     return { ok: false, error: "JPGまたはPNG画像を選択してください。" };
-  if (file.size > MAX_PHOTO_BYTES)
-    return { ok: false, error: "画像は5MBまでです。サイズの小さい画像をお選びください。" };
 
-  // 遺影は縦長表示。長辺1200pxに収め WebP 化（高画質）。
-  const original = Buffer.from(await file.arrayBuffer());
-  const optimized = await sharp(original)
-    .rotate() // EXIF回転を反映
-    .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 85 })
-    .toBuffer();
-  const path = `portraits/${DEMO_FUNERAL_HOME_ID}/${randomUUID()}.webp`;
+  const path = `portraits/${DEMO_FUNERAL_HOME_ID}/${randomUUID()}.${clean}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = createAdminClient() as unknown as { storage: any };
-  const { error } = await db.storage
-    .from(PHOTO_BUCKET)
-    .upload(path, optimized, { contentType: "image/webp", upsert: false });
-  if (error) return { ok: false, error: "アップロードに失敗しました: " + error.message };
-  const { data } = db.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-  return { ok: true, url: data.publicUrl };
+  const { data, error } = await db.storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, error: "アップロードURLの発行に失敗しました: " + (error?.message ?? "") };
+  const { data: pub } = db.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+  return { ok: true, path: data.path ?? path, token: data.token, publicUrl: pub.publicUrl };
 }
 
 export type CreateResult =
@@ -218,6 +209,10 @@ export async function getCeremonyFormState(
   const { data, error } = await (supabase.from("memorials").select("form_state,venue").eq("slug", slug).single() as any);
   if (error || !data) return null;
   const fs = (data.form_state ?? {}) as Record<string, string> & { withVenue?: boolean; isTest?: boolean };
+  // 既存の遺影写真を編集プレビューに復元（form_state に無くても venue.altar から補完）。
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const altarPortrait = (data.venue as any)?.altar?.portraitPath as string | undefined;
+  if (!fs.portraitPath && altarPortrait) fs.portraitPath = altarPortrait;
   return {
     withVenue: Boolean(fs.withVenue ?? data.venue != null),
     isTest: Boolean(fs.isTest),
