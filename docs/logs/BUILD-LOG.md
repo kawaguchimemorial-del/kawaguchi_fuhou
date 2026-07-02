@@ -249,3 +249,12 @@
   - `components/admin/CeremonyRow.tsx`（新規・client）: 行全体を `onClick`で `/admin/ceremonies/{id}` へ遷移、cursor-pointer＋hover。
   - `app/admin/ceremonies/page.tsx`: 各行を CeremonyRow に置換。末尾の操作列（編集/公開ページ）を撤去し、ヘッダーの空列も削除。喪主名は行内テキスト表示に。
 - `npx tsc --noEmit` パス。
+
+## 2026-07-02 — 編集時に既存内容が空欄になる不具合を修正（実データから復元）
+- ユーザー報告: オンライン式場編集ボタンを押すと中身が空で表示される。既存内容が入った状態で編集したい（他の編集も同様に）。
+- 原因: 編集は `form_state` からのみ復元。`form_state` が未保存/不完全な既存案件（例 cb4cea）は全項目が空になっていた（実データは memorials/deceased/funeral_events/venue に存在）。
+- 修正 `lib/admin/actions.ts` `getCeremonyFormState`:
+  - `reconstructState()` を追加し、memorial/deceased/funeral_events/venue から各ウィザード項目を復元（故人・カナ・没日・享年・続柄・喪主名(announceから推定)・訃報タイトル/本文・儀式形態・香典/供花受付・式1日時/会場・オンライン式名・挨拶見出し/本文/署名・公開日時・入場制御・祭壇レイヤー・遺影）。
+  - form_state を優先し、欠けている項目のみ復元値で補完してマージ。
+- 効果: 全編集ボタンで現在の内容が表示される。単一セクション編集で保存してもデータが消えない（全項目が揃うためguard通過＆再構築）。
+- 検証(Playwright・cb4cea/form_state空): step0/1/4すべて既存内容が復元表示されることを確認。`npx tsc --noEmit` パス。

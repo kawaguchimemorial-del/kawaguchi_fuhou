@@ -241,23 +241,118 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
   return { ok: true, slug };
 }
 
-// 編集用：保存済みフォーム状態を取得
+// ISO日時 → JSTの日付(YYYY-MM-DD)・時刻(HH:MM)
+function jstParts(iso?: string | null): { date: string; time: string } {
+  if (!iso) return { date: "", time: "" };
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return { date: "", time: "" };
+  const jst = new Date(d.getTime() + 9 * 3600 * 1000);
+  return { date: jst.toISOString().slice(0, 10), time: jst.toISOString().slice(11, 16) };
+}
+
+// 正規化テーブル（memorial/deceased/event/venue）からウィザードのフォーム状態を復元。
+// form_state が未保存/不完全な既存案件でも、編集時に現在の内容を表示できるようにする。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function reconstructState(mem: any, dec: any, ev: any): Record<string, string> {
+  const s: Record<string, string> = {};
+  // 故人
+  if (dec) {
+    const [dSei, ...dMeiRest] = String(dec.name_kanji ?? "").split(/\s+/);
+    if (dSei) s.dSei = dSei;
+    if (dMeiRest.length) s.dMei = dMeiRest.join(" ");
+    const [kSei, ...kMeiRest] = String(dec.name_kana ?? "").split(/\s+/);
+    if (kSei) s.dSeiKana = kSei;
+    if (kMeiRest.length) s.dMeiKana = kMeiRest.join(" ");
+    if (dec.age_kazoe != null) s.ageKazoe = String(dec.age_kazoe);
+    if (dec.death_date) s.deathDate = String(dec.death_date);
+    if (dec.relation_to_mourner) s.relation = String(dec.relation_to_mourner);
+  }
+  // 喪主（正規化には氏名分割が無いため announce_mourner_name から推定）
+  const announce = String(mem.announce_mourner_name ?? "").replace(/^喪主\s*/, "").trim();
+  if (announce) {
+    const [mSei, ...mMeiRest] = announce.split(/\s+/);
+    if (mSei) s.mSei = mSei;
+    if (mMeiRest.length) s.mMei = mMeiRest.join(" ");
+    s.announceMourner = String(mem.announce_mourner_name ?? "");
+  }
+  // 訃報・香典
+  if (mem.obituary_title) s.obituaryTitle = String(mem.obituary_title);
+  if (mem.obituary_body) s.obituaryBody = String(mem.obituary_body);
+  if (mem.religion_type) s.religion = String(mem.religion_type);
+  s.kodenOption = mem.koden_decline ? "不要" : "必要";
+  s.flowerAccept = mem.flower_decline ? "受け付けない" : "受け付ける";
+  // 式1
+  if (ev) {
+    if (ev.event_type) s.eventType = String(ev.event_type);
+    if (ev.datetime_label === "日程調整中") s.dateAdjusting = "1";
+    const { date, time } = jstParts(ev.start_at);
+    if (date) s.eventDate = date;
+    if (time && time !== "00:00") s.startTime = time;
+    const end = jstParts(ev.end_at);
+    if (end.time && end.time !== "00:00") s.endTime = end.time;
+    if (ev.venue_name || ev.venue_address) {
+      const master = VENUE_MASTER.find((v) => v.name === ev.venue_name);
+      if (master) { s.placeMode = "master"; s.venueId = master.id; }
+      else {
+        s.placeMode = "manual";
+        if (ev.venue_name) s.venueName = String(ev.venue_name);
+        if (ev.venue_address) s.venueAddress = String(ev.venue_address);
+      }
+    }
+  }
+  // オンライン式場（venue jsonb）
+  const v = mem.venue;
+  if (v) {
+    if (v.venueName) s.venueOnlineName = String(v.venueName);
+    if (v.greetingHeading) s.greetingHeading = String(v.greetingHeading);
+    if (v.greetingBody) s.greetingBody = String(v.greetingBody);
+    if (v.greetingSignature) s.greetingSign = String(v.greetingSignature);
+    if (v.openFrom) s.openFrom = String(v.openFrom);
+    if (v.openDays != null) s.openDays = String(v.openDays);
+    s.mgmtNo = v.requireManagementNo ? "必要" : "不要";
+    s.attendeeName = v.requireAttendeeName ? "必要" : "不要";
+    s.showOfferings = v.showOfferings ? "表示する" : "表示しない";
+    const a = v.altar ?? {};
+    if (a.frame) s.frame = String(a.frame);
+    if (a.sideFlower) s.side = String(a.sideFlower);
+    if (a.center) s.center = String(a.center);
+    if (a.top) s.top = String(a.top);
+    if (a.background) s.background = String(a.background);
+    if (a.portraitPath) s.portraitPath = String(a.portraitPath);
+  }
+  return s;
+}
+
+// 編集用：保存済みフォーム状態を取得（form_state を優先し、無い項目は実データから復元）
 export async function getCeremonyFormState(
   slug: string
 ): Promise<{ withVenue: boolean; isTest: boolean; state: Record<string, string> } | null> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
   const supabase = createAdminClient() as unknown as { from: (t: string) => any };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("memorials").select("form_state,venue").eq("slug", slug).single() as any);
-  if (error || !data) return null;
-  const fs = (data.form_state ?? {}) as Record<string, string> & { withVenue?: boolean; isTest?: boolean };
-  // 既存の遺影写真を編集プレビューに復元（form_state に無くても venue.altar から補完）。
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const altarPortrait = (data.venue as any)?.altar?.portraitPath as string | undefined;
-  if (!fs.portraitPath && altarPortrait) fs.portraitPath = altarPortrait;
+  const { data: mem, error } = await (supabase
+    .from("memorials")
+    .select("id, form_state, venue, obituary_title, obituary_body, announce_mourner_name, religion_type, koden_decline, flower_decline")
+    .eq("slug", slug)
+    .single() as any);
+  if (error || !mem) return null;
+  // 故人・式1を取得
+  const [{ data: dec }, { data: evs }] = await Promise.all([
+    supabase.from("deceased").select("*").eq("memorial_id", mem.id).maybeSingle(),
+    supabase.from("funeral_events").select("*").eq("memorial_id", mem.id).order("start_at").limit(1),
+  ]);
+  const ev = Array.isArray(evs) ? evs[0] : evs;
+
+  const reconstructed = reconstructState(mem, dec, ev);
+  const fsRaw = (mem.form_state ?? {}) as Record<string, string> & { withVenue?: boolean; isTest?: boolean };
+  // form_state を優先しつつ、欠けている項目は復元値で補完
+  const merged: Record<string, string> = { ...reconstructed };
+  for (const [k, val] of Object.entries(fsRaw)) {
+    if (val !== "" && val != null) merged[k] = val as string;
+  }
   return {
-    withVenue: Boolean(fs.withVenue ?? data.venue != null),
-    isTest: Boolean(fs.isTest),
-    state: fs as Record<string, string>,
+    withVenue: Boolean(fsRaw.withVenue ?? mem.venue != null),
+    isTest: Boolean(fsRaw.isTest),
+    state: merged,
   };
 }
