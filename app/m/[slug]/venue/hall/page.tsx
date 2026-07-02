@@ -3,6 +3,7 @@ import { getPublicMemorial } from "@/lib/memorial/data";
 import { religionVocab } from "@/lib/memorial/religion";
 import { TestBanner, GoldButton, ShareRow, SiteFooter } from "@/components/guest/parts";
 import { AltarView } from "@/components/guest/AltarView";
+import { AlbumGallery } from "@/components/guest/AlbumGallery";
 import { logView } from "@/lib/memorial/db";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { Memorial } from "@/lib/memorial/types";
@@ -79,14 +80,7 @@ export default async function VenueHall({ params }: Params) {
         {v.albumPaths.length > 0 && (
           <section className="mt-10">
             <SectionHeading>アルバム</SectionHeading>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {v.albumPaths.map((src, i) => (
-                <a key={i} href={src} target="_blank" rel="noopener noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={`葬儀写真 ${i + 1}`} className="aspect-square w-full object-cover" />
-                </a>
-              ))}
-            </div>
+            <AlbumGallery paths={v.albumPaths} />
           </section>
         )}
 
