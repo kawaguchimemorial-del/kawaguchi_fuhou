@@ -242,3 +242,10 @@
 ## 2026-07-02 — 供花注文設定の文言修正（他社サービス名を除去）
 - ユーザー指摘: 供花・供物の注文方法選択の「＠葬儀の注文フォームを利用」は他社サービス名なので「注文フォームを利用」に。
 - 修正 `components/admin/ProductSettings.tsx`: ラジオ文言を「注文フォームを利用」に変更（外部注文システム側は変更なし）。
+
+## 2026-07-02 — 葬儀一覧: 行クリックで詳細（編集）へ遷移・公開ページボタン削除
+- ユーザー要望: 一覧の行（枠）クリックで編集ページへ飛ぶ仕様に。公開ページボタンは不要。
+- 修正:
+  - `components/admin/CeremonyRow.tsx`（新規・client）: 行全体を `onClick`で `/admin/ceremonies/{id}` へ遷移、cursor-pointer＋hover。
+  - `app/admin/ceremonies/page.tsx`: 各行を CeremonyRow に置換。末尾の操作列（編集/公開ページ）を撤去し、ヘッダーの空列も削除。喪主名は行内テキスト表示に。
+- `npx tsc --noEmit` パス。
