@@ -41,10 +41,10 @@ export function AltarView({
   // 中央素材の種別ごとにサイズ・高さを出し分け（焼香台は幅広・低め、線香は細く高め）。
   const centerBox =
     kind === "焼香"
-      ? "bottom-[15%] w-[26%]"
+      ? "bottom-[10%] w-[22%]"
       : kind === "線香"
-      ? "bottom-[15%] w-[13%]"
-      : "bottom-[14%] w-[18%]"; // 花
+      ? "bottom-[10%] w-[10%]"
+      : "bottom-[10%] w-[16%]"; // 花
 
   // お参りボタン：煙を一度立ちのぼらせて、一定時間で自然に止める。
   function startSmoke() {
@@ -76,7 +76,7 @@ export function AltarView({
         />
 
         {/* 遺影＋額縁（中央・奥）。下端は天板の背に隠れる。大切な遺影は大きく見せる。 */}
-        <div className="absolute bottom-[22%] left-1/2 h-[72%] -translate-x-1/2" style={{ aspectRatio: "5 / 7" }}>
+        <div className="absolute bottom-[25%] left-1/2 h-[70%] -translate-x-1/2" style={{ aspectRatio: "5 / 7" }}>
           <div className="absolute inset-x-[10.5%] inset-y-[7.5%] flex items-center justify-center bg-[var(--card)]">
             {altar.portraitPath ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -89,13 +89,13 @@ export function AltarView({
           <img src={frameImageSrc(altar.frame)} alt="" aria-hidden className="absolute inset-0 h-full w-full" />
         </div>
 
-        {/* 天板（遺影の手前に重ね、遺影の下端を隠す） */}
+        {/* 天板（遺影の手前に重ね、遺影の下端を隠す）。大きめ・低めに配置。 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={topSrc(altar.top)}
           alt=""
           aria-hidden
-          className="absolute bottom-[8%] left-1/2 w-[64%] -translate-x-1/2"
+          className="absolute bottom-[3%] left-1/2 w-[80%] -translate-x-1/2"
         />
 
         {/* 花飾り（左右）：天板の上に立てる（内側寄りに配置） */}
@@ -104,14 +104,14 @@ export function AltarView({
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[15%] left-[27%] h-[28%] -translate-x-1/2"
+          className="absolute bottom-[10%] left-[21%] h-[27%] -translate-x-1/2"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[15%] right-[27%] h-[28%] translate-x-1/2"
+          className="absolute bottom-[10%] right-[21%] h-[27%] translate-x-1/2"
         />
 
         {/* 中央（焼香台／線香／花）＋煙：天板の上・中央 */}
