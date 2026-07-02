@@ -20,7 +20,7 @@ export function ProductSettings({ flowers, offerings }: { flowers: Product[]; of
       <div className="rounded-lg bg-white p-5 shadow-sm">
         <p className="mb-3 text-sm text-gray-600">供花・供物の注文に何を使いますか？</p>
         <div className="flex flex-wrap gap-6 text-sm">
-          <label className="flex items-center gap-2"><input type="radio" name="om" checked={orderMode === "form"} onChange={() => setOrderMode("form")} /> ＠葬儀の注文フォームを利用</label>
+          <label className="flex items-center gap-2"><input type="radio" name="om" checked={orderMode === "form"} onChange={() => setOrderMode("form")} /> 注文フォームを利用</label>
           <label className="flex items-center gap-2"><input type="radio" name="om" checked={orderMode === "external"} onChange={() => setOrderMode("external")} /> 外部注文システムを利用（指定のURLに飛ばす）</label>
         </div>
         {orderMode === "external" && (
