@@ -258,3 +258,15 @@
   - form_state を優先し、欠けている項目のみ復元値で補完してマージ。
 - 効果: 全編集ボタンで現在の内容が表示される。単一セクション編集で保存してもデータが消えない（全項目が揃うためguard通過＆再構築）。
 - 検証(Playwright・cb4cea/form_state空): step0/1/4すべて既存内容が復元表示されることを確認。`npx tsc --noEmit` パス。
+
+## 2026-07-02 アルバム専用の登録・編集画面を新設
+- 課題: 葬儀詳細の「アルバム」セクションの編集ボタンが葬儀編集ウィザードへ遷移し、写真をアップロードできなかった。
+- 追加 `lib/admin/actions.ts`:
+  - `createAlbumUploadUrl(ext)` … album/ 配下への署名付きアップロードURL発行（遺影と同方式）。
+  - `saveAlbum(slug, paths[])` … venue.albumPaths / form_state.albumPaths を即時保存（最大30枚）。
+  - `CeremonyPayload.albumPaths` を追加、`buildRows` でウィザード保存時も既存アルバムを温存（従来は `[]` で消えていた）。
+- 追加 `components/admin/AlbumManager.tsx` … 複数選択で最大30枚アップロード（JPG/PNG・5MB）、サムネイル一覧・個別削除・即時保存。
+- 追加 `app/admin/ceremonies/[id]/album/page.tsx` … アルバム登録・編集ページ。オンライン式場未設定時は案内表示。
+- 変更 `app/admin/ceremonies/[id]/page.tsx` … 「アルバム」セクションの編集ボタンを `/album` 専用画面へ。
+- 変更 `components/admin/CeremonyWizard.tsx` … 保存ペイロードに `albumPaths` を温存渡し。
+- 検証: `npx tsc --noEmit` パス。

@@ -74,6 +74,65 @@ export async function savePortrait(
   return { ok: true };
 }
 
+/**
+ * アルバム写真アップロード用の署名付きURLを発行する（遺影と同方式）。
+ * ファイルはブラウザから Supabase Storage へ直接アップロードし、上限を回避。
+ */
+export async function createAlbumUploadUrl(
+  ext: string
+): Promise<{ ok: boolean; path?: string; token?: string; publicUrl?: string; error?: string }> {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+    return { ok: false, error: "Supabaseが未設定です。" };
+  const clean = (ext || "").toLowerCase().replace(/[^a-z]/g, "");
+  if (!["jpg", "jpeg", "png"].includes(clean))
+    return { ok: false, error: "JPGまたはPNG画像を選択してください。" };
+
+  const path = `album/${DEMO_FUNERAL_HOME_ID}/${randomUUID()}.${clean}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createAdminClient() as unknown as { storage: any };
+  const { data, error } = await db.storage.from(PHOTO_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, error: "アップロードURLの発行に失敗しました: " + (error?.message ?? "") };
+  const { data: pub } = db.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+  return { ok: true, path: data.path ?? path, token: data.token, publicUrl: pub.publicUrl };
+}
+
+const MAX_ALBUM = 30;
+
+/**
+ * アルバム写真URLの一覧を既存案件へ即時保存する（slug指定）。
+ * venue.albumPaths と form_state.albumPaths を更新。最大30枚。
+ */
+export async function saveAlbum(
+  slug: string,
+  paths: string[]
+): Promise<{ ok: boolean; error?: string; paths?: string[] }> {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+    return { ok: false, error: "Supabaseが未設定です。" };
+  const clean = (Array.isArray(paths) ? paths : []).filter((p) => typeof p === "string" && p).slice(0, MAX_ALBUM);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const { data: mem, error } = await supabase
+    .from("memorials")
+    .select("id, venue, form_state")
+    .eq("slug", slug)
+    .single();
+  if (error || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
+
+  const venue = mem.venue ?? null;
+  if (!venue) return { ok: false, error: "この葬儀はオンライン式場が未設定のため、アルバムを登録できません。" };
+  venue.albumPaths = clean;
+
+  const formState = (mem.form_state ?? {}) as Record<string, unknown>;
+  formState.albumPaths = clean;
+
+  const { error: upErr } = await supabase
+    .from("memorials")
+    .update({ venue, form_state: formState })
+    .eq("id", mem.id);
+  if (upErr) return { ok: false, error: "保存に失敗しました: " + upErr.message };
+  return { ok: true, paths: clean };
+}
+
 export type CreateResult =
   | { ok: true; slug: string }
   | { ok: false; error: string };
@@ -97,6 +156,7 @@ export interface CeremonyPayload {
   mgmtNo?: string; attendeeName?: string; showOfferings?: string;
   frame?: string; side?: string; center?: string; top?: string; background?: string;
   portraitPath?: string; // 遺影写真の公開URL
+  albumPaths?: string[]; // アルバム写真の公開URL一覧（別画面で管理。ウィザード保存時は温存）
 }
 
 // フォーム状態(payload) → DB各テーブルの行へ変換（create/updateで共通利用）
@@ -133,7 +193,7 @@ function buildRows(p: CeremonyPayload) {
         requireManagementNo: p.mgmtNo === "必要",
         requireAttendeeName: p.attendeeName === "必要",
         showOfferings: p.showOfferings === "表示する",
-        albumPaths: [] as string[],
+        albumPaths: (Array.isArray(p.albumPaths) ? p.albumPaths : []) as string[],
         altar: {
           frame: p.frame ?? "黒",
           sideFlower: p.side ?? "黒",
