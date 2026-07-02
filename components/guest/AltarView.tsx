@@ -6,6 +6,7 @@ import {
   backgroundSrc,
   topSrc,
   sideFlowerSrc,
+  sideFlowerFile,
   centerSrc,
   centerHidden,
   centerHasSmoke,
@@ -43,8 +44,12 @@ export function AltarView({
     kind === "焼香"
       ? "bottom-[10%] w-[22%]"
       : kind === "線香"
-      ? "bottom-[10%] w-[10%]"
+      ? "bottom-[10%] w-[12%]"
       : "bottom-[10%] w-[16%]"; // 花
+
+  // 花飾り（左右）：黒・白（花瓶タイプ）は小ぶりなので大きめに。花1/花2は元サイズ。
+  const sideFile = sideFlowerFile(altar.sideFlower);
+  const sideH = sideFile === "黒" || sideFile === "白" ? "h-[34%]" : "h-[27%]";
 
   // お参りボタン：煙を一度立ちのぼらせて、一定時間で自然に止める。
   function startSmoke() {
@@ -104,14 +109,14 @@ export function AltarView({
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[10%] left-[21%] h-[27%] -translate-x-1/2"
+          className={"absolute bottom-[10%] left-[21%] -translate-x-1/2 " + sideH}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[10%] right-[21%] h-[27%] translate-x-1/2"
+          className={"absolute bottom-[10%] right-[21%] translate-x-1/2 " + sideH}
         />
 
         {/* 中央（焼香台／線香／花）＋煙：天板の上・中央 */}

@@ -42,8 +42,11 @@ const SIDE_FILE: Record<string, string> = {
   "花（2）": "花2",
   花2: "花2",
 };
+export function sideFlowerFile(key?: string): string {
+  return SIDE_FILE[key ?? ""] ?? "黒";
+}
 export function sideFlowerSrc(key?: string): string {
-  return src(`side/${SIDE_FILE[key ?? ""] ?? "黒"}.png`);
+  return src(`side/${sideFlowerFile(key)}.png`);
 }
 
 /* ===== 祭壇（中央：焼香台／線香／花） ===== */
