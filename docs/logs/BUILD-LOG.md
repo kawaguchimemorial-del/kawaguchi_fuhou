@@ -229,3 +229,12 @@
   - `app/m/[slug]/venue/hall/page.tsx`: 祭壇セクションをPCで本文幅(max-w-xl)を超えて広く表示（`md:left-1/2 md:w-[90vw] md:-translate-x-1/2`、フルブリード）。
 - 検証(Playwright): 遺影フレーム PC=256×320px(旧128×160の2倍)・モバイル=160×192px。PC/モバイルとも**横スクロールなし**。スクショで見た目良好。
 - `npx tsc --noEmit` パス。
+
+## 2026-07-02 — オンライン式場設定の既定値をフォーム表示にも反映
+- ユーザー要望: オンライン式名=「故人名＋オンライン葬儀会場」、挨拶文見出し=既定「喪主挨拶」、挨拶文右下=入力済み喪主名を既定表示。
+- 現状: 保存時(handleSave)は既定フォールバック済みだったが、**見出しがフォーム上で空欄表示**（placeholderのみ）だった。
+- 修正 `components/admin/CeremonyWizard.tsx` StepVenue:
+  - 見出しを汎用Text→専用inputに変更し `greetingHeading = g("greetingHeading") || "喪主挨拶"` を初期表示。
+  - オンライン式名は従来どおり `defaultVenueName`（故 ●● 儀　オンライン葬儀会場）を初期表示。
+  - 挨拶文右下は従来どおり `喪主 {入力済み喪主名}` を初期表示。
+- `npx tsc --noEmit` パス。

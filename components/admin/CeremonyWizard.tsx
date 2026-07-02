@@ -435,6 +435,7 @@ function PortraitUpload({ g, set, editSlug }: { g: (k: string) => string; set: (
 // ---- ステップ5: オンライン式場 ----
 function StepVenue({ g, set, tvars, deceasedFull, mournerFull, editSlug }: { g: (k: string) => string; set: (k: string, v: string) => void; tvars: Record<string, string>; deceasedFull: string; mournerFull: string; editSlug?: string }) {
   const venueName = g("venueOnlineName") || defaultVenueName(deceasedFull);
+  const greetingHeading = g("greetingHeading") || "喪主挨拶";
   const greetingSign = g("greetingSign") || (mournerFull ? `喪主 ${mournerFull}` : "");
   return (
     <>
@@ -446,7 +447,11 @@ function StepVenue({ g, set, tvars, deceasedFull, mournerFull, editSlug }: { g: 
         </label>
       </Sec>
       <Sec title="オンライン式場挨拶文">
-        <Text label="見出し" k="greetingHeading" g={g} set={set} placeholder="喪主挨拶" required />
+        <label className="block">
+          <span className="text-sm text-gray-600">見出し<Req /></span>
+          <input value={greetingHeading} onChange={(e) => set("greetingHeading", e.target.value)} className="mt-1 w-full border-b py-2 focus:border-[#9b2fae] focus:outline-none" placeholder="喪主挨拶" />
+          <span className="text-xs text-gray-400">※ 既定で「喪主挨拶」。必要に応じて編集できます。</span>
+        </label>
         <div>
           <p className="text-sm text-gray-600">挨拶文テンプレート</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
