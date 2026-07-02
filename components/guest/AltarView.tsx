@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { frameImageSrc } from "@/lib/memorial/altar-frames";
 import {
   backgroundSrc,
@@ -9,6 +9,7 @@ import {
   centerSrc,
   centerHidden,
   centerHasSmoke,
+  centerKind,
   worshipButtonLabel,
 } from "@/lib/memorial/altar-assets";
 
@@ -35,6 +36,31 @@ export function AltarView({
   const [smoking, setSmoking] = useState(false);
   const hasSmoke = centerHasSmoke(altar.center);
   const showCenter = !centerHidden(altar.center);
+  const kind = centerKind(altar.center);
+
+  // 中央素材の種別ごとにサイズ・高さを出し分け（焼香台は幅広・低め、線香は細く高め）。
+  const centerBox =
+    kind === "焼香"
+      ? "bottom-[15%] w-[26%]"
+      : kind === "線香"
+      ? "bottom-[15%] w-[13%]"
+      : "bottom-[14%] w-[18%]"; // 花
+
+  // お参りボタン：煙を一度立ちのぼらせて、一定時間で自然に止める。
+  function startSmoke() {
+    if (!hasSmoke) return;
+    setSmoking(false);
+    // 再クリックでも確実に再生させるため、次フレームでON
+    requestAnimationFrame(() => setSmoking(true));
+  }
+
+  // 煙は立ちのぼり切ったら止める（ずっとモクモクさせない）。
+  const SMOKE_MS = 11000;
+  useEffect(() => {
+    if (!smoking) return;
+    const t = setTimeout(() => setSmoking(false), SMOKE_MS);
+    return () => clearTimeout(t);
+  }, [smoking]);
 
   return (
     <div className="w-full">
@@ -49,8 +75,8 @@ export function AltarView({
           className="absolute left-0 top-0 h-[72%] w-full object-cover"
         />
 
-        {/* 遺影＋額縁（中央・奥）。下端は天板の背に隠れる */}
-        <div className="absolute bottom-[26%] left-1/2 h-[48%] -translate-x-1/2" style={{ aspectRatio: "5 / 7" }}>
+        {/* 遺影＋額縁（中央・奥）。下端は天板の背に隠れる。大切な遺影は大きく見せる。 */}
+        <div className="absolute bottom-[24%] left-1/2 h-[62%] -translate-x-1/2" style={{ aspectRatio: "5 / 7" }}>
           <div className="absolute inset-x-[10.5%] inset-y-[7.5%] flex items-center justify-center bg-[var(--card)]">
             {altar.portraitPath ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -72,31 +98,32 @@ export function AltarView({
           className="absolute bottom-[8%] left-1/2 w-[64%] -translate-x-1/2"
         />
 
-        {/* 花飾り（左右）：天板の上に立てる */}
+        {/* 花飾り（左右）：天板の上に立てる（内側寄りに配置） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[12%] left-[20%] h-[30%] -translate-x-1/2"
+          className="absolute bottom-[15%] left-[29%] h-[28%] -translate-x-1/2"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[12%] right-[20%] h-[30%] translate-x-1/2"
+          className="absolute bottom-[15%] right-[29%] h-[28%] translate-x-1/2"
         />
 
-        {/* 中央（焼香台／線香／花）＋煙：天板の中央手前 */}
+        {/* 中央（焼香台／線香／花）＋煙：天板の上・中央 */}
         {showCenter && (
-          <div className="absolute bottom-[9%] left-1/2 flex w-[16%] -translate-x-1/2 justify-center">
-            {/* 煙（焼香/線香選択時、お参り後に表示） */}
+          <div className={"absolute left-1/2 flex -translate-x-1/2 justify-center " + centerBox}>
+            {/* 煙（焼香/線香選択時、お参り後に立ちのぼり、一定時間で止まる） */}
             {hasSmoke && smoking && (
-              <div className="pointer-events-none absolute inset-x-0 top-[-150%] h-[190%]">
+              <div className="pointer-events-none absolute inset-x-0 top-[-190%] h-[230%]">
                 <span className="altar-smoke-puff" style={{ animationDelay: "0s" }} />
-                <span className="altar-smoke-puff" style={{ animationDelay: "1.2s", width: "34%" }} />
-                <span className="altar-smoke-puff" style={{ animationDelay: "2.6s", width: "40%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "0.9s", width: "48%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "1.9s", width: "56%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "3.1s", width: "50%" }} />
               </div>
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}

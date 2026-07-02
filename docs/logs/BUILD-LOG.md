@@ -298,3 +298,10 @@
 - 変更 `app/m/[slug]/venue/hall/page.tsx`: AltarView interactive を使用。参拝記録は「ご記帳して〜を残す」リンクを併設。
 - 変更 `components/admin/CeremonyWizard.tsx`: 祭壇設定を画像セレクタ（ImagePicker：花飾り/中央/天板/背景）＋合成ライブプレビュー(AltarView)に刷新。
 - 検証: 実葬儀(cb4cea)でPlaywrightスクショ確認（式場の祭壇合成・お焼香ボタン→煙・管理画面プレビュー/セレクタ）。`npx tsc --noEmit` パス。
+
+## 2026-07-02 祭壇レイヤーの配置・サイズ調整＋煙の強化/自動停止
+- 遺影を拡大（h-48%→62%）。線香選択時も顔が線香の上に見えるように。
+- 花飾りを内側へ（left/right 20%→29%）、高さ微調整で天板上に自然に配置。
+- 中央素材を種別で出し分け（altar-assets: centerKind）。焼香台は幅広(w-26%)・高め、線香は細く(w-13%)高め、花は中間。位置を上げて天板の上に乗るよう調整。
+- 煙を強化（濃いグレー・不透明度UP）。無限ループをやめ、2回立ちのぼって停止（animation forwards＋11秒でsmoking解除）。
+- 検証: 実葬儀(cb4cea)で焼香/線香プレビューと煙演出をPlaywright確認。`npx tsc --noEmit` パス。

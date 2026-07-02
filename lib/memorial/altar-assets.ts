@@ -79,6 +79,15 @@ export function centerHidden(key?: string): boolean {
   return centerFile(key) === "非表示";
 }
 
+// 中央素材の種別（サイズ・配置の出し分けに使用）。
+export function centerKind(key?: string): "焼香" | "線香" | "花" | "非表示" {
+  const f = centerFile(key);
+  if (f === "非表示") return "非表示";
+  if (f.startsWith("線香")) return "線香";
+  if (f.startsWith("花")) return "花";
+  return "焼香";
+}
+
 // 焼香・線香を選んでいるときだけ煙を立ちのぼらせる（花・非表示は煙なし）。
 export function centerHasSmoke(key?: string): boolean {
   const f = centerFile(key);
