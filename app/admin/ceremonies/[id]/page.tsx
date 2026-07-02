@@ -108,10 +108,8 @@ export default async function CeremonyDetail({ params }: Params) {
         </Section>
       )}
 
-      <Section title="動画" status="0件" editHref={editBase} />
       <Section title="故人の写真" status={`${m.venue?.ceremonyPhotoPath ? 1 : 0}件`} editHref={editBase} />
       <Section title="アルバム" status={`${m.venue?.albumPaths.length ?? 0}件`} editHref={editBase} />
-      <Section title="YouTubeライブ配信" status="0件" editHref={editBase} />
 
       {/* 閲覧数一覧 */}
       <div className="mb-3 rounded-lg bg-white p-5 shadow-sm">
