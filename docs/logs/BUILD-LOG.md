@@ -282,3 +282,10 @@
 - 変更 `app/admin/ceremonies/[id]/page.tsx`: 「故人の写真」セクションを「葬儀の様子」に変更、/scene 専用画面へ。
 - 変更 `app/m/[slug]/venue/hall/page.tsx`: 公開側を「葬儀の様子」複数写真ギャラリー（AlbumGalleryライトボックス）に変更。旧単写真はフォールバック表示。
 - 検証: `npx tsc --noEmit` パス。
+
+## 2026-07-02 オンライン祭壇の額縁を透過PNG画像で重ね、額縁選択を画像化
+- 追加 `lib/memorial/altar-frames.ts`: 額縁キー(黒/黒リボン/白/白花/グレー/ピンク/ブルー)・旧名エイリアス正規化・public/tmp/オンライン祭壇/額縁/png/ のPNG URL生成(日本語パスencodeURI)。
+- 変更 `components/guest/AltarView.tsx`: 遺影写真の上に透過PNG額縁を絶対配置で重ねて実写風に表示（写真は開口内側に inset 配置）。旧CSS枠色(FRAME_COLOR)は廃止。
+- 変更 `components/admin/CeremonyWizard.tsx`: 額縁選択を文字Pillsから見本画像クリック選択(FramePicker)へ。FRAMES定数を撤去しキーをファイル名基準に統一。
+- 素材はPNGのまま（透過維持のため変換しない）。
+- 検証: `npx tsc --noEmit` パス。

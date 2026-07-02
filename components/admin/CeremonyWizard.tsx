@@ -10,6 +10,7 @@ const PHOTO_BUCKET = "product-images";
 import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { render } from "@/lib/template";
 import { VENUE_MASTER } from "@/lib/admin/venues";
+import { FRAME_KEYS, frameImageSrc, normalizeFrameKey } from "@/lib/memorial/altar-frames";
 import {
   OBITUARY_TEMPLATES,
   GREETING_TEMPLATES,
@@ -20,7 +21,6 @@ import {
 // TODO(supabase): 最終保存で memorials/deceased/funeral_events/venue 等へINSERT。
 const STEPS = ["喪主／故人", "訃報・香典", "記帳", "供花・供物", "オンライン式場"];
 const EVENT_TYPES = ["通夜式", "告別式", "葬儀告別式", "一日葬", "お別れの会", "火葬式"];
-const FRAMES = ["黒", "黒(リボン)", "白", "白(花)", "グレー", "紫", "ピンク"];
 const SIDE = ["黒", "白", "花(1)", "花(2)"];
 const CENTERS = ["焼香(黒)", "焼香(白)", "線香(1本)", "線香(2本)", "線香(3本)", "花(1)", "花(2)", "非表示"];
 const BACKGROUNDS = ["七宝", "菊", "波", "ドレープ(ベージュ)", "ドレープ(ピンク)"];
@@ -198,6 +198,41 @@ function Pills({ label, k, options, g, set, required }: { label: string; k: stri
         {options.map((o) => (
           <button type="button" key={o} onClick={() => set(k, o)} className={"rounded border px-3 py-1.5 text-sm " + (cur === o ? "border-[#9b2fae] bg-[#f3e9f6]" : "")}>{o}</button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// 額縁選択（透過PNGの見本画像をクリックして選択）
+function FramePicker({ g, set }: { g: (k: string) => string; set: (k: string, v: string) => void }) {
+  const cur = normalizeFrameKey(g("frame"));
+  return (
+    <div>
+      <p className="text-sm text-gray-600">額縁<Req /></p>
+      <div className="mt-2 flex flex-wrap gap-3">
+        {FRAME_KEYS.map((key) => {
+          const selected = cur === key;
+          return (
+            <button
+              type="button"
+              key={key}
+              onClick={() => set("frame", key)}
+              aria-pressed={selected}
+              className={
+                "flex flex-col items-center rounded border p-1.5 text-xs " +
+                (selected ? "border-[#9b2fae] bg-[#f3e9f6]" : "border-gray-200 hover:border-gray-300")
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={frameImageSrc(key)}
+                alt={`額縁 ${key}`}
+                className="h-16 w-12 object-contain"
+              />
+              <span className={"mt-1 " + (selected ? "text-[#9b2fae]" : "text-gray-500")}>{key}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -485,7 +520,7 @@ function StepVenue({ g, set, tvars, deceasedFull, mournerFull, editSlug }: { g: 
       <Sec title="祭壇設定（レイヤー）">
         <PortraitUpload g={g} set={set} editSlug={editSlug} />
         <p className="text-xs text-gray-500">※ 各レイヤー（額縁・花・背景）の画像素材は最後にまとめて差し込みます。</p>
-        <Pills label="額縁" k="frame" options={FRAMES} g={g} set={set} required />
+        <FramePicker g={g} set={set} />
         <Pills label="花飾り（左右）" k="side" options={SIDE} g={g} set={set} required />
         <Pills label="祭壇（中央）" k="center" options={CENTERS} g={g} set={set} required />
         <Pills label="天板" k="top" options={["黒", "木目"]} g={g} set={set} required />

@@ -1,18 +1,8 @@
 import type { AltarConfig } from "@/lib/memorial/types";
+import { frameImageSrc } from "@/lib/memorial/altar-frames";
 
 // 実物の「祭壇設定」レイヤーを構造的に再現。
-// 本番は各レイヤーの透過PNG素材を Storage に用意して重ねるが、
-// 素材導入までは CSS/絵文字で配置・色を反映して構造を表現する（TODO: 素材差し替え）。
-
-const FRAME_COLOR: Record<string, string> = {
-  黒: "#1a1a1a",
-  黒リボン: "#1a1a1a",
-  白: "#f3f1ea",
-  白花: "#f3f1ea",
-  グレー: "#8a8a8a",
-  紫: "#7e5aa2",
-  ピンク: "#e6a6c0",
-};
+// 遺影は透過PNGの額縁素材を上に重ねて実際の遺影写真のように見せる。
 
 const BG_STYLE: Record<string, string> = {
   七宝: "repeating-conic-gradient(from 0deg, #f3efe4 0deg 90deg, #ece6d6 90deg 180deg)",
@@ -40,7 +30,7 @@ export function AltarView({
   altar: AltarConfig;
   portraitAlt?: string;
 }) {
-  const frame = FRAME_COLOR[altar.frame] ?? "#1a1a1a";
+  const frameSrc = frameImageSrc(altar.frame);
   return (
     <div
       className="relative mx-auto flex aspect-[4/5] w-full max-w-md flex-col items-center justify-end overflow-hidden rounded-md sm:max-w-lg md:max-w-2xl"
@@ -53,20 +43,29 @@ export function AltarView({
         <span className="text-4xl sm:text-5xl md:text-6xl" aria-hidden>
           {altar.sideFlower.startsWith("花") ? "💐" : "🏵️"}
         </span>
-        <div
-          className="flex h-48 w-40 items-center justify-center bg-[var(--card)] sm:h-64 sm:w-52 md:h-80 md:w-64"
-          style={{ border: `8px solid ${frame}` }}
-        >
-          {altar.portraitPath ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={altar.portraitPath}
-              alt={portraitAlt ?? "ご遺影"}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span className="text-sm text-[var(--muted)]">ご遺影</span>
-          )}
+        {/* 遺影＋額縁（透過PNGの額縁を写真の上に重ねる） */}
+        <div className="relative h-48 w-[137px] sm:h-64 sm:w-[183px] md:h-80 md:w-[229px]">
+          {/* 遺影写真（額縁の内側開口に収まるよう内側に配置） */}
+          <div className="absolute inset-x-[10.5%] inset-y-[7.5%] flex items-center justify-center bg-[var(--card)]">
+            {altar.portraitPath ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={altar.portraitPath}
+                alt={portraitAlt ?? "ご遺影"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-sm text-[var(--muted)]">ご遺影</span>
+            )}
+          </div>
+          {/* 額縁（透過PNG） */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={frameSrc}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full"
+          />
         </div>
         <span className="text-4xl sm:text-5xl md:text-6xl" aria-hidden>
           {altar.sideFlower.startsWith("花") ? "💐" : "🏵️"}
