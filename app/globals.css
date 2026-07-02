@@ -50,8 +50,8 @@ h1, h2, h3 { line-height: 1.5; font-weight: 600; }
 /* オンライン祭壇：焼香・線香の煙アニメーション（立ちのぼって消える。無限ループしない） */
 @keyframes altar-smoke {
   0%   { opacity: 0; transform: translate(-50%, 0) scale(0.5) rotate(-5deg); }
-  15%  { opacity: 0.9; }
-  55%  { opacity: 0.6; }
+  15%  { opacity: 0.5; }
+  55%  { opacity: 0.32; }
   100% { opacity: 0; transform: translate(-50%, -260%) scale(2.1) rotate(6deg); }
 }
 .altar-smoke-puff {
@@ -61,8 +61,8 @@ h1, h2, h3 { line-height: 1.5; font-weight: 600; }
   width: 64%;
   aspect-ratio: 1 / 1.4;
   border-radius: 9999px;
-  background: radial-gradient(circle at 50% 60%, rgba(188,188,194,0.95), rgba(170,170,178,0.6) 45%, rgba(170,170,178,0) 72%);
-  filter: blur(5px);
+  background: radial-gradient(circle at 50% 60%, rgba(222,222,226,0.9), rgba(210,210,216,0.5) 45%, rgba(210,210,216,0) 72%);
+  filter: blur(6px);
   transform: translate(-50%, 0);
   /* 2回だけ立ちのぼって止まる（forwardsで最後は透明のまま保持） */
   animation: altar-smoke 4s ease-out 2 forwards;

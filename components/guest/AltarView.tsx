@@ -76,7 +76,7 @@ export function AltarView({
         />
 
         {/* 遺影＋額縁（中央・奥）。下端は天板の背に隠れる。大切な遺影は大きく見せる。 */}
-        <div className="absolute bottom-[24%] left-1/2 h-[62%] -translate-x-1/2" style={{ aspectRatio: "5 / 7" }}>
+        <div className="absolute bottom-[22%] left-1/2 h-[72%] -translate-x-1/2" style={{ aspectRatio: "5 / 7" }}>
           <div className="absolute inset-x-[10.5%] inset-y-[7.5%] flex items-center justify-center bg-[var(--card)]">
             {altar.portraitPath ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -104,14 +104,14 @@ export function AltarView({
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[15%] left-[29%] h-[28%] -translate-x-1/2"
+          className="absolute bottom-[15%] left-[27%] h-[28%] -translate-x-1/2"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sideFlowerSrc(altar.sideFlower)}
           alt=""
           aria-hidden
-          className="absolute bottom-[15%] right-[29%] h-[28%] translate-x-1/2"
+          className="absolute bottom-[15%] right-[27%] h-[28%] translate-x-1/2"
         />
 
         {/* 中央（焼香台／線香／花）＋煙：天板の上・中央 */}
@@ -137,7 +137,7 @@ export function AltarView({
         <div className="mt-4 text-center">
           <button
             type="button"
-            onClick={() => setSmoking(true)}
+            onClick={startSmoke}
             className="inline-block rounded-full bg-[var(--accent)] px-14 py-3 text-white transition-colors hover:bg-[var(--accent-strong)]"
           >
             {worshipButtonLabel(altar.center)}
