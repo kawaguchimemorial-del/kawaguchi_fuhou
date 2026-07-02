@@ -80,7 +80,8 @@ export interface OnlineVenue {
   requireManagementNo: boolean; // 入場時 管理番号
   requireAttendeeName: boolean; // 入場時 参列者名
   showOfferings: boolean; // 供花供物/贈答品の表示
-  ceremonyPhotoPath?: string; // 葬儀の写真（円形）
+  ceremonyPhotoPath?: string; // 葬儀の写真（円形・旧仕様。scenePathsへ移行）
+  scenePaths?: string[]; // 葬儀の様子（複数写真）
   albumPaths: string[]; // アルバム
   altar: AltarConfig;
 }

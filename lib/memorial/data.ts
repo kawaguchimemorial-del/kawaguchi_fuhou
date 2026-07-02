@@ -66,6 +66,7 @@ const SEED: Record<string, Memorial> = {
       requireManagementNo: false,
       requireAttendeeName: false,
       showOfferings: true,
+      scenePaths: [],
       albumPaths: [],
       altar: {
         frame: "黒",

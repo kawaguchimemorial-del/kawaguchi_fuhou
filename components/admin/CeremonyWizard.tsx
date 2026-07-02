@@ -85,8 +85,9 @@ export function CeremonyWizard({
       mgmtNo: g("mgmtNo"), attendeeName: g("attendeeName"), showOfferings: g("showOfferings"),
       frame: g("frame"), side: g("side"), center: g("center"), top: g("top"), background: g("background"),
       portraitPath: g("portraitPath"),
-      // アルバムは専用画面で管理。ウィザード保存で消えないよう既存値を温存。
+      // アルバム／葬儀の様子は専用画面で管理。ウィザード保存で消えないよう既存値を温存。
       albumPaths: Array.isArray(s.albumPaths) ? (s.albumPaths as unknown as string[]) : undefined,
+      scenePaths: Array.isArray(s.scenePaths) ? (s.scenePaths as unknown as string[]) : undefined,
     };
     startSave(async () => {
       const res = editSlug

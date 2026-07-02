@@ -2,15 +2,27 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createAlbumUploadUrl, saveAlbum } from "@/lib/admin/actions";
+import { createAlbumUploadUrl, saveVenuePhotos } from "@/lib/admin/actions";
 import { createClient } from "@/lib/supabase/client";
 
 const PHOTO_BUCKET = "product-images"; // 公開読取バケット（album/ 配下）
 const MAX_ALBUM = 30;
 const MAX_MB = 5;
 
-// アルバム管理：故人の思い出写真を最大30枚アップロードし、オンライン式場で公開する。
-export function AlbumManager({ slug, initialPaths }: { slug: string; initialPaths: string[] }) {
+// 写真管理：最大30枚アップロードし、オンライン式場で公開する（アルバム／葬儀の様子で共用）。
+export function AlbumManager({
+  slug,
+  initialPaths,
+  field = "albumPaths",
+  lead = "故人の思い出の写真",
+  note = "アップロードした写真はオンライン式場のアルバムに表示されます。",
+}: {
+  slug: string;
+  initialPaths: string[];
+  field?: "albumPaths" | "scenePaths";
+  lead?: string;
+  note?: string;
+}) {
   const [paths, setPaths] = useState<string[]>(initialPaths);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +31,7 @@ export function AlbumManager({ slug, initialPaths }: { slug: string; initialPath
 
   async function persist(next: string[]) {
     setSaved(false);
-    const res = await saveAlbum(slug, next);
+    const res = await saveVenuePhotos(slug, field, next);
     if (res.ok) {
       setPaths(res.paths ?? next);
       setSaved(true);
@@ -91,11 +103,9 @@ export function AlbumManager({ slug, initialPaths }: { slug: string; initialPath
   return (
     <div className="rounded-lg bg-white p-6 shadow-sm">
       <p className="text-sm text-gray-600">
-        故人の思い出の写真を最大{MAX_ALBUM}枚アップロードできます（JPG / PNG・{MAX_MB}MBまで）。
+        {lead}を最大{MAX_ALBUM}枚アップロードできます（JPG / PNG・{MAX_MB}MBまで）。
       </p>
-      <p className="mt-1 text-xs text-gray-400">
-        アップロードした写真はオンライン式場のアルバムに表示されます。
-      </p>
+      <p className="mt-1 text-xs text-gray-400">{note}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <label

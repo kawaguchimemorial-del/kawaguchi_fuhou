@@ -63,18 +63,21 @@ export default async function VenueHall({ params }: Params) {
           </div>
         </section>
 
-        {/* 葬儀の写真 */}
-        {v.ceremonyPhotoPath && (
-          <section className="mt-10 text-center">
-            <SectionHeading>葬儀の写真</SectionHeading>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={v.ceremonyPhotoPath}
-              alt="葬儀の写真"
-              className="mx-auto mt-4 h-28 w-28 rounded-full object-cover"
-            />
-          </section>
-        )}
+        {/* 葬儀の様子（複数写真。旧・単写真 ceremonyPhotoPath はフォールバック） */}
+        {(() => {
+          const scenes =
+            v.scenePaths && v.scenePaths.length > 0
+              ? v.scenePaths
+              : v.ceremonyPhotoPath
+              ? [v.ceremonyPhotoPath]
+              : [];
+          return scenes.length > 0 ? (
+            <section className="mt-10">
+              <SectionHeading>葬儀の様子</SectionHeading>
+              <AlbumGallery paths={scenes} />
+            </section>
+          ) : null;
+        })()}
 
         {/* アルバム */}
         {v.albumPaths.length > 0 && (

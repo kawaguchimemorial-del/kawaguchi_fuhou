@@ -97,17 +97,21 @@ export async function createAlbumUploadUrl(
 }
 
 const MAX_ALBUM = 30;
+type VenuePhotoField = "albumPaths" | "scenePaths";
 
 /**
- * アルバム写真URLの一覧を既存案件へ即時保存する（slug指定）。
- * venue.albumPaths と form_state.albumPaths を更新。最大30枚。
+ * オンライン式場の写真一覧（アルバム／葬儀の様子）を既存案件へ即時保存する（slug指定）。
+ * venue[field] と form_state[field] を更新。最大30枚。
  */
-export async function saveAlbum(
+export async function saveVenuePhotos(
   slug: string,
+  field: VenuePhotoField,
   paths: string[]
 ): Promise<{ ok: boolean; error?: string; paths?: string[] }> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
     return { ok: false, error: "Supabaseが未設定です。" };
+  if (field !== "albumPaths" && field !== "scenePaths")
+    return { ok: false, error: "不正な保存先です。" };
   const clean = (Array.isArray(paths) ? paths : []).filter((p) => typeof p === "string" && p).slice(0, MAX_ALBUM);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as unknown as { from: (t: string) => any };
@@ -119,11 +123,11 @@ export async function saveAlbum(
   if (error || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
 
   const venue = mem.venue ?? null;
-  if (!venue) return { ok: false, error: "この葬儀はオンライン式場が未設定のため、アルバムを登録できません。" };
-  venue.albumPaths = clean;
+  if (!venue) return { ok: false, error: "この葬儀はオンライン式場が未設定のため、写真を登録できません。" };
+  venue[field] = clean;
 
   const formState = (mem.form_state ?? {}) as Record<string, unknown>;
-  formState.albumPaths = clean;
+  formState[field] = clean;
 
   const { error: upErr } = await supabase
     .from("memorials")
@@ -157,6 +161,7 @@ export interface CeremonyPayload {
   frame?: string; side?: string; center?: string; top?: string; background?: string;
   portraitPath?: string; // 遺影写真の公開URL
   albumPaths?: string[]; // アルバム写真の公開URL一覧（別画面で管理。ウィザード保存時は温存）
+  scenePaths?: string[]; // 葬儀の様子の写真の公開URL一覧（別画面で管理。ウィザード保存時は温存）
 }
 
 // フォーム状態(payload) → DB各テーブルの行へ変換（create/updateで共通利用）
@@ -194,6 +199,7 @@ function buildRows(p: CeremonyPayload) {
         requireAttendeeName: p.attendeeName === "必要",
         showOfferings: p.showOfferings === "表示する",
         albumPaths: (Array.isArray(p.albumPaths) ? p.albumPaths : []) as string[],
+        scenePaths: (Array.isArray(p.scenePaths) ? p.scenePaths : []) as string[],
         altar: {
           frame: p.frame ?? "黒",
           sideFlower: p.side ?? "黒",
@@ -409,6 +415,14 @@ export async function getCeremonyFormState(
   const merged: Record<string, string> = { ...reconstructed };
   for (const [k, val] of Object.entries(fsRaw)) {
     if (val !== "" && val != null) merged[k] = val as string;
+  }
+  // アルバム／葬儀の様子は form_state に無い旧案件でも venue から取り込み、ウィザード保存で消えないようにする。
+  const vj = mem.venue as { albumPaths?: unknown; scenePaths?: unknown } | null;
+  if (vj) {
+    if (merged.albumPaths == null && Array.isArray(vj.albumPaths))
+      (merged as Record<string, unknown>).albumPaths = vj.albumPaths;
+    if (merged.scenePaths == null && Array.isArray(vj.scenePaths))
+      (merged as Record<string, unknown>).scenePaths = vj.scenePaths;
   }
   return {
     withVenue: Boolean(fsRaw.withVenue ?? mem.venue != null),

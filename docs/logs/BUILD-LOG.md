@@ -270,3 +270,15 @@
 - 変更 `app/admin/ceremonies/[id]/page.tsx` … 「アルバム」セクションの編集ボタンを `/album` 専用画面へ。
 - 変更 `components/admin/CeremonyWizard.tsx` … 保存ペイロードに `albumPaths` を温存渡し。
 - 検証: `npx tsc --noEmit` パス。
+
+## 2026-07-02 「故人の写真」→「葬儀の様子」に変更し複数写真アップロード対応
+- 変更 `lib/memorial/types.ts`: OnlineVenue に `scenePaths?: string[]`（葬儀の様子）を追加。ceremonyPhotoPath は旧仕様フォールバックとして残置。
+- 変更 `lib/admin/actions.ts`:
+  - `saveAlbum` → `saveVenuePhotos(slug, field, paths)` に汎用化（field: albumPaths | scenePaths）。
+  - CeremonyPayload / buildRows に scenePaths を追加しウィザード保存時も温存。
+  - getCeremonyFormState: form_state に無い旧案件でも venue から albumPaths/scenePaths を取り込み温存。
+- 変更 `components/admin/AlbumManager.tsx`: field/lead/note を props化しアルバム・葬儀の様子で共用。
+- 追加 `app/admin/ceremonies/[id]/scene/page.tsx`: 葬儀の様子の登録・編集ページ（旧単写真からの初期取込あり）。
+- 変更 `app/admin/ceremonies/[id]/page.tsx`: 「故人の写真」セクションを「葬儀の様子」に変更、/scene 専用画面へ。
+- 変更 `app/m/[slug]/venue/hall/page.tsx`: 公開側を「葬儀の様子」複数写真ギャラリー（AlbumGalleryライトボックス）に変更。旧単写真はフォールバック表示。
+- 検証: `npx tsc --noEmit` パス。

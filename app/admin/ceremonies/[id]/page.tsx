@@ -31,6 +31,8 @@ export default async function CeremonyDetail({ params }: Params) {
   const venueUrl = `${appUrl}/m/${id}/venue`;
   const editBase = `/admin/ceremonies/${id}/edit`;
   const albumHref = `/admin/ceremonies/${id}/album`;
+  const sceneHref = `/admin/ceremonies/${id}/scene`;
+  const sceneCount = m.venue?.scenePaths?.length ?? (m.venue?.ceremonyPhotoPath ? 1 : 0);
 
   return (
     <div className="mx-auto max-w-4xl pb-16">
@@ -109,7 +111,7 @@ export default async function CeremonyDetail({ params }: Params) {
         </Section>
       )}
 
-      <Section title="故人の写真" status={`${m.venue?.ceremonyPhotoPath ? 1 : 0}件`} editHref={editBase} />
+      <Section title="葬儀の様子" status={`${sceneCount}件`} editHref={sceneHref} />
       <Section title="アルバム" status={`${m.venue?.albumPaths?.length ?? 0}件`} editHref={albumHref} />
 
       {/* 閲覧数一覧 */}
