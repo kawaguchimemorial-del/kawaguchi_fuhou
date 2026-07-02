@@ -19,8 +19,8 @@ export function normalizeFrameKey(raw?: string): FrameKey {
   return FRAME_ALIAS[raw] ?? "黒";
 }
 
-// 額縁PNGの公開URL（日本語パスはエンコードして返す）。
+// 額縁PNGの公開URL（透過復元済みの public/altar/frame/）。日本語パスはエンコード。
 export function frameImageSrc(raw?: string): string {
   const key = normalizeFrameKey(raw);
-  return encodeURI(`/tmp/オンライン祭壇/額縁/png/${key}.png`);
+  return encodeURI(`/altar/frame/${key}.png`);
 }

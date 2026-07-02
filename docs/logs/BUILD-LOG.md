@@ -289,3 +289,12 @@
 - 変更 `components/admin/CeremonyWizard.tsx`: 額縁選択を文字Pillsから見本画像クリック選択(FramePicker)へ。FRAMES定数を撤去しキーをファイル名基準に統一。
 - 素材はPNGのまま（透過維持のため変換しない）。
 - 検証: `npx tsc --noEmit` パス。
+
+## 2026-07-02 オンライン祭壇を実素材レイヤー合成に刷新＋焼香/線香の煙演出
+- 素材の偽透過を修正: 追加素材PNG（額縁/花飾り/祭壇中央/天板）は書き出し時にチェッカー柄が焼き込まれた偽透過だった。`scripts/clean-altar-assets.mjs`（sharp・四辺＋額縁中央からのフラッド塗り＋トリミング）で実透過に復元し `public/altar/{frame,side,center,top,bg}/` へ生成。背景は不透明なのでコピー。
+- 追加 `lib/memorial/altar-assets.ts`: 背景/天板/花飾り/中央の設定値→画像パス対応、煙有無(centerHasSmoke)、ボタン文言(worshipButtonLabel)。
+- 変更 `components/guest/AltarView.tsx`: CSS/絵文字表現をやめ、背景→遺影＋額縁→天板→花飾り左右→中央（焼香/線香/花）を％絶対配置で合成するクライアント実装に刷新。interactive時はお焼香/お線香ボタンで煙アニメを開始。
+- 追加 `app/globals.css`: 焼香・線香の煙アニメーション（altar-smoke／灰色半透明のパフが立ちのぼる）。
+- 変更 `app/m/[slug]/venue/hall/page.tsx`: AltarView interactive を使用。参拝記録は「ご記帳して〜を残す」リンクを併設。
+- 変更 `components/admin/CeremonyWizard.tsx`: 祭壇設定を画像セレクタ（ImagePicker：花飾り/中央/天板/背景）＋合成ライブプレビュー(AltarView)に刷新。
+- 検証: 実葬儀(cb4cea)でPlaywrightスクショ確認（式場の祭壇合成・お焼香ボタン→煙・管理画面プレビュー/セレクタ）。`npx tsc --noEmit` パス。

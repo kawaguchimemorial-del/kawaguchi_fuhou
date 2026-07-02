@@ -35,16 +35,17 @@ export default async function VenueHall({ params }: Params) {
           <p className="font-serif text-xl text-[var(--primary)]">葬儀会場</p>
         </header>
 
-        {/* 祭壇（PCでは本文より広く表示して遺影を大きく見せる） */}
+        {/* 祭壇（PCでは本文より広く表示して遺影を大きく見せる）。
+            interactiveで、お焼香/お線香ボタン押下時に煙を立ちのぼらせる。 */}
         <div className="mt-6 md:relative md:left-1/2 md:w-[90vw] md:max-w-none md:-translate-x-1/2">
-          <AltarView altar={v.altar} portraitAlt={m.deceased.portraitAlt} />
+          <AltarView altar={v.altar} portraitAlt={m.deceased.portraitAlt} interactive />
         </div>
 
-        {/* バーチャル参拝 */}
-        <div className="mt-6 text-center">
-          <GoldButton href={`/m/${m.slug}/worship`} className="px-16">
-            {vocab.worshipLabel}をする
-          </GoldButton>
+        {/* ご記帳して参拝を記録に残す導線 */}
+        <div className="mt-4 text-center">
+          <a href={`/m/${m.slug}/worship`} className="text-sm text-[var(--accent)] underline">
+            ご記帳して{vocab.worshipLabel}を残す ›
+          </a>
         </div>
 
         {/* ご記帳・メッセージ受付 */}

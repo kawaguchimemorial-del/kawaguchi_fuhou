@@ -11,6 +11,8 @@ import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { render } from "@/lib/template";
 import { VENUE_MASTER } from "@/lib/admin/venues";
 import { FRAME_KEYS, frameImageSrc, normalizeFrameKey } from "@/lib/memorial/altar-frames";
+import { backgroundSrc, topSrc, sideFlowerSrc, centerSrc } from "@/lib/memorial/altar-assets";
+import { AltarView } from "@/components/guest/AltarView";
 import {
   OBITUARY_TEMPLATES,
   GREETING_TEMPLATES,
@@ -230,6 +232,55 @@ function FramePicker({ g, set }: { g: (k: string) => string; set: (k: string, v:
                 className="h-16 w-12 object-contain"
               />
               <span className={"mt-1 " + (selected ? "text-[#9b2fae]" : "text-gray-500")}>{key}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// 汎用：見本画像をクリックして選択（花飾り・祭壇中央・天板・背景で共用）
+function ImagePicker({
+  label,
+  k,
+  options,
+  srcOf,
+  g,
+  set,
+  imgClass = "h-14 w-14 object-contain",
+}: {
+  label: string;
+  k: string;
+  options: string[];
+  srcOf: (v: string) => string;
+  g: (k: string) => string;
+  set: (k: string, v: string) => void;
+  imgClass?: string;
+}) {
+  const cur = g(k) || options[0];
+  return (
+    <div>
+      <p className="text-sm text-gray-600">{label}<Req /></p>
+      <div className="mt-2 flex flex-wrap gap-3">
+        {options.map((o) => {
+          const selected = cur === o;
+          return (
+            <button
+              type="button"
+              key={o}
+              onClick={() => set(k, o)}
+              aria-pressed={selected}
+              className={
+                "flex flex-col items-center rounded border p-1.5 text-xs " +
+                (selected ? "border-[#9b2fae] bg-[#f3e9f6]" : "border-gray-200 hover:border-gray-300")
+              }
+            >
+              <span className="flex h-14 w-14 items-center justify-center overflow-hidden bg-[repeating-conic-gradient(#f3f3f3_0_25%,#fff_0_50%)] bg-[length:12px_12px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={srcOf(o)} alt={`${label} ${o}`} className={imgClass} />
+              </span>
+              <span className={"mt-1 " + (selected ? "text-[#9b2fae]" : "text-gray-500")}>{o}</span>
             </button>
           );
         })}
@@ -519,12 +570,27 @@ function StepVenue({ g, set, tvars, deceasedFull, mournerFull, editSlug }: { g: 
       </Sec>
       <Sec title="祭壇設定（レイヤー）">
         <PortraitUpload g={g} set={set} editSlug={editSlug} />
-        <p className="text-xs text-gray-500">※ 各レイヤー（額縁・花・背景）の画像素材は最後にまとめて差し込みます。</p>
+        {/* 選択中のレイヤーを合成したプレビュー（実際のオンライン式場と同じ見え方） */}
+        <div>
+          <p className="text-sm text-gray-600">プレビュー</p>
+          <div className="mt-2 rounded border bg-white p-2">
+            <AltarView
+              altar={{
+                frame: g("frame") || "黒",
+                sideFlower: g("side") || "黒",
+                center: g("center") || "焼香(黒)",
+                top: g("top") || "黒",
+                background: g("background") || "七宝",
+                portraitPath: g("portraitPath") || undefined,
+              }}
+            />
+          </div>
+        </div>
         <FramePicker g={g} set={set} />
-        <Pills label="花飾り（左右）" k="side" options={SIDE} g={g} set={set} required />
-        <Pills label="祭壇（中央）" k="center" options={CENTERS} g={g} set={set} required />
-        <Pills label="天板" k="top" options={["黒", "木目"]} g={g} set={set} required />
-        <Pills label="背景" k="background" options={BACKGROUNDS} g={g} set={set} required />
+        <ImagePicker label="花飾り（左右）" k="side" options={SIDE} srcOf={sideFlowerSrc} g={g} set={set} />
+        <ImagePicker label="祭壇（中央）" k="center" options={CENTERS} srcOf={centerSrc} g={g} set={set} />
+        <ImagePicker label="天板" k="top" options={["黒", "木目"]} srcOf={topSrc} g={g} set={set} imgClass="h-10 w-14 object-contain" />
+        <ImagePicker label="背景" k="background" options={BACKGROUNDS} srcOf={backgroundSrc} g={g} set={set} imgClass="h-14 w-11 object-cover" />
       </Sec>
     </>
   );
