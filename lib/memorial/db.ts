@@ -1,4 +1,6 @@
 import "server-only";
+import { headers } from "next/headers";
+import { createHash } from "crypto";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 
 export function dbEnabled(): boolean {
@@ -20,11 +22,69 @@ export async function resolveMemorialId(slug: string): Promise<string | null> {
   return data.id as string;
 }
 
-/** オンライン式場の閲覧（入場）を記録 */
+// 入場カウントの重複除外ウィンドウ（同一訪問者は30分以内は再カウントしない）
+const VIEW_DEDUP_MINUTES = 30;
+
+/** リクエストの接続元IPをソルト付きでハッシュ化（生IPは保存しない）。取得不可なら null。
+ *  ランタイム非依存: Web Crypto(crypto.subtle)を優先し、失敗時のみ Node createHash。 */
+async function getIpHash(): Promise<string | null> {
+  try {
+    const h = await headers();
+    // Vercel/プロキシ経由のクライアントIP。複数ヘッダをフォールバック。
+    const cand = [
+      h.get("x-forwarded-for"),
+      h.get("x-vercel-forwarded-for"),
+      h.get("x-real-ip"),
+      h.get("cf-connecting-ip"),
+    ];
+    let ip = "";
+    for (const v of cand) {
+      const first = (v ?? "").split(",")[0].trim();
+      if (first) { ip = first; break; }
+    }
+    if (!ip) return null;
+    const salt = process.env.VIEW_HASH_SALT ?? "atsougi-view";
+    const input = `${salt}:${ip}`;
+    // Web Crypto（Node20+ / Edge 両対応）
+    try {
+      const subtle = globalThis.crypto?.subtle;
+      if (subtle) {
+        const buf = await subtle.digest("SHA-256", new TextEncoder().encode(input));
+        return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      }
+    } catch {
+      /* fall through to Node crypto */
+    }
+    return createHash("sha256").update(input).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+/** オンライン式場の閲覧（入場）を記録。
+ *  同一IP（ハッシュ）が30分以内に閲覧済みなら再カウントしない＝訪問者単位のカウント。 */
 export async function logView(slug: string, kind: "obituary" | "venue" = "venue"): Promise<void> {
   if (!dbEnabled()) return;
   const mid = await resolveMemorialId(slug);
-  if (mid) await insertRow("memorial_views", { memorial_id: mid, kind });
+  if (!mid) return;
+
+  const ipHash = await getIpHash();
+  if (ipHash) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = createAdminClient() as unknown as { from: (t: string) => any };
+    const since = new Date(Date.now() - VIEW_DEDUP_MINUTES * 60 * 1000).toISOString();
+    const { data: recent } = await db
+      .from("memorial_views")
+      .select("id")
+      .eq("memorial_id", mid)
+      .eq("kind", kind)
+      .eq("ip_hash", ipHash)
+      .gte("created_at", since)
+      .limit(1);
+    if (recent && recent.length > 0) return; // 30分以内の同一訪問者はカウントしない
+  }
+
+  await insertRow("memorial_views", { memorial_id: mid, kind, ip_hash: ipHash });
 }
 
 // 供花・供物の商品マスタ（葬儀社ごと）。現状は単一葬儀社のためデモIDで絞る。
