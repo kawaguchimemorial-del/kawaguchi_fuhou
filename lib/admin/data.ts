@@ -137,6 +137,48 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
     return CEREMONIES;
   }
 }
+export interface AllOrderRow {
+  mournerName: string;
+  deceasedName: string;
+  createdAt: string;
+  status: string;
+  ordererName: string;
+  namePlate: string;
+  address: string;
+  payment: string;
+  amountJpy: number;
+}
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  captured: "決済完了", authorized: "与信中", canceled: "キャンセル", error: "エラー", pending_confirm: "受付",
+};
+/** 葬儀社全体の供花・供物 注文一覧（offering_orders × memorials × deceased）。 */
+export async function listAllOrders(): Promise<AllOrderRow[]> {
+  const c = await db();
+  if (!c) return [];
+  const { data } = await c
+    .from("offering_orders")
+    .select(
+      "product_name,quantity,unit_price_jpy,orderer_name,company,address,name_plate_text,status,created_at,memorials!inner(funeral_home_id,announce_mourner_name,deceased(name_kanji))"
+    )
+    .eq("memorials.funeral_home_id", DEMO_FUNERAL_HOME_ID)
+    .order("created_at", { ascending: false });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => {
+    const m = Array.isArray(r.memorials) ? r.memorials[0] : r.memorials;
+    const dec = m && (Array.isArray(m.deceased) ? m.deceased[0] : m.deceased);
+    return {
+      mournerName: (m?.announce_mourner_name ?? "").replace(/^喪主\s*/, "") || "—",
+      deceasedName: dec?.name_kanji ?? "—",
+      createdAt: r.created_at,
+      status: ORDER_STATUS_LABEL[r.status] ?? r.status ?? "",
+      ordererName: [r.company, r.orderer_name].filter(Boolean).join(" ") || "—",
+      namePlate: r.name_plate_text ?? "",
+      address: r.address ?? "",
+      payment: "オンラインカード決済",
+      amountJpy: (r.unit_price_jpy ?? 0) * (r.quantity ?? 1),
+    };
+  });
+}
 export async function listKoden(): Promise<KodenEntry[]> {
   return KODEN;
 }
