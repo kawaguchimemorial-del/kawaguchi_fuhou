@@ -127,6 +127,35 @@ export async function getPublicProducts(type?: "供花" | "供物"): Promise<Pub
   }));
 }
 
+export interface PublicMessage {
+  senderName: string;
+  body: string;
+  imagePaths: string[];
+  createdAt: string;
+}
+/** 公開用のお悔やみメッセージ一覧（非表示/却下を除く）。service_role で取得。 */
+export async function getPublicMessages(slug: string): Promise<PublicMessage[]> {
+  if (!dbEnabled()) return [];
+  const mid = await resolveMemorialId(slug);
+  if (!mid) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createAdminClient() as unknown as { from: (t: string) => any };
+  const { data, error } = await db
+    .from("condolence_messages")
+    .select("sender_name,body,image_paths,created_at,moderation_status")
+    .eq("memorial_id", mid)
+    .in("moderation_status", ["pending", "approved"])
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((r) => ({
+    senderName: r.sender_name ?? "匿名",
+    body: r.body ?? "",
+    imagePaths: Array.isArray(r.image_paths) ? r.image_paths : [],
+    createdAt: r.created_at,
+  }));
+}
+
 /** 任意テーブルへ1行INSERT（service_role） */
 export async function insertRow(table: string, row: Record<string, unknown>): Promise<string | null> {
   if (!dbEnabled()) return null;

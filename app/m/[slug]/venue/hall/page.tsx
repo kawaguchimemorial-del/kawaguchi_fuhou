@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { getPublicMemorial } from "@/lib/memorial/data";
-import { religionVocab } from "@/lib/memorial/religion";
 import { TestBanner, GoldButton, ShareRow, SiteFooter } from "@/components/guest/parts";
 import { AltarView } from "@/components/guest/AltarView";
 import { AlbumGallery } from "@/components/guest/AlbumGallery";
+import { HlsPlayer } from "@/components/guest/HlsPlayer";
 import { logView } from "@/lib/memorial/db";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { Memorial } from "@/lib/memorial/types";
@@ -18,7 +18,6 @@ export default async function VenueHall({ params }: Params) {
   const m = await getPublicMemorial(slug);
   if (!m || !m.venue) notFound();
   const v = m.venue;
-  const vocab = religionVocab(m.religionType);
   await logView(slug, "venue"); // 入場（閲覧）を記録
 
   return (
@@ -41,13 +40,6 @@ export default async function VenueHall({ params }: Params) {
           <AltarView altar={v.altar} portraitAlt={m.deceased.portraitAlt} interactive />
         </div>
 
-        {/* ご記帳して参拝を記録に残す導線 */}
-        <div className="mt-4 text-center">
-          <a href={`/m/${m.slug}/worship`} className="text-sm text-[var(--accent)] underline">
-            ご記帳して{vocab.worshipLabel}を残す ›
-          </a>
-        </div>
-
         {/* ご記帳・メッセージ受付 */}
         <section className="mt-10 bg-[var(--card)] px-6 py-8 text-center">
           <h2 className="font-serif text-xl text-[var(--primary)]">
@@ -59,8 +51,14 @@ export default async function VenueHall({ params }: Params) {
             <br />
             故人・ご遺族へメッセージやお写真もお送りいただけます。
           </p>
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <GoldButton href={`/m/${m.slug}/message`}>受付はこちら　›</GoldButton>
+            <a
+              href={`/m/${m.slug}/messages`}
+              className="inline-block rounded-sm border border-[var(--accent)] px-6 py-3 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-white"
+            >
+              頂いたご記帳の一覧　›
+            </a>
           </div>
         </section>
 
@@ -95,15 +93,7 @@ export default async function VenueHall({ params }: Params) {
             <div className="mt-4 space-y-6">
               {(v.videos ?? []).map((mv, i) => (
                 <figure key={`vi-${i}`}>
-                  <div className="relative w-full overflow-hidden rounded" style={{ paddingTop: "56.25%" }}>
-                    <iframe
-                      src={`https://player.vimeo.com/video/${mv.vimeoId}`}
-                      className="absolute inset-0 h-full w-full"
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      title={mv.title ?? `動画${i + 1}`}
-                    />
-                  </div>
+                  <HlsPlayer src={`/api/vid/${mv.vimeoId}`} title={mv.title ?? `動画${i + 1}`} />
                   {mv.title && <figcaption className="mt-2 text-center text-sm text-[var(--muted)]">{mv.title}</figcaption>}
                 </figure>
               ))}

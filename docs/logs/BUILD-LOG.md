@@ -320,3 +320,9 @@
 - 閲覧数指標を式場入場(venue)から「訃報案内(obituary)の閲覧者数」に変更。訃報ページ(/m/[slug])に logView(slug,"obituary") を追加し記録開始。葬儀詳細・閲覧一覧を kind=obituary で集計（累計・直近30分、同一IP=1）。ラベルを「訃報案内 閲覧数一覧/閲覧一覧」に。
 - 入場カウント修正: memorial_views.ip_hash 列を pooler(aws-1-ap-northeast-2) 経由で適用。getIpHash をランタイム非依存(Web Crypto)＋複数ヘッダ(x-vercel-forwarded-for等)対応に。※このpushは認証失効のためユーザー手動push待ち。
 - 焼香の煙: パフ4→7本、青白い薄グレー(生成り背景でも視認)、box-shadow輪郭、自動停止13s。
+
+## 2026-07-05 式場のご記帳/メッセージ強化・過去動画の管理再生
+- 式場: 「ご記帳して焼香を残す」リンクを削除。「受付はこちら」の横に「頂いたご記帳の一覧」ボタン追加。
+- お悔やみメッセージ: 画像を最大3枚(各5MB)アップロード可能に。クライアントからSupabase Storage(condolenceバケット, public, 5MB/画像mime制限, anon insertポリシー)へ直アップし、condolence_messages.image_paths(text[])に保存。送信後は /m/[slug]/messages(一覧)へ遷移。
+- メッセージ一覧ページ /m/[slug]/messages を新設(名前/メッセージ/画像を一覧、非表示・却下を除く)。getPublicMessages(service_role)。
+- 過去施行のVimeo動画は at-sougi ドメインにリファラ制限され当サイトから再生不可 → サーバープロキシ /api/vid/[id] で at-sougi リファラを付与しHLS(マスター/プレイリスト/セグメント)を中継、SSRF対策(Vimeoホスト限定)。クライアントは hls.js(HlsPlayer, クリックで再生)。管理式場ビュー・公開式場の動画をこのプレイヤーに差し替え。ローカルで再生(readyState4)確認。

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdminMemorial } from "@/lib/admin/data";
 import { AltarView } from "@/components/guest/AltarView";
 import { AlbumGallery } from "@/components/guest/AlbumGallery";
+import { HlsPlayer } from "@/components/guest/HlsPlayer";
 
 export const dynamic = "force-dynamic";
 
@@ -54,9 +55,10 @@ export default async function AdminVenueView({ params }: Params) {
             <SectionHeading>動画</SectionHeading>
             <div className="mt-4 space-y-6">
               {(v.videos ?? []).map((mv, i) => (
-                <div key={`vi-${i}`} className="relative w-full overflow-hidden rounded" style={{ paddingTop: "56.25%" }}>
-                  <iframe src={`https://player.vimeo.com/video/${mv.vimeoId}`} className="absolute inset-0 h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={mv.title ?? `動画${i + 1}`} />
-                </div>
+                <figure key={`vi-${i}`}>
+                  <HlsPlayer src={`/api/vid/${mv.vimeoId}`} title={mv.title ?? `動画${i + 1}`} />
+                  {mv.title && <figcaption className="mt-2 text-center text-sm text-[var(--muted)]">{mv.title}</figcaption>}
+                </figure>
               ))}
               {(v.youtube ?? []).map((yt, i) => (
                 <div key={`yt-${i}`} className="relative w-full overflow-hidden rounded" style={{ paddingTop: "56.25%" }}>

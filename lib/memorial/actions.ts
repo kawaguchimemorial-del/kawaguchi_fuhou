@@ -67,7 +67,20 @@ const messageSchema = z.object({
   slug: z.string().min(1),
   senderName: z.string().trim().min(1, "お名前をご入力ください").max(40),
   body: z.string().trim().min(1, "メッセージをご入力ください").max(1000),
+  // クライアントでSupabase Storageへアップ済みの画像URL(JSON配列文字列, 最大3件)
+  imagePaths: z.string().optional().or(z.literal("")),
 });
+
+function parseImagePaths(raw?: string): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((u) => typeof u === "string" && /^https?:\/\//.test(u)).slice(0, 3);
+  } catch {
+    return [];
+  }
+}
 
 export async function submitMessage(
   _prev: ActionResult | null,
@@ -78,6 +91,7 @@ export async function submitMessage(
     return { ok: false, errors: fieldErrors(parsed.error) };
   }
   const { slug, senderName, body } = parsed.data;
+  const imagePaths = parseImagePaths(parsed.data.imagePaths);
   const m = await getPublicMemorial(slug);
   if (!m) return { ok: false, errors: { _form: "対象が見つかりませんでした。" } };
 
@@ -88,6 +102,7 @@ export async function submitMessage(
         memorial_id: mid,
         sender_name: senderName,
         body,
+        image_paths: imagePaths,
         moderation_status: "pending",
       });
   }
