@@ -315,3 +315,8 @@
   - メディア有り式場63件を巡回。遺影(portrait-generated)は素の顔写真でクローン祭壇にそのまま合成可。動画はVimeo(vimeoId)。
 - クローン改修: オンライン式場ページに動画(Vimeo/YouTube)表示セクション追加。/admin/orders をoffering_orders接続(listAllOrders)で全注文表示。
 - 検証: 本番 kawaguchi-fuhou.vercel.app の葬儀一覧(206)/葬儀詳細/供花供物注文一覧(337)/オンライン式場(遺影・アルバム)をPlaywrightで表示確認。`npx tsc --noEmit`パス。
+
+## 2026-07-05 閲覧数を「訃報案内の閲覧者数」に変更＋煙調整
+- 閲覧数指標を式場入場(venue)から「訃報案内(obituary)の閲覧者数」に変更。訃報ページ(/m/[slug])に logView(slug,"obituary") を追加し記録開始。葬儀詳細・閲覧一覧を kind=obituary で集計（累計・直近30分、同一IP=1）。ラベルを「訃報案内 閲覧数一覧/閲覧一覧」に。
+- 入場カウント修正: memorial_views.ip_hash 列を pooler(aws-1-ap-northeast-2) 経由で適用。getIpHash をランタイム非依存(Web Crypto)＋複数ヘッダ(x-vercel-forwarded-for等)対応に。※このpushは認証失効のためユーザー手動push待ち。
+- 焼香の煙: パフ4→7本、青白い薄グレー(生成り背景でも視認)、box-shadow輪郭、自動停止13s。

@@ -23,7 +23,7 @@ export default async function CeremonyDetail({ params }: Params) {
   const homeName = await getFuneralHomeName();
   const [orders, views, guestbook, mourner] = await Promise.all([
     listOrders(id),
-    getViewStats(id),
+    getViewStats(id, "obituary"),
     listGuestbook(id),
     getMournerAccount(id),
   ]);
@@ -125,16 +125,16 @@ export default async function CeremonyDetail({ params }: Params) {
           : <p className="text-sm text-gray-400">写真は登録されていません。</p>}
       </Section>
 
-      {/* 閲覧数一覧 */}
+      {/* 訃報案内 閲覧数一覧 */}
       <div className="mb-3 rounded-lg bg-white p-5 shadow-sm">
-        <p className="mb-3 font-bold">オンライン式場閲覧数一覧</p>
+        <p className="mb-3 font-bold">訃報案内 閲覧数一覧</p>
         <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded border p-3 text-center">
-            <p className="text-xs text-gray-500">累計入場者数<br /><span className="text-[10px]">（同一IP=1）</span></p>
+            <p className="text-xs text-gray-500">累計閲覧者数<br /><span className="text-[10px]">（同一IP=1）</span></p>
             <p className="mt-1 text-2xl font-bold">{views.uniqueTotal}<span className="ml-0.5 text-sm font-normal">名</span></p>
           </div>
           <div className="rounded border p-3 text-center">
-            <p className="text-xs text-gray-500">直近30分の<br />入場者数</p>
+            <p className="text-xs text-gray-500">直近30分の<br />閲覧者数</p>
             <p className="mt-1 text-2xl font-bold">{views.recent30}<span className="ml-0.5 text-sm font-normal">名</span></p>
           </div>
           <div className="rounded border p-3 text-center">
@@ -143,7 +143,7 @@ export default async function CeremonyDetail({ params }: Params) {
           </div>
         </div>
         <div className="flex gap-2 text-sm">
-          <Link href={`/admin/ceremonies/${id}/entries`} className="rounded border px-4 py-2">入場一覧（{views.uniqueTotal}）</Link>
+          <Link href={`/admin/ceremonies/${id}/entries`} className="rounded border px-4 py-2">閲覧一覧（{views.uniqueTotal}）</Link>
           <Link href={`/admin/ceremonies/${id}/guestbook`} className="rounded border px-4 py-2">芳名録（{guestbook.length}）</Link>
         </div>
       </div>

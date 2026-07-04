@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicMemorial } from "@/lib/memorial/data";
+import { logView } from "@/lib/memorial/db";
 import { formatJpTime, isPast } from "@/lib/format";
 import { toWareki, toWarekiDate } from "@/lib/wareki";
 import { TestBanner, GoldButton, ShareRow, SiteFooter } from "@/components/guest/parts";
@@ -24,6 +25,7 @@ export default async function ObituaryPage({ params }: Params) {
   const { slug } = await params;
   const m = await getPublicMemorial(slug);
   if (!m) notFound();
+  await logView(slug, "obituary"); // 訃報案内の閲覧を記録
 
   const shareUrl = `${await getSiteOrigin()}/m/${m.slug}`;
   const flowerOpen = !m.flowerDecline && !isPast(m.offeringAcceptUntil);
