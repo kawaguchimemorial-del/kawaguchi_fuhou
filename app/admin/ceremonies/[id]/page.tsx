@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getAdminMemorial, getFuneralHomeName, listOrders, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
+import { getAdminMemorial, getFuneralHomeName, listOrders, getViewStats, listGuestbook, type OrderRow } from "@/lib/admin/data";
 import { getMournerAccount } from "@/lib/admin/mourner-actions";
 import { MournerAccount } from "@/components/admin/MournerAccount";
 import { AlbumGallery } from "@/components/guest/AlbumGallery";
@@ -23,7 +23,7 @@ export default async function CeremonyDetail({ params }: Params) {
   const homeName = await getFuneralHomeName();
   const [orders, views, guestbook, mourner] = await Promise.all([
     listOrders(id),
-    countViews(id),
+    getViewStats(id),
     listGuestbook(id),
     getMournerAccount(id),
   ]);
@@ -128,9 +128,22 @@ export default async function CeremonyDetail({ params }: Params) {
       {/* 閲覧数一覧 */}
       <div className="mb-3 rounded-lg bg-white p-5 shadow-sm">
         <p className="mb-3 font-bold">オンライン式場閲覧数一覧</p>
-        <p className="mb-3 text-sm text-gray-600">入場（閲覧）{views}回　／　芳名録 {guestbook.length}件</p>
+        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded border p-3 text-center">
+            <p className="text-xs text-gray-500">累計入場者数<br /><span className="text-[10px]">（同一IP=1）</span></p>
+            <p className="mt-1 text-2xl font-bold">{views.uniqueTotal}<span className="ml-0.5 text-sm font-normal">名</span></p>
+          </div>
+          <div className="rounded border p-3 text-center">
+            <p className="text-xs text-gray-500">直近30分の<br />入場者数</p>
+            <p className="mt-1 text-2xl font-bold">{views.recent30}<span className="ml-0.5 text-sm font-normal">名</span></p>
+          </div>
+          <div className="rounded border p-3 text-center">
+            <p className="text-xs text-gray-500">芳名録</p>
+            <p className="mt-1 text-2xl font-bold">{guestbook.length}<span className="ml-0.5 text-sm font-normal">件</span></p>
+          </div>
+        </div>
         <div className="flex gap-2 text-sm">
-          <Link href={`/admin/ceremonies/${id}/entries`} className="rounded border px-4 py-2">入場一覧（{views}）</Link>
+          <Link href={`/admin/ceremonies/${id}/entries`} className="rounded border px-4 py-2">入場一覧（{views.uniqueTotal}）</Link>
           <Link href={`/admin/ceremonies/${id}/guestbook`} className="rounded border px-4 py-2">芳名録（{guestbook.length}）</Link>
         </div>
       </div>

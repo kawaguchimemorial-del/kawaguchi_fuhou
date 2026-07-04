@@ -372,10 +372,44 @@ export async function listKodenForMemorial(slug: string): Promise<KodenRow[]> {
 }
 
 export async function countViews(slug: string): Promise<number> {
+  return (await getViewStats(slug)).uniqueTotal;
+}
+
+export interface ViewEntry { createdAt: string; visitor: string }
+export interface ViewStats {
+  uniqueTotal: number;   // 累計入場者数（同一IP=1）
+  recent30: number;      // 直近30分の入場者数（同一IP=1）
+  totalVisits: number;   // 記録された入場回数（30分デデュープ後の行数）
+  entries: ViewEntry[];  // 入場一覧（新しい順）
+}
+/** オンライン式場の入場統計。ip_hash 単位でユニーク化（同一IP=1）。 */
+export async function getViewStats(slug: string, kind: "venue" | "obituary" = "venue"): Promise<ViewStats> {
+  const empty: ViewStats = { uniqueTotal: 0, recent30: 0, totalVisits: 0, entries: [] };
   const c = await db();
-  if (!c) return 0;
+  if (!c) return empty;
   const mid = await memorialIdBySlug(slug);
-  if (!mid) return 0;
-  const { count } = await c.from("memorial_views").select("id", { count: "exact", head: true }).eq("memorial_id", mid);
-  return count ?? 0;
+  if (!mid) return empty;
+  const { data } = await c
+    .from("memorial_views")
+    .select("ip_hash,created_at")
+    .eq("memorial_id", mid)
+    .eq("kind", kind)
+    .order("created_at", { ascending: false })
+    .limit(10000);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (data ?? []) as { ip_hash: string | null; created_at: string }[];
+  const since = Date.now() - 30 * 60 * 1000;
+  const uniq = new Set<string>();
+  const uniqRecent = new Set<string>();
+  for (const r of rows) {
+    const key = r.ip_hash ?? `row:${r.created_at}`;
+    uniq.add(key);
+    if (new Date(r.created_at).getTime() >= since) uniqRecent.add(key);
+  }
+  return {
+    uniqueTotal: uniq.size,
+    recent30: uniqRecent.size,
+    totalVisits: rows.length,
+    entries: rows.map((r) => ({ createdAt: r.created_at, visitor: r.ip_hash ? r.ip_hash.slice(0, 8) : "—" })),
+  };
 }
