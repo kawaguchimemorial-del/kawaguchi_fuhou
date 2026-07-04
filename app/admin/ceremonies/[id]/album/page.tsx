@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublicMemorial } from "@/lib/memorial/data";
+
 import { AlbumManager } from "@/components/admin/AlbumManager";
+import { getAdminMemorial } from "@/lib/admin/data";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
 // アルバム登録・編集（オンライン式場で公開する故人の思い出写真・最大30枚）
 export default async function AlbumPage({ params }: Params) {
   const { id } = await params; // id = slug
-  const m = await getPublicMemorial(id);
+  const m = await getAdminMemorial(id);
   if (!m) notFound();
 
   return (

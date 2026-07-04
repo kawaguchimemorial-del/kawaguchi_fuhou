@@ -179,6 +179,55 @@ export async function listAllOrders(): Promise<AllOrderRow[]> {
     };
   });
 }
+// ===== 管理(バックオフィス)用: 公開状態に関わらず案件を取得 =====
+// 公開ゲスト(get_public_obituary)は published のみだが、管理は下書き/公開終了も閲覧・編集する。
+export async function getAdminMemorial(slug: string): Promise<import("@/lib/memorial/types").Memorial | null> {
+  const c = await db();
+  if (!c) return null;
+  const { data, error } = await c
+    .from("memorials")
+    .select(
+      "id,slug,status,access_level,noindex_flag,religion_type,funeral_style,koden_decline,flower_decline,attend_decline,koden_accept_until,offering_accept_until,published_at,obituary_title,obituary_body,announce_mourner_name,venue,funeral_homes(name,phone,contact_email),deceased(name_kanji,name_kana,age_kazoe,age_full,death_date,portrait_path,portrait_alt,relation_to_mourner,bio_text),funeral_events(event_type,start_at,end_at,datetime_label,venue_name,venue_address,map_url,reception_time,access_text,parking_note,sort_order)"
+    )
+    .eq("slug", slug)
+    .is("deleted_at", null)
+    .single();
+  if (error || !data) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const m = data as any;
+  const dec = Array.isArray(m.deceased) ? m.deceased[0] : m.deceased;
+  const fh = Array.isArray(m.funeral_homes) ? m.funeral_homes[0] : m.funeral_homes;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const events = ((m.funeral_events ?? []) as any[])
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((e, i) => ({
+      id: `e${i}`, eventType: e.event_type, startAt: e.start_at ?? undefined, endAt: e.end_at ?? undefined,
+      datetimeLabel: e.datetime_label ?? undefined, venueName: e.venue_name ?? undefined,
+      venueAddress: e.venue_address ?? undefined, mapUrl: e.map_url ?? undefined,
+      receptionTime: e.reception_time ?? undefined, accessText: e.access_text ?? undefined, parkingNote: e.parking_note ?? undefined,
+    }));
+  return {
+    id: m.id, slug: m.slug, status: m.status, testMode: false,
+    accessLevel: m.access_level, noindex: m.noindex_flag, religionType: m.religion_type,
+    funeralStyle: m.funeral_style ?? undefined,
+    obituaryTitle: m.obituary_title || "訃報", obituaryBody: m.obituary_body ?? undefined,
+    kodenDecline: m.koden_decline, flowerDecline: m.flower_decline, attendDecline: m.attend_decline,
+    kodenAcceptUntil: m.koden_accept_until ?? undefined, offeringAcceptUntil: m.offering_accept_until ?? undefined,
+    publishedAt: m.published_at ?? undefined,
+    funeralHomeName: fh?.name ?? undefined,
+    funeralHomeContact: { phone: fh?.phone ?? undefined, email: fh?.contact_email ?? undefined },
+    chiefMourner: m.announce_mourner_name ? { nameKanji: String(m.announce_mourner_name).replace(/^喪主\s*/, "") } : undefined,
+    venue: m.venue ?? undefined,
+    deceased: {
+      nameKanji: dec?.name_kanji ?? "—", nameKana: dec?.name_kana ?? undefined,
+      ageKazoe: dec?.age_kazoe ?? undefined, ageFull: dec?.age_full ?? undefined,
+      deathDate: dec?.death_date ?? undefined, portraitPath: dec?.portrait_path ?? undefined,
+      portraitAlt: dec?.portrait_alt ?? undefined, relationToMourner: dec?.relation_to_mourner ?? undefined,
+      bioText: dec?.bio_text ?? undefined,
+    },
+    events,
+  };
+}
 export async function listKoden(): Promise<KodenEntry[]> {
   return KODEN;
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublicMemorial } from "@/lib/memorial/data";
-import { getFuneralHomeName, listOrders, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
+
+import { getAdminMemorial, getFuneralHomeName, listOrders, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
 import { getMournerAccount } from "@/lib/admin/mourner-actions";
 import { MournerAccount } from "@/components/admin/MournerAccount";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -16,7 +16,7 @@ const PURPLE = "#9b2fae";
 // 参照: .claude/skills/atsougi-spec/SKILL.md
 export default async function CeremonyDetail({ params }: Params) {
   const { id } = await params; // id = slug
-  const m = await getPublicMemorial(id);
+  const m = await getAdminMemorial(id);
   if (!m) notFound();
   const homeName = await getFuneralHomeName();
   const [orders, views, guestbook, mourner] = await Promise.all([
