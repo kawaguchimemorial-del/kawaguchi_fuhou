@@ -83,6 +83,8 @@ export interface OnlineVenue {
   ceremonyPhotoPath?: string; // 葬儀の写真（円形・旧仕様。scenePathsへ移行）
   scenePaths?: string[]; // 葬儀の様子（複数写真）
   albumPaths: string[]; // アルバム
+  videos?: { title?: string; vimeoId: string }[]; // 動画（Vimeo）
+  youtube?: { title?: string; url: string }[]; // YouTubeライブ配信
   altar: AltarConfig;
 }
 

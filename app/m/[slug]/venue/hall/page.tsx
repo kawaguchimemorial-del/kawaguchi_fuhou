@@ -88,6 +88,43 @@ export default async function VenueHall({ params }: Params) {
           </section>
         )}
 
+        {/* 動画（Vimeo）／YouTubeライブ配信 */}
+        {((v.videos && v.videos.length > 0) || (v.youtube && v.youtube.length > 0)) && (
+          <section className="mt-10">
+            <SectionHeading>動画</SectionHeading>
+            <div className="mt-4 space-y-6">
+              {(v.videos ?? []).map((mv, i) => (
+                <figure key={`vi-${i}`}>
+                  <div className="relative w-full overflow-hidden rounded" style={{ paddingTop: "56.25%" }}>
+                    <iframe
+                      src={`https://player.vimeo.com/video/${mv.vimeoId}`}
+                      className="absolute inset-0 h-full w-full"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                      title={mv.title ?? `動画${i + 1}`}
+                    />
+                  </div>
+                  {mv.title && <figcaption className="mt-2 text-center text-sm text-[var(--muted)]">{mv.title}</figcaption>}
+                </figure>
+              ))}
+              {(v.youtube ?? []).map((yt, i) => (
+                <figure key={`yt-${i}`}>
+                  <div className="relative w-full overflow-hidden rounded" style={{ paddingTop: "56.25%" }}>
+                    <iframe
+                      src={yt.url}
+                      className="absolute inset-0 h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={yt.title ?? `ライブ配信${i + 1}`}
+                    />
+                  </div>
+                  {yt.title && <figcaption className="mt-2 text-center text-sm text-[var(--muted)]">{yt.title}</figcaption>}
+                </figure>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* 喪主挨拶 */}
         <section className="mt-12">
           <SectionHeading>{v.greetingHeading}</SectionHeading>
