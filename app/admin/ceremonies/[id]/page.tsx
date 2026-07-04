@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getAdminMemorial, getFuneralHomeName, listOrders, countViews, listGuestbook, type OrderRow } from "@/lib/admin/data";
 import { getMournerAccount } from "@/lib/admin/mourner-actions";
 import { MournerAccount } from "@/components/admin/MournerAccount";
+import { AlbumGallery } from "@/components/guest/AlbumGallery";
+import { ClickableRow } from "@/components/admin/ClickableRow";
 import { getSiteOrigin } from "@/lib/site-url";
 import { toWarekiDate } from "@/lib/wareki";
 
@@ -96,7 +98,7 @@ export default async function CeremonyDetail({ params }: Params) {
       </Section>
 
       {m.venue && (
-        <Section title="オンライン式場" status="登録済" editHref={`${editBase}?step=4`}>
+        <Section title="オンライン式場" status="登録済" editHref={`${editBase}?step=4`} viewHref={`/admin/ceremonies/${id}/venue`} viewLabel="オンライン式場を表示">
           <Row label="プレビュー"><a href={venueUrl} target="_blank" className="text-[#9b2fae] underline">プレビューを表示する ↗</a></Row>
           <Row label="式場URL"><span className="break-all text-xs">{venueUrl}</span></Row>
           <Row label="式場QR"><a href={`/admin/ceremonies/${id}/qr?url=${encodeURIComponent(venueUrl)}&dl=1`} className="text-[#9b2fae] underline">QRコードダウンロード</a></Row>
@@ -111,8 +113,17 @@ export default async function CeremonyDetail({ params }: Params) {
         </Section>
       )}
 
-      <Section title="葬儀の様子" status={`${sceneCount}件`} editHref={sceneHref} />
-      <Section title="アルバム" status={`${m.venue?.albumPaths?.length ?? 0}件`} editHref={albumHref} />
+      <Section title="葬儀の様子" status={`${sceneCount}件`} editHref={sceneHref}>
+        {(() => {
+          const scenes = m.venue?.scenePaths && m.venue.scenePaths.length > 0 ? m.venue.scenePaths : m.venue?.ceremonyPhotoPath ? [m.venue.ceremonyPhotoPath] : [];
+          return scenes.length > 0 ? <AlbumGallery paths={scenes} /> : <p className="text-sm text-gray-400">写真は登録されていません。</p>;
+        })()}
+      </Section>
+      <Section title="アルバム" status={`${m.venue?.albumPaths?.length ?? 0}件`} editHref={albumHref}>
+        {m.venue?.albumPaths && m.venue.albumPaths.length > 0
+          ? <AlbumGallery paths={m.venue.albumPaths} />
+          : <p className="text-sm text-gray-400">写真は登録されていません。</p>}
+      </Section>
 
       {/* 閲覧数一覧 */}
       <div className="mb-3 rounded-lg bg-white p-5 shadow-sm">
@@ -140,16 +151,22 @@ function Section({
   title,
   status,
   editHref,
+  viewHref,
+  viewLabel,
   children,
 }: {
   title: string;
   status: string;
   editHref: string;
+  viewHref?: string;
+  viewLabel?: string;
   children?: React.ReactNode;
 }) {
   const registered = status === "登録済";
+  // 登録済み or 中身(写真等)がある場合は開いておく（0件のみ閉じる）
+  const hasContent = Boolean(children) && status !== "0件";
   return (
-    <details open={registered} className="mb-3 rounded-lg bg-white shadow-sm">
+    <details open={registered || hasContent} className="mb-3 rounded-lg bg-white shadow-sm">
       <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4">
         <span className="flex items-center gap-2 font-bold" style={{ color: PURPLE }}>
           <span className="text-xs">▾</span>{title}
@@ -159,8 +176,11 @@ function Section({
         </span>
       </summary>
       <div className="border-t px-5 py-4">
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
           <Link href={editHref} className="inline-block rounded bg-[#9b2fae] px-4 py-2 text-sm text-white">登録内容を編集</Link>
+          {viewHref && (
+            <Link href={viewHref} className="inline-block rounded border border-[#9b2fae] px-4 py-2 text-sm text-[#9b2fae]">{viewLabel ?? "表示"}</Link>
+          )}
         </div>
         {children}
       </div>
@@ -188,7 +208,7 @@ function OrderListBlock({ title, id, kind, rows }: { title: string; id: string; 
           <a href={`/admin/ceremonies/${id}/orders/export?kind=${kind}&fmt=excel`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">EXCELダウンロード</a>
         </div>
       </div>
-      <p className="text-xs text-gray-500">合計 {rows.length}件 {total.toLocaleString()}円</p>
+      <p className="text-xs text-gray-500">合計 {rows.length}件 {total.toLocaleString()}円{rows.length > 0 && <span className="ml-2 text-gray-400">（行をクリックで詳細）</span>}</p>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[700px] text-left text-xs">
           <thead className="border-b text-gray-500">
@@ -198,8 +218,8 @@ function OrderListBlock({ title, id, kind, rows }: { title: string; id: string; 
             {rows.length === 0 ? (
               <tr><td colSpan={8} className="px-2 py-6 text-center text-gray-400">注文はまだありません。</td></tr>
             ) : (
-              rows.map((r, i) => (
-                <tr key={i}>
+              rows.map((r) => (
+                <ClickableRow key={r.id} href={`/admin/orders/${r.id}`}>
                   <td className="px-2 py-2">{r.productName}</td>
                   <td className="px-2 py-2">{r.quantity}</td>
                   <td className="px-2 py-2">{r.amountJpy.toLocaleString()}円</td>
@@ -208,7 +228,7 @@ function OrderListBlock({ title, id, kind, rows }: { title: string; id: string; 
                   <td className="px-2 py-2 max-w-[10rem] truncate">{r.namePlate}</td>
                   <td className="px-2 py-2 text-gray-500">{new Date(r.createdAt).toLocaleString("ja-JP")}</td>
                   <td className="px-2 py-2 text-gray-500">{r.email}</td>
-                </tr>
+                </ClickableRow>
               ))
             )}
           </tbody>

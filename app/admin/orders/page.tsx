@@ -1,4 +1,5 @@
 import { listAllOrders } from "@/lib/admin/data";
+import { ClickableRow } from "@/components/admin/ClickableRow";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +34,8 @@ export default async function OrdersPage() {
             {rows.length === 0 ? (
               <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">注文はまだありません。</td></tr>
             ) : (
-              rows.map((r, i) => (
-                <tr key={i} className="align-top">
+              rows.map((r) => (
+                <ClickableRow key={r.id} href={`/admin/orders/${r.id}`}>
                   <td className="px-3 py-3">{r.mournerName}</td>
                   <td className="px-3 py-3">{r.deceasedName}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{fmt(r.createdAt)}</td>
@@ -44,7 +45,7 @@ export default async function OrdersPage() {
                   <td className="px-3 py-3 max-w-[220px] truncate" title={r.address}>{r.address}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{r.payment}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{r.amountJpy.toLocaleString()}円</td>
-                </tr>
+                </ClickableRow>
               ))
             )}
           </tbody>
