@@ -60,7 +60,7 @@ export function AltarView({
   }
 
   // 煙は立ちのぼり切ったら止める（ずっとモクモクさせない）。
-  const SMOKE_MS = 11000;
+  const SMOKE_MS = 13000;
   useEffect(() => {
     if (!smoking) return;
     const t = setTimeout(() => setSmoking(false), SMOKE_MS);
@@ -125,10 +125,13 @@ export function AltarView({
             {/* 煙（焼香/線香選択時、お参り後に立ちのぼり、一定時間で止まる） */}
             {hasSmoke && smoking && (
               <div className="pointer-events-none absolute inset-x-0 top-[-190%] h-[230%]">
-                <span className="altar-smoke-puff" style={{ animationDelay: "0s" }} />
-                <span className="altar-smoke-puff" style={{ animationDelay: "0.9s", width: "48%" }} />
-                <span className="altar-smoke-puff" style={{ animationDelay: "1.9s", width: "56%" }} />
-                <span className="altar-smoke-puff" style={{ animationDelay: "3.1s", width: "50%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "0s", width: "50%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "0.6s", width: "44%", left: "46%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "1.2s", width: "54%", left: "54%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "1.9s", width: "48%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "2.6s", width: "56%", left: "47%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "3.3s", width: "50%", left: "53%" }} />
+                <span className="altar-smoke-puff" style={{ animationDelay: "4.1s", width: "46%" }} />
               </div>
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}

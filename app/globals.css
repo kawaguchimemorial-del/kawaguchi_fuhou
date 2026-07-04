@@ -49,21 +49,24 @@ h1, h2, h3 { line-height: 1.5; font-weight: 600; }
 
 /* オンライン祭壇：焼香・線香の煙アニメーション（立ちのぼって消える。無限ループしない） */
 @keyframes altar-smoke {
-  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.5) rotate(-5deg); }
-  15%  { opacity: 0.5; }
-  55%  { opacity: 0.32; }
-  100% { opacity: 0; transform: translate(-50%, -260%) scale(2.1) rotate(6deg); }
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.42) rotate(-5deg); }
+  12%  { opacity: 0.85; }
+  55%  { opacity: 0.6; }
+  100% { opacity: 0; transform: translate(-50%, -270%) scale(2.2) rotate(6deg); }
 }
 .altar-smoke-puff {
   position: absolute;
   left: 50%;
   bottom: 0;
-  width: 64%;
-  aspect-ratio: 1 / 1.4;
+  width: 52%;
+  aspect-ratio: 1 / 1.6;
   border-radius: 9999px;
-  background: radial-gradient(circle at 50% 60%, rgba(222,222,226,0.9), rgba(210,210,216,0.5) 45%, rgba(210,210,216,0) 72%);
-  filter: blur(6px);
+  /* 線香のような青白い（白っぽい）煙。生成り背景でも視認できる薄いブルーグレー。 */
+  background: radial-gradient(circle at 50% 60%, rgba(226,230,238,0.92), rgba(214,219,229,0.6) 45%, rgba(214,219,229,0) 72%);
+  filter: blur(5px);
   transform: translate(-50%, 0);
+  /* うっすら輪郭を出して白背景でも埋もれないように */
+  box-shadow: 0 0 10px 2px rgba(200,206,218,0.35);
   /* 2回だけ立ちのぼって止まる（forwardsで最後は透明のまま保持） */
   animation: altar-smoke 4s ease-out 2 forwards;
   pointer-events: none;
