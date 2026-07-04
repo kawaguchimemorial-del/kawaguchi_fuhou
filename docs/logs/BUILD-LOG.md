@@ -305,3 +305,13 @@
 - 中央素材を種別で出し分け（altar-assets: centerKind）。焼香台は幅広(w-26%)・高め、線香は細く(w-13%)高め、花は中間。位置を上げて天板の上に乗るよう調整。
 - 煙を強化（濃いグレー・不透明度UP）。無限ループをやめ、2回立ちのぼって停止（animation forwards＋11秒でsmoking解除）。
 - 検証: 実葬儀(cb4cea)で焼香/線香プレビューと煙演出をPlaywright確認。`npx tsc --noEmit` パス。
+
+## 2026-07-04 @葬儀 実データを本番へ全件移植
+- @葬儀(funeral.at-sougi.com, 川口典礼本社アカウント)からPlaywrightでログインし、バックエンドAWS AppSync GraphQL(`oupznmtwiffxror7a5yltaxeaq.appsync-api...`)をイントロスペクション。`ceremonies`/`ceremony(id)`/`offeringOrders`/`offeringOrder(id)`のクエリをリプレイして全件抽出。
+- 取得: 葬儀206件・式251・供花供物注文337明細。tmp/scrape/data/*.json に保存。
+- クローンSupabaseへ取り込み(tmp/scrape/30-import.mjs)。memorials/deceased/funeral_events/offering_orders、slug=@葬儀のceremonyId、funeral_home_id=デモID。エラー0。
+  - event_type enum: 枕経→法要、「なし」→除外。religion: formality→religion_type変換。
+- メディア: img.at-sougi.com はCloudFront署名(cookie/クエリ)必須。管理詳細`/my/{uid}/ceremonies/{cid}`が閉鎖案件含め署名URLで全メディア配信 → アコーディオン展開で署名URL捕捉→Node fetch→Supabase Storage(memorial-media, public)へ再ホスト→venue JSONB(altar.portraitPath/albumPaths/scenePaths/videos/youtube)更新。(tmp/scrape/43-admin-media-migrate.mjs)
+  - メディア有り式場63件を巡回。遺影(portrait-generated)は素の顔写真でクローン祭壇にそのまま合成可。動画はVimeo(vimeoId)。
+- クローン改修: オンライン式場ページに動画(Vimeo/YouTube)表示セクション追加。/admin/orders をoffering_orders接続(listAllOrders)で全注文表示。
+- 検証: 本番 kawaguchi-fuhou.vercel.app の葬儀一覧(206)/葬儀詳細/供花供物注文一覧(337)/オンライン式場(遺影・アルバム)をPlaywrightで表示確認。`npx tsc --noEmit`パス。
