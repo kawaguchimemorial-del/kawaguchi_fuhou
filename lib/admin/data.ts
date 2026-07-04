@@ -103,6 +103,8 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
       )
       .eq("funeral_home_id", DEMO_FUNERAL_HOME_ID)
       .is("deleted_at", null)
+      // 公開日(published_at)の降順。未設定は作成日で後ろに回す。
+      .order("published_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
     if (error || !data) return CEREMONIES;
 
