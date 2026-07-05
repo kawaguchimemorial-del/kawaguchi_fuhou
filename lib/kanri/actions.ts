@@ -364,6 +364,61 @@ export async function recordPayment(fd: FormData): Promise<void> {
   revalidatePath(`/kanri/billing/${id}`);
 }
 
+// 入金合計から請求書のpaid_total/statusを再計算
+async function recalcInvoice(c: ReturnType<typeof admin>, invoiceId: string) {
+  const { data: pays } = await c.from("fk_payments").select("amount").eq("invoice_id", invoiceId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const paid = ((pays ?? []) as any[]).reduce((a, p) => a + (p.amount ?? 0), 0);
+  const { data: inv } = await c.from("fk_invoices").select("total").eq("id", invoiceId).single();
+  const total = inv?.total ?? 0;
+  const status = paid <= 0 ? "unpaid" : paid >= total ? "paid" : "partial";
+  await c.from("fk_invoices").update({ paid_total: paid, status }).eq("id", invoiceId);
+}
+
+// ===== 伝票発行（入金伝票＋入金明細） =====
+export async function createPaymentSlip(fd: FormData): Promise<void> {
+  const invoiceId = s(fd, "invoice_id");
+  if (!invoiceId) return;
+  const c = admin();
+  const today = new Date().toISOString().slice(0, 10);
+  let slipNo = s(fd, "slip_no");
+  if (!slipNo) slipNo = `D${today.replace(/-/g, "")}${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  const { data: slip, error } = await c.from("fk_payment_slips").insert({
+    funeral_home_id: KANRI_HOME_ID, invoice_id: invoiceId,
+    source: s(fd, "source"), slip_kind: s(fd, "slip_kind"), performance_no: s(fd, "performance_no"),
+    slip_no: slipNo, issued_on: s(fd, "issued_on") ?? today,
+    addressee: s(fd, "addressee"), honorific: s(fd, "honorific") ?? "様", note: s(fd, "note"),
+    issuer_company: s(fd, "issuer_company"), transfer_name: s(fd, "transfer_name"),
+    summary: s(fd, "summary"), remark: s(fd, "remark"),
+  }).select("id").single();
+  if (error || !slip) return;
+
+  // 入金明細（動的行）: amount[], paid_on[], method[], category[]
+  const amounts = fd.getAll("amount").map((v) => Number(String(v).replace(/,/g, "")));
+  const paidOns = fd.getAll("paid_on").map((v) => String(v));
+  const methods = fd.getAll("method").map((v) => String(v));
+  const categories = fd.getAll("category").map((v) => String(v));
+  const rows = amounts.map((amount, i) => ({
+    slip_id: slip.id, invoice_id: invoiceId, amount: isNaN(amount) ? 0 : amount,
+    paid_on: paidOns[i] || null, method: methods[i] || null, category: categories[i] || null, sort_order: i,
+  })).filter((r) => r.amount !== 0 || r.paid_on);
+  if (rows.length) await c.from("fk_payments").insert(rows);
+
+  await recalcInvoice(c, invoiceId);
+  redirect(`/kanri/billing/${invoiceId}`);
+}
+
+export async function deletePaymentSlip(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  const invoiceId = s(fd, "invoice_id");
+  if (!id || !invoiceId) return;
+  const c = admin();
+  await c.from("fk_payment_slips").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  await c.from("fk_payments").delete().eq("slip_id", id);
+  await recalcInvoice(c, invoiceId);
+  revalidatePath(`/kanri/billing/${invoiceId}`);
+}
+
 // ===== 発注（見積の商品を発注先ごとにまとめて発注） =====
 export async function createPurchaseOrdersFromEstimate(fd: FormData): Promise<void> {
   const estimateId = s(fd, "id");
