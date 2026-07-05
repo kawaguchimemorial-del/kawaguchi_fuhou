@@ -520,3 +520,9 @@
   9. 売上分析明細CSV(/kanri/analytics/sales-detail/export 新設): 実50列。請求書×明細行の展開。分析ページに両CSVボタン追加。
 - 不具合修正: Content-Dispositionに日本語ファイル名を直接指定するとByteStringエラーで500。全9ルートをRFC5987(filename*=UTF-8''%エンコード)に統一。
 - 検証: devサーバーで全9URLをcurl取得し、実CSVの1行目とdiffで1バイト単位一致(OK×9)を確認。tscエラー無し。
+
+## 2026-07-05 葬儀管理 ユーザー管理画面(設定)を実スクショと一致
+- settings/layout.tsx刷新: 実「ユーザー管理画面」準拠 — 白ヘッダー＋上部緑ライン、左ロゴ(川口典礼)、タブを実物と同一順序(故人/参列者/参列者からのメッセージ/会場/商品種別/商品/値引商品/まとめ商品/発注先/送料/売上/口座/備考定型文/会社情報)、右上にユーザー管理/マスタ一覧/【株式会社川口典礼】/松澤覚。
+- /kanri/settings を「葬儀会社」ダッシュボードに刷新(実トップ.jpg準拠): 詳細情報カード(葬儀会社名/ロゴ/電話番号/FAX番号/住所)＋KPI4カード(総故人数/総葬儀ページ閲覧数/総参列者数/総売上、[月別]バッジ＋時点表記)。KPIは実データ(memorials/memorial_views/condolence_messages/請求入金)に接続。旧マスタ一覧は /kanri/settings/masters へ移設。
+- 新ページ: 故人(/settings/deceased=deceasedテーブル一覧)、参列者(/settings/attendees=記帳一覧)、参列者からのメッセージ(/settings/messages=メッセージ+公開状態)、売上(/settings/sales=請求ベースの売上一覧+CSVリンク)、口座(/settings/bank=口座一覧: 銀行名/銀行支店名/口座名義人＋口座追加/編集/削除、実「口座.png」準拠)。
+- 検証: 葬儀会社ダッシュボード/口座/故人をPlaywright撮影し実スクショと一致確認(KPIに実データ206件/8回/2人)。ロゴ画像404をプレースホルダに修正。tscエラー無し。
