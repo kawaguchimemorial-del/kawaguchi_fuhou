@@ -218,3 +218,31 @@ export async function createMemorialFromEstimate(fd: FormData): Promise<void> {
   await c.from("fk_estimates").update({ memorial_id: mid }).eq("id", estimateId);
   redirect(`/admin/ceremonies/${slug}`);
 }
+
+// ===== 請求 =====
+export async function createInvoiceFromEstimate(fd: FormData): Promise<void> {
+  const estimateId = s(fd, "id");
+  if (!estimateId) return;
+  const c = admin();
+  const { data: e } = await c.from("fk_estimates").select("total").eq("id", estimateId).single();
+  if (!e) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: inv, error } = await c.from("fk_invoices").insert({
+    funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, total: e.total ?? 0, status: "unpaid", billed_on: today,
+  }).select("id").single();
+  if (error || !inv) return;
+  redirect(`/kanri/billing/${inv.id}`);
+}
+
+export async function recordPayment(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  const amount = num(fd, "amount") ?? 0;
+  if (!id) return;
+  const c = admin();
+  const { data: inv } = await c.from("fk_invoices").select("total,paid_total").eq("id", id).single();
+  if (!inv) return;
+  const paid = (inv.paid_total ?? 0) + amount;
+  const status = paid <= 0 ? "unpaid" : paid >= (inv.total ?? 0) ? "paid" : "partial";
+  await c.from("fk_invoices").update({ paid_total: paid, status }).eq("id", id);
+  revalidatePath(`/kanri/billing/${id}`);
+}

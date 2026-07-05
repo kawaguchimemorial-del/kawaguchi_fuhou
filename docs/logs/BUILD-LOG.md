@@ -371,3 +371,8 @@
 - **訃報案内連携(Phase7先行)**: 見積詳細の「訃報案内を作成」で、見積の故人・喪主・日程から memorials/deceased/funeral_events を自動生成し、fk_estimates.memorial_id にリンク。作成後は訃報案内(/admin/ceremonies/[slug])へ遷移。以後は「訃報案内を開く」表示。
 - 顧客詳細・ダッシュボードの見積作成導線を /kanri/estimates/new に接続。
 - 検証: ローカルE2Eで 見積作成(税込440,000)→訃報案内作成→故人反映 を確認。tsc パス。
+
+## 2026-07-05 葬儀管理ソフト Phase4: 請求・入金
+- 請求: 見積詳細の「請求書を作成」で fk_invoices を生成(税込合計を引継)。/kanri/billing 一覧、/kanri/billing/[id] 詳細。
+- 入金: 請求詳細で入金額を記録→ paid_total 更新・ステータス自動判定(未入金/一部入金/入金済)。残額表示。請求明細は見積から表示。
+- 検証: tsc パス。

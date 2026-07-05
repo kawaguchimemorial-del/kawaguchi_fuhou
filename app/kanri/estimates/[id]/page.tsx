@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
-import { createMemorialFromEstimate } from "@/lib/kanri/actions";
+import { createMemorialFromEstimate, createInvoiceFromEstimate } from "@/lib/kanri/actions";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -23,6 +23,7 @@ export default async function EstimateDetail({ params }: Params) {
           <Link href="/kanri/estimates" className="rounded border px-3 py-1.5">一覧へ</Link>
           <Link href={`/kanri/estimates/${id}/edit`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">編集</Link>
           <a href={`/kanri/estimates/${id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">見積書PDF</a>
+          <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">請求書を作成</button></form>
           {e.memorialId ? (
             <Link href={`/admin/ceremonies/${e.memorialId}`} className="rounded bg-green-600 px-3 py-1.5 text-white">訃報案内を開く</Link>
           ) : (
