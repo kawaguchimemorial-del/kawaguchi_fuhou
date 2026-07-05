@@ -143,6 +143,30 @@ export async function deleteProduct(fd: FormData): Promise<void> {
   revalidatePath("/kanri/products");
 }
 
+export async function updateCustomer(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const id = s(fd, "id");
+  const lastName = s(fd, "last_name");
+  if (!id) return { ok: false, error: "対象が不明です。" };
+  if (!lastName) return { ok: false, error: "顧客氏は必須です。" };
+  const bd = [s(fd, "birth_y"), s(fd, "birth_m"), s(fd, "birth_d")];
+  const birthDate = bd.every(Boolean) ? `${bd[0]}-${String(bd[1]).padStart(2, "0")}-${String(bd[2]).padStart(2, "0")}` : null;
+  const row = {
+    customer_no: s(fd, "customer_no"), last_name: lastName, first_name: s(fd, "first_name"),
+    last_name_kana: s(fd, "last_name_kana"), first_name_kana: s(fd, "first_name_kana"),
+    status: s(fd, "status"), inflow: s(fd, "inflow"), staff_name: s(fd, "staff_name"),
+    gender: s(fd, "gender"), birth_date: birthDate,
+    telephone_number: s(fd, "telephone_number"), mobile_number: s(fd, "mobile_number"),
+    fax_number: s(fd, "fax_number"), email: s(fd, "email"),
+    available_sms_auto_sent: bool(fd, "available_sms_auto_sent"), available_dm_send: bool(fd, "available_dm_send"), available_mail_magazine: bool(fd, "available_mail_magazine"),
+    postcode: s(fd, "postcode"), prefecture_code: s(fd, "prefecture_code"), address_city: s(fd, "address_city"),
+    address_street: s(fd, "address_street"), address_building: s(fd, "address_building"),
+    note: s(fd, "note"), rank: s(fd, "rank"), reason: s(fd, "reason"),
+  };
+  const { error } = await admin().from("fk_customers").update(row).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  redirect(`/kanri/customers/${id}`);
+}
+
 export async function deleteCustomer(fd: FormData): Promise<void> {
   const id = s(fd, "id");
   if (!id) return;
