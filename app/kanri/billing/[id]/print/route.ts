@@ -18,13 +18,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const companyName = co.company_name || "株式会社 川口典礼";
   const companyAddr = [co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
   // 明細: 請求書明細(実データ)があればそれを優先。無ければ見積明細。
+  // セット内訳(isSetItem)は「表示しない」チェック(hiddenPaper)を除き、数値なしでセット直下にグループ表示する。
   const fromDetails = details.length > 0;
-  const items = fromDetails
-    ? details.filter((d) => d.amount >= 0).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax }))
-    : (e?.items ?? []).filter((it) => it.lineKind === "item").map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)) }));
-  const discounts = fromDetails
-    ? details.filter((d) => d.amount < 0).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax }))
-    : (e?.items ?? []).filter((it) => it.lineKind === "discount").map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)) }));
+  type Row = { name: string; unitPrice: number; quantity: number; taxRate: number; amount: number; incTax: number; isSetItem?: boolean };
+  const allRows: Row[] = fromDetails
+    ? details.filter((d) => !(d.isSetItem && d.hiddenPaper)).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax, isSetItem: d.isSetItem }))
+    : (e?.items ?? []).filter((it) => !(it.isSetItem && it.hiddenPaper)).map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)), isSetItem: it.isSetItem, lineKind: it.lineKind })) as (Row & { lineKind?: string })[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items = allRows.filter((r: any) => (fromDetails ? r.amount >= 0 : r.lineKind !== "discount") || r.isSetItem);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const discounts = allRows.filter((r: any) => (fromDetails ? r.amount < 0 : r.lineKind === "discount") && !r.isSetItem);
   const on = fmtd(iv.billedOn) || fmtd(iv.createdAt);
   const mournerName = iv.invoiceTargetName || iv.mournerName || iv.customerName || (e ? mournerFullName(e) : "");
   const mournerAddr = e ? [e.mourner.prefecture, e.mourner.addressCity, e.mourner.addressStreet, e.mourner.addressBuilding].filter(Boolean).join("") : "";
@@ -37,9 +40,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const grandIncTax = itemsIncTax + discIncTax;
   const grandTax = itemsTax + (discIncTax - discExTax);
 
-  const itemRows = items.map((it) => `<tr>
+  // セット内訳グループ書式: セット行→【セットに含まれるもの】→内訳(数値なし)→【ここまでセットに含まれる】→以降オプション
+  let itemRows = "";
+  let inSetGroup = false;
+  for (const it of items) {
+    if (it.isSetItem) {
+      if (!inSetGroup) { itemRows += `<tr class="setmark"><td colspan="6">【セットに含まれるもの】</td></tr>`; inSetGroup = true; }
+      itemRows += `<tr><td></td><td class="l">　${esc(it.name)}</td><td class="c"></td><td class="r"></td><td class="r"></td><td class="r"></td></tr>`;
+      continue;
+    }
+    if (inSetGroup) { itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`; inSetGroup = false; }
+    itemRows += `<tr>
     <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(it.incTax)}</td></tr>`).join("");
+    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(it.incTax)}</td></tr>`;
+  }
+  if (inSetGroup) itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`;
   const discRows = discounts.map((it) => `<tr>
     <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
     <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(it.incTax)}</td></tr>`).join("");
@@ -59,6 +74,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #999;padding:5px 7px;}
   th{background:#eee;text-align:center;} td.r{text-align:right;} td.c{text-align:center;} td.l{text-align:left;}
   .sep td{background:#eee;text-align:center;font-weight:bold;}
+  .setmark td{background:#f7f7f7;font-weight:bold;font-size:11px;color:#555;}
   .breakdown{width:66%;margin-left:auto;margin-top:8px;}
   .note{font-size:11px;color:#444;margin-top:10px;}
   .bank{border:1px solid #333;padding:8px 10px;margin-top:6px;}

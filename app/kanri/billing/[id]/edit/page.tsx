@@ -19,13 +19,22 @@ export default async function EditInvoice({ params }: Params) {
   const { invoice: iv, details } = res;
   const nm = (iv.invoiceTargetName ?? "").replace(/　/g, " ");
   const sp = nm.indexOf(" ");
+  const kn = (iv.invoiceTargetNameKana ?? "").replace(/　/g, " ");
+  const ksp = kn.indexOf(" ");
   const initial: FormInitial = {
     id: iv.id, constructionNo: iv.constructionNo,
     customerId: iv.customerId ?? undefined, customerName: iv.customerName,
     deceasedName: iv.deceasedName,
+    addresseeKind: iv.invoiceTargetKind,
     addresseeLastName: sp > 0 ? nm.slice(0, sp) : nm || undefined,
-    addresseeFirstName: sp > 0 ? nm.slice(sp + 1) : undefined,
+    addresseeFirstName: iv.invoiceTargetFirstName ?? (sp > 0 ? nm.slice(sp + 1) : undefined),
+    addresseeLastNameKana: ksp > 0 ? kn.slice(0, ksp) : kn || undefined,
+    addresseeFirstNameKana: ksp > 0 ? kn.slice(ksp + 1) : undefined,
+    addresseePostcode: iv.invoiceTargetPostcode, addresseePrefecture: iv.invoiceTargetPrefecture,
+    addresseeCity: iv.invoiceTargetCity, addresseeStreet: iv.invoiceTargetStreet, addresseeBuilding: iv.invoiceTargetBuilding,
     title: iv.title, date1: iv.billedOn, date2: iv.dueOn,
+    productSetId: iv.productSetId,
+    advance: iv.advancePayment, issuerCompany: iv.issuerCompany, chargedOrg: iv.chargedOrg, chargedUser: iv.chargedUser,
     items: details.map((d) => ({ lineKind: d.amount < 0 ? "discount" as const : "item" as const, name: d.title, unitPrice: Math.abs(d.price), quantity: d.quantity })),
   };
   return (

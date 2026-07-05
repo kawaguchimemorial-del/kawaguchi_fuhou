@@ -3,7 +3,8 @@ import { listInvoices } from "@/lib/kanri/invoices";
 
 export const metadata = { title: "請求書" };
 export const dynamic = "force-dynamic";
-type SP = { searchParams: Promise<{ id?: string; pno?: string; mourner?: string; target?: string; bill_to?: string; title?: string; from?: string; to?: string }> };
+type SP = { searchParams: Promise<{ id?: string; pno?: string; mourner?: string; target?: string; bill_to?: string; title?: string; from?: string; to?: string; p?: string }> };
+const PAGE_SIZE = 200;
 
 function fmt(iso?: string) { if (!iso) return ""; const d = new Date(iso); if (isNaN(d.getTime())) return ""; return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`; }
 
@@ -18,6 +19,14 @@ export default async function BillingPage({ searchParams }: SP) {
   if (sp.title) invoices = invoices.filter((i) => (i.title ?? "").includes(sp.title!));
   if (sp.from) invoices = invoices.filter((i) => i.billedOn && i.billedOn >= sp.from!);
   if (sp.to) invoices = invoices.filter((i) => i.billedOn && i.billedOn <= sp.to!);
+
+  // 200件ページネーション
+  const page = Math.max(1, Number(sp.p ?? 1) || 1);
+  const totalPages = Math.max(1, Math.ceil(invoices.length / PAGE_SIZE));
+  const totalCount = invoices.length;
+  const paged = invoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const qsBase = new URLSearchParams(Object.entries(sp).filter(([k, v]) => k !== "p" && v) as [string, string][]).toString();
+  const pageHref = (n: number) => `/kanri/billing?${qsBase ? qsBase + "&" : ""}p=${n}`;
 
   const cols = ["ID", "顧客", "対象者", "件名", "請求日", "合計金額", "売上区分", "施行番号", "請求先", "操作"];
 
@@ -57,13 +66,13 @@ export default async function BillingPage({ searchParams }: SP) {
 
       {/* 一覧（実画面準拠の列構成） */}
       <div className="rounded-lg bg-white shadow-sm">
-        <div className="border-b px-4 py-3"><p className="text-sm font-bold">一覧　<span className="font-normal text-gray-500">ヒット件数: {invoices.length} 件</span></p></div>
+        <div className="border-b px-4 py-3"><p className="text-sm font-bold">一覧　<span className="font-normal text-gray-500">ヒット件数: {totalCount} 件（{(page - 1) * PAGE_SIZE + 1}〜{Math.min(page * PAGE_SIZE, totalCount)}件目を表示）</span></p></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1150px] text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{cols.map((h) => <th key={h} className="px-3 py-3 font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
             <tbody className="divide-y">
-              {invoices.length === 0 ? <tr><td colSpan={cols.length} className="px-3 py-10 text-center text-gray-400">請求書がありません。</td></tr> :
-                invoices.map((iv) => (
+              {paged.length === 0 ? <tr><td colSpan={cols.length} className="px-3 py-10 text-center text-gray-400">請求書がありません。</td></tr> :
+                paged.map((iv) => (
                   <tr key={iv.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 font-mono text-xs">{iv.invoiceNo ?? iv.id.slice(0, 8)}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{iv.customerId ? <Link href={`/kanri/customers/${iv.customerId}`} className="text-[#1aa39a] underline">{iv.customerName ?? "—"}</Link> : (iv.customerName ?? "—")}</td>
@@ -87,6 +96,16 @@ export default async function BillingPage({ searchParams }: SP) {
             </tbody>
           </table>
         </div>
+        {/* ページネーション（200件ごと） */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 border-t px-4 py-3 text-sm">
+            {page > 1 && <Link href={pageHref(page - 1)} className="rounded border px-3 py-1.5 text-gray-600">‹ 前へ</Link>}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <Link key={n} href={pageHref(n)} className={"rounded px-3 py-1.5 " + (n === page ? "bg-[#2c8c6f] text-white" : "border text-gray-600")}>{n}</Link>
+            ))}
+            {page < totalPages && <Link href={pageHref(page + 1)} className="rounded border px-3 py-1.5 text-gray-600">次へ ›</Link>}
+          </div>
+        )}
       </div>
     </div>
   );

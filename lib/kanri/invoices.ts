@@ -18,6 +18,11 @@ export interface Invoice {
   customerId?: string | null; customerName?: string;
   title?: string; saleCategory?: string; constructionNo?: string;
   invoiceTargetName?: string; // 請求先（顧客と異なる宛先に請求できる）
+  invoiceTargetKind?: string; invoiceTargetFirstName?: string; invoiceTargetNameKana?: string;
+  invoiceTargetPostcode?: string; invoiceTargetPrefecture?: string;
+  invoiceTargetCity?: string; invoiceTargetStreet?: string; invoiceTargetBuilding?: string;
+  issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
+  productSetId?: string; advancePayment?: number;
 }
 
 export interface InvoiceDetail {
@@ -25,6 +30,7 @@ export interface InvoiceDetail {
   price: number; priceIncludingTax?: number; tax: number; quantity: number;
   amount: number; taxAmount: number; amountIncludingTax: number;
   supplier?: string; categoryLarge?: string; saleKind?: string;
+  isSetItem?: boolean; hiddenPaper?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,6 +47,13 @@ function map(r: any): Invoice {
     customerName: cu ? [cu.last_name, cu.first_name].filter(Boolean).join(" ") : undefined,
     title: r.title ?? undefined, saleCategory: r.sale_category ?? undefined, constructionNo: r.construction_no ?? undefined,
     invoiceTargetName: r.invoice_target_name ?? undefined,
+    invoiceTargetKind: r.invoice_target_kind ?? undefined, invoiceTargetFirstName: r.invoice_target_first_name ?? undefined,
+    invoiceTargetNameKana: r.invoice_target_name_kana ?? undefined,
+    invoiceTargetPostcode: r.invoice_target_postcode ?? undefined, invoiceTargetPrefecture: r.invoice_target_prefecture ?? undefined,
+    invoiceTargetCity: r.invoice_target_address_city ?? undefined, invoiceTargetStreet: r.invoice_target_address_street ?? undefined,
+    invoiceTargetBuilding: r.invoice_target_address_building ?? undefined,
+    issuerCompany: r.issuer_company ?? undefined, chargedOrg: r.charged_org ?? undefined, chargedUser: r.charged_user ?? undefined,
+    productSetId: r.product_set_id ?? undefined, advancePayment: r.advance_payment ?? undefined,
   };
 }
 
@@ -68,6 +81,7 @@ export async function getInvoice(id: string): Promise<{ invoice: Invoice; estima
     price: d.price ?? 0, priceIncludingTax: d.price_including_tax ?? undefined, tax: Number(d.tax ?? 0.1), quantity: Number(d.quantity ?? 1),
     amount: d.amount ?? 0, taxAmount: d.tax_amount ?? 0, amountIncludingTax: d.amount_including_tax ?? 0,
     supplier: d.supplier ?? undefined, categoryLarge: d.category_large ?? undefined, saleKind: d.sale_kind ?? undefined,
+    isSetItem: !!d.is_set_item, hiddenPaper: !!d.hidden_paper,
   }));
   return { invoice, estimate, details };
 }

@@ -15,7 +15,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const co = await getCompanyInfo();
   const companyName = co.company_name || "株式会社 川口典礼";
   const companyAddr = [co.prefecture, co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
-  const items = (e.items ?? []).filter((it) => it.lineKind === "item");
+  // セット内訳(isSetItem)は「表示しない」を除外し、数値なしでセット直下にグループ表示
+  const items = (e.items ?? []).filter((it) => it.lineKind === "item" && !(it.isSetItem && it.hiddenPaper));
   const discounts = (e.items ?? []).filter((it) => it.lineKind === "discount");
   const on = fmtd(e.estimateOn) || fmtd(e.createdAt);
   const withTax = (amt: number, rate: number) => Math.round(amt * (1 + rate));
@@ -30,9 +31,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const grandIncTax = itemsIncTax + discIncTax;
   const grandTax = (itemsTax) + (discIncTax - discExTax);
 
-  const itemRows = items.map((it) => `<tr>
+  // セット内訳グループ書式: セット行→【セットに含まれるもの】→内訳(数値なし)→【ここまでセットに含まれる】→以降オプション
+  let itemRows = "";
+  let inSetGroup = false;
+  for (const it of items) {
+    if (it.isSetItem) {
+      if (!inSetGroup) { itemRows += `<tr class="setmark"><td colspan="6">【セットに含まれるもの】</td></tr>`; inSetGroup = true; }
+      itemRows += `<tr><td></td><td class="l">　${esc(it.name)}</td><td class="c"></td><td class="r"></td><td class="r"></td><td class="r"></td></tr>`;
+      continue;
+    }
+    if (inSetGroup) { itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`; inSetGroup = false; }
+    itemRows += `<tr>
     <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(withTax(it.amount, it.taxRate))}</td></tr>`).join("");
+    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(withTax(it.amount, it.taxRate))}</td></tr>`;
+  }
+  if (inSetGroup) itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`;
   const discRows = discounts.map((it) => `<tr>
     <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
     <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(withTax(it.amount, it.taxRate))}</td></tr>`).join("");
@@ -49,6 +62,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #999;padding:5px 7px;}
   th{background:#eee;text-align:center;} td.r{text-align:right;} td.c{text-align:center;} td.l{text-align:left;}
   .sep td{background:#eee;text-align:center;font-weight:bold;}
+  .setmark td{background:#f7f7f7;font-weight:bold;font-size:11px;color:#555;}
   .breakdown{width:66%;margin-left:auto;margin-top:8px;}
   .sign{width:40%;margin-top:24px;margin-left:auto;}
   .note{text-align:right;font-size:11px;color:#666;margin-top:6px;}

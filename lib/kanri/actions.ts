@@ -554,7 +554,7 @@ export async function deletePaymentSlip(fd: FormData): Promise<void> {
 }
 
 // ===== 見積/請求 作成（実スマート葬儀フォーム準拠: 顧客直結・宛名/請求先・セット商品） =====
-type FullItem = { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; taxRate: number };
+type FullItem = { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; taxRate: number; isSetItem?: boolean; hidden?: boolean };
 
 async function resolveCustomerId(c: ReturnType<typeof admin>, fd: FormData): Promise<string | null> {
   let customerId = s(fd, "customer_id");
@@ -591,7 +591,7 @@ function computeItems(fd: FormData) {
     const rate = Number(it.taxRate) || 0;
     if (it.lineKind === "discount") discountTotal += Math.abs(amount); else subtotal += amount;
     taxTotal += amount * rate;
-    return { product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i };
+    return { product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i, is_set_item: !!it.isSetItem, hidden_paper: !!it.hidden };
   });
   taxTotal = Math.round(taxTotal);
   return { computed, subtotal, discountTotal, taxTotal, total: subtotal - discountTotal + taxTotal };
@@ -675,7 +675,7 @@ export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): 
     await c.from("fk_invoice_details").insert(computed.map((x, i) => ({
       invoice_id: invoiceId, title: x.name, price: x.unit_price, tax: x.tax_rate, quantity: x.quantity,
       amount: x.amount, tax_amount: Math.round(x.amount * x.tax_rate), amount_including_tax: x.amount + Math.round(x.amount * x.tax_rate),
-      sort_order: i,
+      sort_order: i, is_set_item: x.is_set_item, hidden_paper: x.hidden_paper,
     })));
   }
   redirect(`/kanri/billing/${invoiceId}`);

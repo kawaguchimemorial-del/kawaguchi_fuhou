@@ -4,7 +4,8 @@ import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate } from "@/l
 
 export const metadata = { title: "見積もり" };
 export const dynamic = "force-dynamic";
-type SP = { searchParams: Promise<{ id?: string; pno?: string; mourner?: string; target?: string; title?: string; from?: string; to?: string; kind?: string }> };
+type SP = { searchParams: Promise<{ id?: string; pno?: string; mourner?: string; target?: string; title?: string; from?: string; to?: string; kind?: string; p?: string }> };
+const PAGE_SIZE = 200;
 
 function fmt(iso?: string) { if (!iso) return ""; const d = new Date(iso); if (isNaN(d.getTime())) return ""; return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`; }
 
@@ -20,6 +21,16 @@ export default async function EstimatesPage({ searchParams }: SP) {
   if (sp.title) rows = rows.filter((e) => (e.title ?? "").includes(sp.title!));
   if (sp.from) rows = rows.filter((e) => e.estimateOn && e.estimateOn >= sp.from!);
   if (sp.to) rows = rows.filter((e) => e.estimateOn && e.estimateOn <= sp.to!);
+  // 見積日の降順（未設定は末尾）
+  rows.sort((a, b) => String(b.estimateOn ?? "").localeCompare(String(a.estimateOn ?? "")));
+
+  // 200件ページネーション
+  const page = Math.max(1, Number(sp.p ?? 1) || 1);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const totalCount = rows.length;
+  const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const qsBase = new URLSearchParams(Object.entries(sp).filter(([k, v]) => k !== "p" && v) as [string, string][]).toString();
+  const pageHref = (n: number) => `/kanri/estimates?${qsBase ? qsBase + "&" : ""}p=${n}`;
 
   const cols = ["ID", "顧客", "対象者", "件名", "合計金額", "見積日", "施行番号", "操作"];
 
@@ -59,13 +70,13 @@ export default async function EstimatesPage({ searchParams }: SP) {
 
       {/* 一覧（実画面準拠: 顧客リンク付き） */}
       <div className="rounded-lg bg-white shadow-sm">
-        <div className="border-b px-4 py-3"><p className="text-sm font-bold">一覧　<span className="font-normal text-gray-500">ヒット件数: {rows.length} 件</span></p></div>
+        <div className="border-b px-4 py-3"><p className="text-sm font-bold">一覧　<span className="font-normal text-gray-500">ヒット件数: {totalCount} 件（{(page - 1) * PAGE_SIZE + 1}〜{Math.min(page * PAGE_SIZE, totalCount)}件目を表示）</span></p></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1050px] text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{cols.map((h) => <th key={h} className="px-3 py-3 font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
             <tbody className="divide-y">
-              {rows.length === 0 ? <tr><td colSpan={cols.length} className="px-3 py-10 text-center text-gray-400">見積がありません。</td></tr> :
-                rows.map((e) => (
+              {paged.length === 0 ? <tr><td colSpan={cols.length} className="px-3 py-10 text-center text-gray-400">見積がありません。</td></tr> :
+                paged.map((e) => (
                   <tr key={e.id} className="align-middle hover:bg-gray-50">
                     <td className="px-3 py-2 font-mono text-xs text-gray-500">{e.sourceId ?? e.estimateNo ?? e.id.slice(0, 8)}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{e.customerId ? <Link href={`/kanri/customers/${e.customerId}`} className="text-[#1aa39a] underline">{e.customerName ?? mournerFullName(e) ?? "—"}</Link> : (e.customerName ?? mournerFullName(e) ?? "—")}</td>
@@ -87,6 +98,16 @@ export default async function EstimatesPage({ searchParams }: SP) {
             </tbody>
           </table>
         </div>
+        {/* ページネーション（200件ごと） */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 border-t px-4 py-3 text-sm">
+            {page > 1 && <Link href={pageHref(page - 1)} className="rounded border px-3 py-1.5 text-gray-600">‹ 前へ</Link>}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <Link key={n} href={pageHref(n)} className={"rounded px-3 py-1.5 " + (n === page ? "bg-[#2c8c6f] text-white" : "border text-gray-600")}>{n}</Link>
+            ))}
+            {page < totalPages && <Link href={pageHref(page + 1)} className="rounded border px-3 py-1.5 text-gray-600">次へ ›</Link>}
+          </div>
+        )}
       </div>
     </div>
   );

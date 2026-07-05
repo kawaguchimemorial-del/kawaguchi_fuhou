@@ -47,12 +47,32 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [q, setQ] = useState(""); const [hits, setHits] = useState<Hit[]>([]); const [loading, setLoading] = useState(false);
   const [setOpen, setSetOpen] = useState(false);
   const [chosenSet, setChosenSet] = useState<ProductSet | null>(initial?.productSetId ? (productSets.find((s) => s.id === initial.productSetId) ?? null) : null);
+  // セット内訳（選択時に全展開・行ごとに「表示しない」チェック）
+  const [setItems, setSetItems] = useState<{ name: string; quantity: number; hidden: boolean }[]>([]);
+  async function loadSetItems(setId: string) {
+    try {
+      const res = await fetch(`/kanri/product-sets/${setId}/items`);
+      const d = await res.json();
+      setSetItems((d.items ?? []).map((it: { name: string; quantity: number; hideOnInvoice: boolean }) => ({ name: it.name, quantity: it.quantity || 1, hidden: !!it.hideOnInvoice })));
+    } catch { setSetItems([]); }
+  }
   const [prodOpen, setProdOpen] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   // 編集時: 既存明細を復元（セット行=セット名一致は除外、値引は値引行へ、他はオプション行へ）
   const initItems = initial?.items ?? [];
   const initSetName = initial?.productSetId ? productSets.find((s) => s.id === initial.productSetId)?.name : undefined;
-  const [opts, setOpts] = useState<OptRow[]>(initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ key: seq++, productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity })));
+  // 見積の新規作成時: 骨壺(収骨容器一式)・本尊セットをデフォルトで入力済みにする
+  const defaultOpts: OptRow[] = (!initial && !asInvoice)
+    ? [["骨壺", "収骨容器"], ["本尊セット"]].map((kws) => {
+        const p = products.find((x) => kws.some((kw) => x.name.includes(kw)) && !x.hidden);
+        return p ? { key: seq++, productId: p.id, name: p.name, unitPrice: p.unitPrice, quantity: 1 } : null;
+      }).filter((x): x is OptRow => x !== null)
+    : [];
+  const [opts, setOpts] = useState<OptRow[]>(
+    initItems.length
+      ? initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ key: seq++, productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
+      : defaultOpts
+  );
   const [osonaeQty, setOsonaeQty] = useState<Record<string, number>>({});
   const [discRows, setDiscRows] = useState<DiscRow[]>(initItems.filter((it) => it.lineKind === "discount").map((it) => ({ key: seq++, name: it.name, amount: Math.abs(it.unitPrice * it.quantity) })));
   const [advance, setAdvance] = useState(initial?.advance ? String(initial.advance) : "");
@@ -104,6 +124,8 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
 
   const itemsJson = JSON.stringify([
     ...(chosenSet ? [{ lineKind: "item", name: chosenSet.name, unitPrice: chosenSet.price, quantity: 1, taxRate: chosenSet.tax, isSet: true }] : []),
+    // セット内訳（金額0・isSetItem、非表示チェックはhiddenで保持 → 印刷で除外）
+    ...(chosenSet ? setItems.map((it) => ({ lineKind: "item", name: it.name, unitPrice: 0, quantity: it.quantity, taxRate: 0, isSetItem: true, hidden: it.hidden })) : []),
     ...opts.filter((r) => r.name).map((r) => ({ lineKind: "item", productId: r.productId || null, name: r.name, unitPrice: r.unitPrice, quantity: r.quantity, taxRate: 0.1 })),
     ...osonae.filter((m) => (osonaeQty[m.id] ?? 0) > 0).map((m) => ({ lineKind: "item", name: m.name, unitPrice: m.price ?? 0, quantity: osonaeQty[m.id], taxRate: 0.1, isOsonae: true })),
     ...discRows.filter((d) => d.name).map((d) => ({ lineKind: "discount", name: d.name, unitPrice: Math.abs(d.amount), quantity: 1, taxRate: 0.1 })),
@@ -200,9 +222,27 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       {/* セット商品 */}
       <Card title="セット商品">
         {chosenSet ? (
-          <div className="flex items-center justify-between rounded border border-[#2c8c6f] bg-[#f0faf8] px-4 py-3 text-sm">
-            <div><p className="font-bold">{chosenSet.name}</p><p className="text-xs text-gray-500">セット価格(税抜) {chosenSet.price.toLocaleString()}円 / (税込) {chosenSet.taxIncludedPrice.toLocaleString()}円</p></div>
-            <button type="button" onClick={() => setChosenSet(null)} className="rounded border border-red-400 px-3 py-1 text-xs text-red-500">解除</button>
+          <div className="rounded border border-[#2c8c6f] bg-[#f0faf8] px-4 py-3 text-sm">
+            <div className="flex items-center justify-between">
+              <div><p className="font-bold">{chosenSet.name}</p><p className="text-xs text-gray-500">セット価格(税抜) {chosenSet.price.toLocaleString()}円 / (税込) {chosenSet.taxIncludedPrice.toLocaleString()}円</p></div>
+              <button type="button" onClick={() => { setChosenSet(null); setSetItems([]); }} className="rounded border border-red-400 px-3 py-1 text-xs text-red-500">解除</button>
+            </div>
+            {/* セット内訳の全展開＋「表示しない」チェック */}
+            {setItems.length > 0 && (
+              <div className="mt-3 border-t border-[#bfe3dc] pt-2">
+                <p className="mb-1 text-xs font-bold text-gray-600">セットに含まれるもの（チェックした商品は見積書/請求書に表示しません）</p>
+                <div className="divide-y divide-[#e0f0ec]">
+                  {setItems.map((it, i) => (
+                    <label key={i} className="flex items-center gap-3 py-1.5 text-sm">
+                      <input type="checkbox" checked={it.hidden} onChange={(e) => setSetItems((rs) => rs.map((x, j) => j === i ? { ...x, hidden: e.target.checked } : x))} />
+                      <span className={it.hidden ? "text-gray-400 line-through" : ""}>{it.name}</span>
+                      <span className="ml-auto text-xs text-gray-400">×{it.quantity}</span>
+                      <span className="w-16 text-right text-xs text-red-400">{it.hidden ? "表示しない" : ""}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : <p className="text-sm text-red-400">設定されていません</p>}
         <button type="button" onClick={() => setSetOpen(true)} className="mt-2 rounded bg-sky-400 px-3 py-1.5 text-xs text-white">セット商品選択</button>
@@ -344,7 +384,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
               <tbody className="divide-y">
                 {productSets.filter((s) => !s.hidden).map((s) => (
                   <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2"><button type="button" onClick={() => { setChosenSet(s); setSetOpen(false); }} className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">選択</button></td>
+                    <td className="px-3 py-2"><button type="button" onClick={() => { setChosenSet(s); setSetOpen(false); loadSetItems(s.id); }} className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">選択</button></td>
                     <td className="px-3 py-2">{s.name}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right">{s.price.toLocaleString()}円</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right">{s.taxIncludedPrice.toLocaleString()}円</td>
