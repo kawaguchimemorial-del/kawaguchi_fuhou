@@ -506,3 +506,17 @@
 - 請求書CSVインポート(app/kanri/billing/import ＋ components/kanri/InvoiceImport.tsx): CSVファイル選択→登録する/キャンセル、CSVインポート用フォーマットダウンロード。actions.ts importInvoices(顧客名,件名,請求日,金額を解析し見積＋請求書作成)、/kanri/billing/import/format でフォーマットCSV配布。
 - 変更: 請求書一覧ヘッダーに 請求書追加/請求書一括登録/請求書CSVインポート/見積から作成 ボタンを追加。
 - 検証: 3ページをPlaywright撮影し実スクショと一致確認。一括登録は顧客選択→宛先/金額入力→一括登録で請求書1件作成(?bulk=1)を確認後にテストデータ削除。tsc(該当ファイル)エラー無し。
+
+## 2026-07-05 葬儀管理 CSV出力/データ構造を実スマート葬儀と完全一致(全9本ヘッダーdiff検証済)
+- 完了条件を「出力・データ構造の完全クローン」に引き上げ、実CSVファイル(tmp/スマート葬儀配下)をヘッダーの一次情報として全出力を書き換え:
+  1. 入金一覧CSV(/kanri/billing/export): 実25列(請求書ID〜備考)。請求書＋見積＋入金明細をjoinし最終入金日/支払方法/未入金残を出力。
+  2. 伝票明細CSV(/kanri/deposits/slips): 実22列(施行番号〜備考)。入金伝票×入金明細の行展開。入金管理一覧に「伝票明細CSV」ボタン追加。
+  3. 請求書一括CSVフォーマット(/kanri/billing/import/format): 実50列ヘッダーをそのまま配布。importInvoicesを実列名マッピング(件名有=新規請求書/無=明細行のグループ化、値引商品列、税率8%/非課税判定、喪主住所)に全面刷新。RFC4180クォート対応パーサ追加。
+  4. 顧客情報CSVインポートフォーマット(/kanri/customers/import/format 新設): 実158列ヘッダーをそのまま配布。importCustomersを実列名(氏（カナ）/状態/建物など/その他備考/SMS自動送信対象にする等)対応に拡張。CustomerImportのフォーマットDLリンク差し替え。
+  5. 商品一括登録フォーマット(/kanri/products/export): 実26列。importProductsも実列名(価格(税抜)/下代(税抜)/商品種別:大/商品説明、税率=課税/非課税表記)対応。
+  6. 発注先一括登録フォーマット(/kanri/settings/supplier/export 新設): 実14列。
+  7. 割引商品一覧(/kanri/settings/discounted_product/export 新設): 実14列。
+  8. 売上集計CSV(/kanri/analytics/sales/export 新設): 実62列。10%/8%税抜・消費税・税込・非課税の区分集計、入金済合計額/最終入金日/未収金額。from/to期間指定対応。
+  9. 売上分析明細CSV(/kanri/analytics/sales-detail/export 新設): 実50列。請求書×明細行の展開。分析ページに両CSVボタン追加。
+- 不具合修正: Content-Dispositionに日本語ファイル名を直接指定するとByteStringエラーで500。全9ルートをRFC5987(filename*=UTF-8''%エンコード)に統一。
+- 検証: devサーバーで全9URLをcurl取得し、実CSVの1行目とdiffで1バイト単位一致(OK×9)を確認。tscエラー無し。

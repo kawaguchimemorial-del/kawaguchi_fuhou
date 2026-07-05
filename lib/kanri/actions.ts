@@ -126,13 +126,21 @@ export async function importProducts(_prev: KanriResult | null, fd: FormData): P
   let rows: Record<string, string>[] = [];
   try { rows = JSON.parse(s(fd, "rows") ?? "[]"); } catch { return { ok: false, error: "CSVの解析に失敗しました。" }; }
   const g = (r: Record<string, string>, ...k: string[]) => { for (const x of k) { if (r[x] != null && r[x] !== "") return r[x].trim(); } return null; };
+  // 実スマート葬儀「商品一括登録フォーマット」のヘッダー名に対応（旧フォーマットも受容）
+  const rate = (v: string | null) => {
+    if (v == null || v === "") return 0.1;
+    if (v.includes("非") || v === "0") return 0;
+    if (v.includes("8")) return 0.08;
+    const x = Number(v);
+    return !isNaN(x) && x > 0 && x < 1 ? x : 0.1;
+  };
   const payload = rows.filter((r) => g(r, "商品名", "name")).map((r) => ({
     funeral_home_id: KANRI_HOME_ID,
-    product_kind: g(r, "商品種別"), name: g(r, "商品名", "name"), kana: g(r, "カナ"),
-    unit_price: Number(g(r, "単価")?.replace(/,/g, "") ?? 0) || 0,
-    cost_price: g(r, "原価") ? Number(g(r, "原価")!.replace(/,/g, "")) : null,
-    tax_rate: Number(g(r, "税率") ?? 0.1) || 0.1,
-    unit: g(r, "単位"), supplier: g(r, "発注先"), note: g(r, "備考"),
+    product_kind: g(r, "商品種別:大", "商品種別"), name: g(r, "商品名", "name"), kana: g(r, "カナ"),
+    unit_price: Number(g(r, "価格(税抜)", "単価", "価格")?.replace(/,/g, "") ?? 0) || 0,
+    cost_price: g(r, "下代(税抜)", "原価") ? Number(g(r, "下代(税抜)", "原価")!.replace(/,/g, "")) : null,
+    tax_rate: rate(g(r, "税率")),
+    unit: g(r, "単位"), supplier: g(r, "発注先"), note: g(r, "商品説明", "備考"),
   }));
   if (payload.length === 0) return { ok: false, error: "取り込む商品がありません（商品名が必須）。" };
   const { error } = await admin().from("fk_products").insert(payload);
@@ -184,14 +192,20 @@ export async function importCustomers(_prev: KanriResult | null, fd: FormData): 
   rows = rows.filter((r) => (r["氏"] || r["顧客氏"] || r["last_name"] || "").trim());
   if (rows.length === 0) return { ok: false, error: "取り込む行がありません（氏が必須）。" };
   const g = (r: Record<string, string>, ...keys: string[]) => { for (const k of keys) { if (r[k] != null && r[k] !== "") return r[k].trim(); } return null; };
+  const yes = (v: string | null) => v != null && ["1", "true", "はい", "する", "受け取る", "○", "〇"].includes(v);
   const payload = rows.map((r) => ({
     funeral_home_id: KANRI_HOME_ID,
     customer_no: g(r, "顧客番号"), last_name: g(r, "氏", "顧客氏", "last_name"), first_name: g(r, "名", "顧客名"),
-    last_name_kana: g(r, "セイ", "顧客セイ"), first_name_kana: g(r, "メイ", "顧客メイ"),
-    status: g(r, "ステータス"), inflow: g(r, "流入経路"), gender: g(r, "性別"),
-    telephone_number: g(r, "自宅番号"), mobile_number: g(r, "携帯番号"), email: g(r, "メールアドレス"),
+    last_name_kana: g(r, "氏（カナ）", "セイ", "顧客セイ"), first_name_kana: g(r, "名（カナ）", "メイ", "顧客メイ"),
+    status: g(r, "状態", "ステータス"), inflow: g(r, "流入経路"), staff_name: g(r, "顧客担当"), gender: g(r, "性別"),
+    birth_date: (() => { const v = g(r, "生年月日"); return v && /\d/.test(v) ? v.replace(/\//g, "-").slice(0, 10) : null; })(),
+    telephone_number: g(r, "自宅番号"), mobile_number: g(r, "携帯番号"), fax_number: g(r, "FAX番号"), email: g(r, "メールアドレス"),
+    available_sms_auto_sent: yes(g(r, "SMS自動送信対象にする")),
+    available_dm_send: yes(g(r, "ダイレクトメールを受け取る")),
+    available_mail_magazine: yes(g(r, "メルマガを受け取る")),
     postcode: g(r, "郵便番号"), prefecture_code: g(r, "都道府県"), address_city: g(r, "市区町村"),
-    address_street: g(r, "番地"), address_building: g(r, "建物名"), note: g(r, "備考"),
+    address_street: g(r, "番地"), address_building: g(r, "建物など", "建物名"),
+    note: g(r, "その他備考", "備考"), reason: g(r, "問い合わせ理由"), rank: g(r, "顧客ランク"),
   }));
   const { error } = await admin().from("fk_customers").insert(payload);
   if (error) return { ok: false, error: error.message };
@@ -510,30 +524,93 @@ export async function createBulkInvoices(fd: FormData): Promise<void> {
   redirect(`/kanri/billing?bulk=${created}`);
 }
 
-// ===== 請求書 CSVインポート =====
-// CSV列: 顧客名,件名,請求日,金額
+// ===== 請求書 CSVインポート（実スマート葬儀 請求書一括CSVフォーマット準拠） =====
+// 実物50列ヘッダーの列名で値を取得。件名がある行=新規請求書、無い行=直前の請求書の明細行。
+function splitCsvLine(line: string): string[] {
+  const out: string[] = []; let cur = ""; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQ = false; } else cur += ch; }
+    else if (ch === '"') inQ = true;
+    else if (ch === ",") { out.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out.map((v) => v.trim());
+}
+
 export async function importInvoices(fd: FormData): Promise<void> {
   const text = s(fd, "csv");
   if (!text) return;
   const c = admin();
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const rows = lines[0]?.includes("金額") ? lines.slice(1) : lines; // ヘッダー除去
+  const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return;
+  const header = splitCsvLine(lines[0]);
+  const col = (name: string) => header.findIndex((h) => h === name);
+  const ix = {
+    lastName: col("顧客氏"), firstName: col("顧客名"), title: col("件名"), billedOn: col("請求日"), dueOn: col("お支払い期限"),
+    performanceNo: col("施行番号"), itemName: col("項目名"), unitPrice: col("単価"), taxRate: col("消費税率"), qty: col("数量"),
+    discName: col("値引商品項目名"), discQty: col("値引商品数量"), discPrice: col("値引商品単価"),
+    venue: col("葬儀会場"), funeralAt: col("葬儀日時"), postcode: col("郵便番号"), pref: col("都道府県"), city: col("市区町村"), street: col("番地"), building: col("建物名など"),
+    payAmount: col("入金額"), payOn: col("入金日"), payMethod: col("入金方法"),
+  };
+  const g = (cols: string[], i: number) => (i >= 0 ? (cols[i] ?? "").trim() : "");
+  const n = (v: string) => { const x = Number(v.replace(/,/g, "")); return isNaN(x) ? 0 : x; };
+  const dateNorm = (v: string) => (v && /\d/.test(v) ? v.replace(/\//g, "-").slice(0, 10) : null);
+
+  type Item = { lineKind: "item" | "discount"; name: string; unitPrice: number; quantity: number; taxRate: number };
+  type Group = { lastName: string; firstName: string; title: string; billedOn: string | null; dueOn: string | null; performanceNo: string; venue: string; funeralAt: string | null; postcode: string; pref: string; city: string; street: string; building: string; items: Item[] };
+  const groups: Group[] = [];
+
+  for (const line of lines.slice(1)) {
+    const cols = splitCsvLine(line);
+    const title = g(cols, ix.title);
+    if (title || groups.length === 0) {
+      groups.push({
+        lastName: g(cols, ix.lastName), firstName: g(cols, ix.firstName), title: title || "請求",
+        billedOn: dateNorm(g(cols, ix.billedOn)), dueOn: dateNorm(g(cols, ix.dueOn)), performanceNo: g(cols, ix.performanceNo),
+        venue: g(cols, ix.venue), funeralAt: dateNorm(g(cols, ix.funeralAt)),
+        postcode: g(cols, ix.postcode), pref: g(cols, ix.pref), city: g(cols, ix.city), street: g(cols, ix.street), building: g(cols, ix.building),
+        items: [],
+      });
+    }
+    const grp = groups[groups.length - 1];
+    const itemName = g(cols, ix.itemName);
+    if (itemName) {
+      const rateRaw = g(cols, ix.taxRate);
+      const rate = rateRaw.includes("8") ? 0.08 : rateRaw === "0" || rateRaw.includes("非") ? 0 : 0.1;
+      grp.items.push({ lineKind: "item", name: itemName, unitPrice: n(g(cols, ix.unitPrice)), quantity: n(g(cols, ix.qty)) || 1, taxRate: rate });
+    }
+    const discName = g(cols, ix.discName);
+    if (discName) {
+      grp.items.push({ lineKind: "discount", name: discName, unitPrice: n(g(cols, ix.discPrice)), quantity: n(g(cols, ix.discQty)) || 1, taxRate: 0.1 });
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   let created = 0;
-  for (const line of rows) {
-    const cols = line.split(",").map((v) => v.replace(/^"|"$/g, "").trim());
-    const [name, title, billedRaw, amountRaw] = cols;
-    const amount = Number((amountRaw ?? "").replace(/,/g, ""));
-    if (!name || !amount) continue;
-    const billed = billedRaw && /\d/.test(billedRaw) ? billedRaw.replace(/\//g, "-") : today;
-    const tax = Math.round(amount / 1.1 * 0.1);
+  for (const grp of groups) {
+    if (!grp.lastName && grp.items.length === 0) continue;
+    let subtotal = 0, discountTotal = 0, taxTotal = 0;
+    const computed = grp.items.map((it, i) => {
+      const amount = it.lineKind === "discount" ? -Math.abs(it.unitPrice * it.quantity) : it.unitPrice * it.quantity;
+      if (it.lineKind === "discount") discountTotal += Math.abs(amount); else subtotal += amount;
+      taxTotal += amount * it.taxRate;
+      return { line_kind: it.lineKind, name: it.name, unit_price: it.unitPrice, quantity: it.quantity, tax_rate: it.taxRate, amount, sort_order: i };
+    });
+    taxTotal = Math.round(taxTotal);
+    const total = subtotal - discountTotal + taxTotal;
     const { data: est } = await c.from("fk_estimates").insert({
-      funeral_home_id: KANRI_HOME_ID, title: title || "請求", kind: "funeral", estimate_on: billed,
-      mourner_last_name: name, subtotal: amount - tax, discount_total: 0, tax_total: tax, total: amount, status: "confirmed",
+      funeral_home_id: KANRI_HOME_ID, estimate_no: grp.performanceNo || null, title: grp.title, kind: "funeral",
+      estimate_on: grp.billedOn ?? today, funeral_at: grp.funeralAt, venue_name: grp.venue || null,
+      mourner_last_name: grp.lastName || null, mourner_first_name: grp.firstName || null,
+      mourner_postcode: grp.postcode || null, mourner_prefecture: grp.pref || null,
+      mourner_address_city: grp.city || null, mourner_address_street: grp.street || null, mourner_address_building: grp.building || null,
+      subtotal, discount_total: discountTotal, tax_total: taxTotal, total, status: "confirmed",
     }).select("id").single();
     if (!est) continue;
-    await c.from("fk_estimate_items").insert({ estimate_id: est.id, line_kind: "item", name: title || "請求", unit_price: amount - tax, quantity: 1, tax_rate: 0.1, amount: amount - tax, sort_order: 0 });
-    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, total: amount, status: "unpaid", billed_on: billed });
+    if (computed.length) await c.from("fk_estimate_items").insert(computed.map((x) => ({ ...x, estimate_id: est.id })));
+    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, total, status: "unpaid", billed_on: grp.billedOn ?? today, due_on: grp.dueOn });
     created++;
   }
   revalidatePath("/kanri/billing");

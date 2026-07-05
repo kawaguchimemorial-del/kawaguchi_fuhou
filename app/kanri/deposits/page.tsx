@@ -31,7 +31,10 @@ export default async function DepositsPage({ searchParams }: SP) {
       <div className="rounded-lg bg-white shadow-sm">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <p className="text-sm font-bold">一覧　<span className="font-normal text-gray-500">{rows.length} 件</span></p>
-          <a href="/kanri/billing/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-xs text-[#1aa39a]">CSVダウンロード</a>
+          <div className="flex gap-2">
+            <a href="/kanri/billing/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-xs text-[#1aa39a]">CSVダウンロード</a>
+            <a href="/kanri/deposits/slips" className="rounded border border-[#1aa39a] px-3 py-1.5 text-xs text-[#1aa39a]">伝票明細CSV</a>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">

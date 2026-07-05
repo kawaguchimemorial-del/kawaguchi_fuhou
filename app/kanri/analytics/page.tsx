@@ -28,7 +28,13 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">分析</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-bold">分析</h1>
+        <div className="flex gap-2 text-xs">
+          <a href="/kanri/analytics/sales/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">売上集計CSV</a>
+          <a href="/kanri/analytics/sales-detail/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">売上分析 明細CSV</a>
+        </div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
           <div key={k.label} className="rounded-lg bg-white p-4 shadow-sm">

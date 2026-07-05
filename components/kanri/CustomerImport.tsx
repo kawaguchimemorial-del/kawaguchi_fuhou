@@ -48,7 +48,7 @@ export function CustomerImport() {
       {state && state.ok === false && <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">{state.error}</p>}
       <p className="text-sm text-gray-600">顧客情報のCSVを取り込みます。1行目はヘッダー（氏／名／セイ／メイ／ステータス／流入経路／性別／携帯番号／メールアドレス 等）。</p>
       <div>
-        <a href="/kanri/customers/export" className="text-sm text-[#1aa39a] underline">フォーマット（現在の顧客CSV）をダウンロード</a>
+        <a href="/kanri/customers/import/format" className="text-sm text-[#1aa39a] underline">顧客情報CSVインポートフォーマットをダウンロード</a>
       </div>
       <input type="file" accept=".csv,text/csv" onChange={(e) => onFile(e.target.files?.[0] ?? null)} className="text-sm" />
       {fileName && <p className="text-xs text-gray-500">{fileName} — 取り込み対象 {rows.length} 件</p>}
