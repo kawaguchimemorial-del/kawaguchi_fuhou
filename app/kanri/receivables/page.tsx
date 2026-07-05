@@ -1,31 +1,38 @@
-import Link from "next/link";
-import { PageHeader } from "@/components/kanri/PageHeader";
-import { listInvoices } from "@/lib/kanri/invoices";
 export const metadata = { title: "売掛残高" };
 export const dynamic = "force-dynamic";
-export default async function ReceivablesPage(){
-  const rows = (await listInvoices()).map(i=>({...i, remaining:i.total-i.paidTotal})).filter(i=>i.remaining>0);
-  const total = rows.reduce((a,i)=>a+i.remaining,0);
+
+// 実スマート葬儀: 条件指定(対象日範囲/発行会社/計上組織)＋CSVダウンロードのみのシンプル画面
+export default async function ReceivablesPage() {
+  const today = new Date();
+  const first = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+  const now = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   return (
-    <div className="space-y-4">
-      <PageHeader title="売掛残高" />
-      <p className="text-sm text-gray-500">未回収(売掛)残高合計：{total.toLocaleString()}円</p>
-      <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
-        <table className="w-full min-w-[620px] text-left text-sm">
-          <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{["故人","喪主","請求額","入金額","残高",""].map(h=><th key={h} className="px-3 py-3 font-medium">{h}</th>)}</tr></thead>
-          <tbody className="divide-y">
-            {rows.length===0 ? <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-400">売掛残高はありません。</td></tr> :
-              rows.map(iv=>(<tr key={iv.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2">{iv.deceasedName ?? "—"}</td>
-                <td className="px-3 py-2">{iv.mournerName ?? "—"}</td>
-                <td className="px-3 py-2">{iv.total.toLocaleString()}円</td>
-                <td className="px-3 py-2">{iv.paidTotal.toLocaleString()}円</td>
-                <td className="px-3 py-2 font-bold text-amber-600">{iv.remaining.toLocaleString()}円</td>
-                <td className="px-3 py-2"><Link href={`/kanri/billing/${iv.id}`} className="text-xs text-[#1aa39a] underline">詳細</Link></td>
-              </tr>))}
-          </tbody>
-        </table>
-      </div>
+    <div>
+      <div className="-m-5 mb-4 bg-[#2c8c6f] px-5 py-3"><h1 className="text-lg font-bold text-white">売掛残高</h1></div>
+
+      <form action="/kanri/receivables/export" className="rounded-lg bg-white p-5 shadow-sm text-sm">
+        <p className="mb-4 font-bold text-gray-700">条件指定</p>
+
+        <label className="mb-1 block font-bold text-gray-700">対象日</label>
+        <div className="mb-4 flex items-center gap-3">
+          <input type="date" name="from" defaultValue={first} className="w-full rounded border px-3 py-2" />
+          <span className="text-gray-400">〜</span>
+          <input type="date" name="to" defaultValue={now} className="w-full rounded border px-3 py-2" />
+        </div>
+
+        <div className="mb-5 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block font-bold text-gray-700">発行会社</label>
+            <select name="issuer" className="w-full rounded border px-3 py-2"><option value="">すべて</option><option>株式会社 川口典礼</option></select>
+          </div>
+          <div>
+            <label className="mb-1 block font-bold text-gray-700">計上組織</label>
+            <select name="org" className="w-full rounded border px-3 py-2"><option value="">すべて</option></select>
+          </div>
+        </div>
+
+        <button className="rounded bg-[#5b6ee1] px-5 py-2.5 text-white">📄 CSVダウンロード</button>
+      </form>
     </div>
   );
 }
