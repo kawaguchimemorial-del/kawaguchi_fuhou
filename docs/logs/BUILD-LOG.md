@@ -446,3 +446,6 @@
 - /kanri/customers/import: CSVアップロード→クライアントで解析→プレビュー→一括登録(importCustomers)。ヘッダー(氏/名/セイ/メイ/ステータス/流入経路/性別/携帯番号/メールアドレス等)をマッピング。スマート葬儀の顧客CSVインポートに準拠。
 - 顧客一覧に CSVダウンロード/CSVインポート ボタン追加。
 - 検証: ローカルE2Eで2件CSV→2件登録を確認。tsc パス。
+
+## 2026-07-05 葬儀管理 商品CSVダウンロード/一括登録
+- /kanri/products/export(CSV), /kanri/products/import(商品一括登録)。ProductImportクライアントで解析→プレビュー→importProductsで一括登録。商品一覧にCSVボタン。スマート葬儀の商品一括登録に準拠。

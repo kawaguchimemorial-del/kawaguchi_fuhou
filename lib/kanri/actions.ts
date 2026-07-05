@@ -119,6 +119,23 @@ export async function saveProduct(_prev: KanriResult | null, fd: FormData): Prom
   }
   redirect("/kanri/products");
 }
+export async function importProducts(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  let rows: Record<string, string>[] = [];
+  try { rows = JSON.parse(s(fd, "rows") ?? "[]"); } catch { return { ok: false, error: "CSVの解析に失敗しました。" }; }
+  const g = (r: Record<string, string>, ...k: string[]) => { for (const x of k) { if (r[x] != null && r[x] !== "") return r[x].trim(); } return null; };
+  const payload = rows.filter((r) => g(r, "商品名", "name")).map((r) => ({
+    funeral_home_id: KANRI_HOME_ID,
+    product_kind: g(r, "商品種別"), name: g(r, "商品名", "name"), kana: g(r, "カナ"),
+    unit_price: Number(g(r, "単価")?.replace(/,/g, "") ?? 0) || 0,
+    cost_price: g(r, "原価") ? Number(g(r, "原価")!.replace(/,/g, "")) : null,
+    tax_rate: Number(g(r, "税率") ?? 0.1) || 0.1,
+    unit: g(r, "単位"), supplier: g(r, "発注先"), note: g(r, "備考"),
+  }));
+  if (payload.length === 0) return { ok: false, error: "取り込む商品がありません（商品名が必須）。" };
+  const { error } = await admin().from("fk_products").insert(payload);
+  if (error) return { ok: false, error: error.message };
+  redirect("/kanri/products");
+}
 export async function deleteProduct(fd: FormData): Promise<void> {
   const id = s(fd, "id");
   if (!id) return;

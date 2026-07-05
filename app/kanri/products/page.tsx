@@ -11,6 +11,10 @@ export default async function ProductsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="商品" action={{ label: "＋ 商品登録", href: "/kanri/products/new" }} />
+      <div className="mb-4 flex gap-2 text-sm">
+        <a href="/kanri/products/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">CSVダウンロード</a>
+        <a href="/kanri/products/import" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">CSV一括登録</a>
+      </div>
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-600">
