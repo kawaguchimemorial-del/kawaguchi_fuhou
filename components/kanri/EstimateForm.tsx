@@ -18,7 +18,7 @@ function toLocal(iso?: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function EstimateForm({ products, estimate, defaultCustomerId }: { products: Product[]; estimate?: Estimate; defaultCustomerId?: string }) {
+export function EstimateForm({ products, estimate, defaultCustomerId, asInvoice }: { products: Product[]; estimate?: Estimate; defaultCustomerId?: string; asInvoice?: boolean }) {
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(saveEstimate, null);
   const initial: Row[] = (estimate?.items ?? []).map((it: EstimateItem) => ({ key: nk(), productId: it.productId ?? "", lineKind: it.lineKind, name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate }));
   const [rows, setRows] = useState<Row[]>(initial.length ? initial : [{ key: nk(), productId: "", lineKind: "item", name: "", unitPrice: 0, quantity: 1, taxRate: 0.1 }]);
@@ -53,6 +53,7 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
     <form action={action} className="space-y-5">
       {state && state.ok === false && <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">{state.error}</p>}
       {estimate && <input type="hidden" name="id" value={estimate.id} />}
+      {asInvoice && <input type="hidden" name="create_invoice" value="true" />}
       <input type="hidden" name="items" value={itemsJson} />
       <input type="hidden" name="customer_id" value={estimate?.customerId ?? defaultCustomerId ?? ""} />
 
@@ -60,8 +61,13 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
         <Grid>
           <F label="件名"><input name="title" defaultValue={estimate?.title ?? ""} className={inp} /></F>
           <F label="種別"><select name="kind" defaultValue={estimate?.kind ?? "funeral"} className={inp}><option value="funeral">葬儀見積</option><option value="pre">事前見積</option></select></F>
-          <F label="見積日"><input name="estimate_on" type="date" defaultValue={estimate?.estimateOn ?? ""} className={inp} /></F>
-          <F label="有効期限"><input name="estimate_limit_on" type="date" defaultValue={estimate?.estimateLimitOn ?? ""} className={inp} /></F>
+          {asInvoice ? <>
+            <F label="請求日"><input name="billed_on" type="date" defaultValue={estimate?.estimateOn ?? ""} className={inp} /></F>
+            <F label="お支払い期限"><input name="due_on" type="date" className={inp} /></F>
+          </> : <>
+            <F label="見積日"><input name="estimate_on" type="date" defaultValue={estimate?.estimateOn ?? ""} className={inp} /></F>
+            <F label="有効期限"><input name="estimate_limit_on" type="date" defaultValue={estimate?.estimateLimitOn ?? ""} className={inp} /></F>
+          </>}
         </Grid>
         <F label="摘要"><textarea name="memo" rows={2} defaultValue={estimate?.memo ?? ""} className={inp} /></F>
       </Card>
@@ -162,8 +168,8 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
       </Card>
 
       <div className="flex gap-3 pb-16">
-        <button disabled={pending} className="rounded bg-[#1aa39a] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "保存中…" : "見積を保存"}</button>
-        <Link href="/kanri/estimates" className="rounded border px-6 py-2.5 text-sm">キャンセル</Link>
+        <button disabled={pending} className="rounded bg-[#1aa39a] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "保存中…" : asInvoice ? "登録する" : "見積を保存"}</button>
+        <Link href={asInvoice ? "/kanri/billing" : "/kanri/estimates"} className="rounded border px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
 
       {/* 右下 固定 合計バー（スマート葬儀準拠） */}

@@ -15,7 +15,10 @@ export default async function BillingPage() {
         <h1 className="text-lg font-bold text-white">請求書</h1>
         <div className="flex flex-wrap gap-2 text-xs">
           <a href="/kanri/billing/export" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書CSVダウンロード</a>
-          <Link href="/kanri/estimates" className="rounded bg-white px-3 py-1.5 font-medium text-[#2c8c6f]">見積から請求書を作成</Link>
+          <Link href="/kanri/billing/new" className="rounded bg-white px-3 py-1.5 font-medium text-[#2c8c6f]">請求書追加</Link>
+          <Link href="/kanri/billing/bulk" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書一括登録</Link>
+          <Link href="/kanri/billing/import" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書CSVインポート</Link>
+          <Link href="/kanri/estimates" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">見積から作成</Link>
         </div>
       </div>
 

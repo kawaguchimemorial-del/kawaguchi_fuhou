@@ -498,3 +498,11 @@
 - 追加: lib/kanri/related.ts listRelatedCustomers、app/kanri/customers/search/route.ts(関連追加用の顧客検索JSON API)、actions.ts addRelatedCustomer/deleteRelatedCustomer。
 - 追加: components/kanri/RelatedCustomers.tsx(client) — 関連顧客カード[+関連追加]→「関連顧客」モーダル(関連顧客[選択]＋関連ラベル必須＋登録する)→[選択]で「顧客を選択してください。」ピッカーモーダル(キーワード検索＋選択リスト:氏名/電話番号・住所/生年月日)。登録で紐付け、一覧に氏名/関連/削除表示。顧客詳細の関連顧客タブに組み込み(電話/携帯/住所一致カードは従来通り併存)。
 - 検証: 関連追加→ピッカー検索→選択→関連入力→登録→一覧反映(小宮 清/長男)をPlaywrightで確認、実スクショと一致確認後にテストリンク削除。tsc(該当ファイル)エラー無し。
+
+## 2026-07-05 葬儀管理 請求書追加/一括登録/CSVインポートを実スクショと一致
+- 請求書追加(app/kanri/billing/new): 見積もり追加相当。EstimateFormにasInvoiceモードを追加(件名/種別/請求日/お支払い期限＋故人/喪主/日程・会場/明細/その他＋右下固定合計バー、ボタン=登録する)。saveEstimateにcreate_invoice分岐を追加し、見積＋請求書を同時作成→請求書へ遷移。
+  ※実画面の請求書追加は見積もり追加と同一構造の巨大フォーム。専用重複実装は避け、既存EstimateFormの収束版を流用(顧客[選択]/新規や全オプションマスタUIまでは踏み込まず、故人/喪主/明細/日程で構造再現)。
+- 請求書一括登録(app/kanri/billing/bulk ＋ components/kanri/BulkInvoiceForm.tsx): 顧客[選択](顧客ピッカー流用)＋請求日、説明文、一括適用する商品select、宛先/金額/数量グリッド(30行)、一括登録。actions.ts createBulkInvoices(宛先・金額が揃った行ごとに見積＋請求書を作成)。
+- 請求書CSVインポート(app/kanri/billing/import ＋ components/kanri/InvoiceImport.tsx): CSVファイル選択→登録する/キャンセル、CSVインポート用フォーマットダウンロード。actions.ts importInvoices(顧客名,件名,請求日,金額を解析し見積＋請求書作成)、/kanri/billing/import/format でフォーマットCSV配布。
+- 変更: 請求書一覧ヘッダーに 請求書追加/請求書一括登録/請求書CSVインポート/見積から作成 ボタンを追加。
+- 検証: 3ページをPlaywright撮影し実スクショと一致確認。一括登録は顧客選択→宛先/金額入力→一括登録で請求書1件作成(?bulk=1)を確認後にテストデータ削除。tsc(該当ファイル)エラー無し。

@@ -333,6 +333,15 @@ export async function saveEstimate(_prev: KanriResult | null, fd: FormData): Pro
     const { error } = await c.from("fk_estimate_items").insert(computed.map((x) => ({ ...x, estimate_id: estimateId })));
     if (error) return { ok: false, error: error.message };
   }
+  // 請求書追加モード: 見積＋請求書を同時作成して請求書へ遷移
+  if (bool(fd, "create_invoice")) {
+    const { data: inv } = await c.from("fk_invoices").insert({
+      funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, total, status: "unpaid",
+      billed_on: s(fd, "billed_on") ?? s(fd, "estimate_on") ?? new Date().toISOString().slice(0, 10),
+      due_on: s(fd, "due_on"),
+    }).select("id").single();
+    if (inv) redirect(`/kanri/billing/${inv.id}`);
+  }
   redirect(`/kanri/estimates/${estimateId}`);
 }
 
@@ -464,6 +473,71 @@ export async function deletePaymentSlip(fd: FormData): Promise<void> {
   await c.from("fk_payments").delete().eq("slip_id", id);
   await recalcInvoice(c, invoiceId);
   revalidatePath(`/kanri/billing/${invoiceId}`);
+}
+
+// ===== 請求書 一括登録（宛先ごとに請求書を作成） =====
+export async function createBulkInvoices(fd: FormData): Promise<void> {
+  const customerId = s(fd, "customer_id");
+  const billedOn = s(fd, "billed_on") ?? new Date().toISOString().slice(0, 10);
+  const productName = s(fd, "product_name") ?? "商品";
+  const unitPrice0 = num(fd, "product_price") ?? 0;
+  if (!customerId) return;
+  const c = admin();
+  const recipients = fd.getAll("recipient").map((v) => String(v).trim());
+  const amounts = fd.getAll("amount").map((v) => Number(String(v).replace(/,/g, "")));
+  const quantities = fd.getAll("quantity").map((v) => Number(String(v)) || 1);
+  let created = 0;
+  for (let i = 0; i < recipients.length; i++) {
+    const recipient = recipients[i];
+    const amount = amounts[i];
+    const qty = quantities[i] || 1;
+    if (!recipient || !amount) continue; // 宛先・金額が揃った行のみ
+    const unit = unitPrice0 || amount;
+    const lineAmount = unit * qty;
+    const tax = Math.round(lineAmount * 0.1);
+    const total = lineAmount + tax;
+    const { data: est } = await c.from("fk_estimates").insert({
+      funeral_home_id: KANRI_HOME_ID, customer_id: customerId, title: productName, kind: "funeral",
+      estimate_on: billedOn, mourner_last_name: recipient,
+      subtotal: lineAmount, discount_total: 0, tax_total: tax, total, status: "confirmed",
+    }).select("id").single();
+    if (!est) continue;
+    await c.from("fk_estimate_items").insert({ estimate_id: est.id, line_kind: "item", name: productName, unit_price: unit, quantity: qty, tax_rate: 0.1, amount: lineAmount, sort_order: 0 });
+    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, total, status: "unpaid", billed_on: billedOn });
+    created++;
+  }
+  revalidatePath("/kanri/billing");
+  redirect(`/kanri/billing?bulk=${created}`);
+}
+
+// ===== 請求書 CSVインポート =====
+// CSV列: 顧客名,件名,請求日,金額
+export async function importInvoices(fd: FormData): Promise<void> {
+  const text = s(fd, "csv");
+  if (!text) return;
+  const c = admin();
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const rows = lines[0]?.includes("金額") ? lines.slice(1) : lines; // ヘッダー除去
+  const today = new Date().toISOString().slice(0, 10);
+  let created = 0;
+  for (const line of rows) {
+    const cols = line.split(",").map((v) => v.replace(/^"|"$/g, "").trim());
+    const [name, title, billedRaw, amountRaw] = cols;
+    const amount = Number((amountRaw ?? "").replace(/,/g, ""));
+    if (!name || !amount) continue;
+    const billed = billedRaw && /\d/.test(billedRaw) ? billedRaw.replace(/\//g, "-") : today;
+    const tax = Math.round(amount / 1.1 * 0.1);
+    const { data: est } = await c.from("fk_estimates").insert({
+      funeral_home_id: KANRI_HOME_ID, title: title || "請求", kind: "funeral", estimate_on: billed,
+      mourner_last_name: name, subtotal: amount - tax, discount_total: 0, tax_total: tax, total: amount, status: "confirmed",
+    }).select("id").single();
+    if (!est) continue;
+    await c.from("fk_estimate_items").insert({ estimate_id: est.id, line_kind: "item", name: title || "請求", unit_price: amount - tax, quantity: 1, tax_rate: 0.1, amount: amount - tax, sort_order: 0 });
+    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, total: amount, status: "unpaid", billed_on: billed });
+    created++;
+  }
+  revalidatePath("/kanri/billing");
+  redirect(`/kanri/billing?imported=${created}`);
 }
 
 // ===== 発注（見積の商品を発注先ごとにまとめて発注） =====
