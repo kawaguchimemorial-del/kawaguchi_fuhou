@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listCustomers } from "@/lib/kanri/data";
 import { CUSTOMER_STATUSES } from "@/lib/kanri/constants";
+import { PageHeader } from "@/components/kanri/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,7 @@ export default async function CustomersPage({ searchParams }: SP) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">顧客管理</h1>
-        <Link href="/kanri/customers/new" className="rounded bg-[#9b2fae] px-4 py-2 text-sm text-white">＋ 新規登録</Link>
-      </div>
+      <PageHeader title="顧客" action={{ label: "＋ 新規登録", href: "/kanri/customers/new" }} />
 
       <form className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm text-sm">
         <div>

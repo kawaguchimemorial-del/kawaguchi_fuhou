@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listInvoices, INVOICE_STATUS_LABEL } from "@/lib/kanri/invoices";
+import { PageHeader } from "@/components/kanri/PageHeader";
 
 export const metadata = { title: "請求管理" };
 export const dynamic = "force-dynamic";
@@ -10,10 +11,7 @@ export default async function BillingPage() {
   const invoices = await listInvoices();
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">請求管理</h1>
-        <Link href="/kanri/estimates" className="rounded border border-[#9b2fae] px-4 py-2 text-sm text-[#9b2fae]">見積から請求書を作成</Link>
-      </div>
+      <PageHeader title="請求書" action={{ label: "見積から作成", href: "/kanri/estimates" }} />
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{["請求日", "故人", "喪主", "請求額", "入金額", "ステータス", ""].map((h) => <th key={h} className="px-3 py-3 font-medium">{h}</th>)}</tr></thead>

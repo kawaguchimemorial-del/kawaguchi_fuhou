@@ -173,9 +173,16 @@ export async function saveEstimate(_prev: KanriResult | null, fd: FormData): Pro
   taxTotal = Math.round(taxTotal);
   const total = subtotal - discountTotal + taxTotal;
 
+  // 施行番号(見積番号)の自動採番（未指定・新規時）
+  let estimateNo = s(fd, "estimate_no");
+  if (!estimateNo && !id) {
+    const now = new Date();
+    const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    estimateNo = `E${ymd}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  }
   const row = {
     funeral_home_id: KANRI_HOME_ID,
-    estimate_no: s(fd, "estimate_no"),
+    estimate_no: estimateNo,
     customer_id: s(fd, "customer_id"),
     title: s(fd, "title"), memo: s(fd, "memo"),
     estimate_on: s(fd, "estimate_on"), estimate_limit_on: s(fd, "estimate_limit_on"),
