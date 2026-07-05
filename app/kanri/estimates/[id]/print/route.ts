@@ -3,11 +3,10 @@ import { getCompanyInfo } from "@/lib/kanri/masters";
 
 export const dynamic = "force-dynamic";
 
-function esc(v?: string | number | null): string {
-  return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-function fmtd(iso?: string) { if (!iso) return ""; const d = new Date(iso); if (isNaN(d.getTime())) return ""; return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; }
-function fmtdt(iso?: string) { if (!iso) return ""; const d = new Date(iso); if (isNaN(d.getTime())) return ""; return `${fmtd(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
+function esc(v?: string | number | null): string { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function fmtd(iso?: string) { if (!iso) return ""; const d = new Date(iso); if (isNaN(d.getTime())) return ""; return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`; }
+function yen(n: number) { return `${n.toLocaleString()}円`; }
+function neg(n: number) { return `▲${Math.abs(n).toLocaleString()}円`; }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -15,57 +14,101 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if (!e) return new Response("not found", { status: 404 });
   const co = await getCompanyInfo();
   const companyName = co.company_name || "株式会社 川口典礼";
-  const companyAddr = [co.postcode ? `〒${co.postcode}` : "", co.prefecture, co.address_city, co.address_street, co.address_building].filter(Boolean).join(" ");
-  const items = e.items ?? [];
-  const rows = items.map((it) => `<tr><td>${esc(it.name)}${it.lineKind === "discount" ? "（値引）" : ""}</td><td class="r">${it.unitPrice.toLocaleString()}</td><td class="c">${it.quantity}</td><td class="c">${Math.round(it.taxRate * 100)}%</td><td class="r">${it.amount.toLocaleString()}</td></tr>`).join("");
+  const companyAddr = [co.prefecture, co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
+  const items = (e.items ?? []).filter((it) => it.lineKind === "item");
+  const discounts = (e.items ?? []).filter((it) => it.lineKind === "discount");
+  const on = fmtd(e.estimateOn) || fmtd(e.createdAt);
+  const withTax = (amt: number, rate: number) => Math.round(amt * (1 + rate));
+  const mournerAddr = [e.mourner.prefecture, e.mourner.addressCity, e.mourner.addressStreet, e.mourner.addressBuilding].filter(Boolean).join("");
 
-  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>見積書 ${esc(e.title || "")}</title>
+  // 内訳（10%対象計）: items 側
+  const itemsExTax = items.reduce((a, it) => a + it.amount, 0);
+  const itemsIncTax = items.reduce((a, it) => a + withTax(it.amount, it.taxRate), 0);
+  const itemsTax = itemsIncTax - itemsExTax;
+  const discExTax = discounts.reduce((a, it) => a + it.amount, 0); // 負
+  const discIncTax = discounts.reduce((a, it) => a + withTax(it.amount, it.taxRate), 0);
+  const grandIncTax = itemsIncTax + discIncTax;
+  const grandTax = (itemsTax) + (discIncTax - discExTax);
+
+  const itemRows = items.map((it) => `<tr>
+    <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
+    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(withTax(it.amount, it.taxRate))}</td></tr>`).join("");
+  const discRows = discounts.map((it) => `<tr>
+    <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
+    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(withTax(it.amount, it.taxRate))}</td></tr>`).join("");
+
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>お見積書 ${esc(mournerFullName(e))}</title>
 <style>
-  @page{size:A4;margin:18mm;} body{font-family:"Noto Sans JP","Yu Gothic",sans-serif;color:#222;font-size:13px;}
-  .wrap{max-width:720px;margin:0 auto;}
-  h1{text-align:center;font-size:24px;letter-spacing:.4em;margin-bottom:6px;}
-  .head{display:flex;justify-content:space-between;margin-top:16px;font-size:12px;}
-  .company{text-align:right;}
-  table{width:100%;border-collapse:collapse;margin-top:14px;}
-  th,td{border:1px solid #999;padding:6px 8px;} th{background:#f0eef5;}
-  td.r{text-align:right;} td.c{text-align:center;}
-  .total{margin-top:12px;margin-left:auto;width:260px;}
-  .total div{display:flex;justify-content:space-between;padding:3px 0;}
-  .total .grand{border-top:2px solid #333;font-size:16px;font-weight:bold;padding-top:6px;}
-  .info{margin-top:10px;font-size:12px;color:#444;}
+  @page{size:A4;margin:12mm;} body{font-family:"Noto Sans JP","Yu Gothic",sans-serif;color:#222;font-size:12px;}
+  .print{position:fixed;top:6px;left:6px;} @media print{.print{display:none;}}
+  .head{display:flex;justify-content:space-between;}
+  h1{text-align:center;font-size:22px;letter-spacing:.3em;margin:6px 0 18px;}
+  .addr{font-size:11px;color:#555;} .to{font-size:18px;margin-top:4px;}
+  .company{text-align:left;font-size:11px;} .company .nm{font-weight:bold;font-size:13px;}
+  .kingaku{font-size:22px;font-weight:bold;border-bottom:2px solid #333;padding-bottom:6px;margin:6px 0 16px;}
+  table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #999;padding:5px 7px;}
+  th{background:#eee;text-align:center;} td.r{text-align:right;} td.c{text-align:center;} td.l{text-align:left;}
+  .sep td{background:#eee;text-align:center;font-weight:bold;}
+  .breakdown{width:66%;margin-left:auto;margin-top:8px;}
+  .sign{width:40%;margin-top:24px;margin-left:auto;}
+  .note{text-align:right;font-size:11px;color:#666;margin-top:6px;}
 </style><script>window.onload=function(){setTimeout(function(){window.print();},300);};</script></head>
-<body><div class="wrap">
-  <h1>御 見 積 書</h1>
+<body>
+  <button class="print" onclick="window.print()">印刷</button>
   <div class="head">
-    <div>
-      <div style="font-size:16px;border-bottom:1px solid #333;padding-bottom:2px;">${esc(mournerFullName(e))} 様</div>
-      <div class="info">件名：${esc(e.title || "")}</div>
-      <div class="info">故 ${esc(deceasedFullName(e))} 儀${e.deceased.age ? `　享年${e.deceased.age}` : ""}</div>
+    <div style="width:60%">
+      <div class="addr">${esc(mournerAddr)}</div>
+      <div class="to">${esc(mournerFullName(e))} 様</div>
+    </div>
+    <div style="text-align:right;font-size:11px">
+      見積書番号 ${esc(e.estimateNo ?? "")}<br>見積日 ${on}
+    </div>
+  </div>
+  <h1>お見積書</h1>
+  <div class="head">
+    <div style="width:55%">
+      <table style="width:auto;border:none;margin:0"><tr><td style="border:none;padding:2px 20px 2px 0;font-weight:bold">件名</td><td style="border:none;padding:2px 0">${esc(e.title ?? "")}</td></tr></table>
+      <div class="kingaku">合計金額　${yen(e.total)}</div>
     </div>
     <div class="company">
-      <div>見積日：${fmtd(e.estimateOn) || "—"}</div>
-      <div>有効期限：${fmtd(e.estimateLimitOn) || "—"}</div>
-      <div style="margin-top:8px;font-weight:bold;">${esc(companyName)}</div>
-      ${companyAddr ? `<div style="font-size:11px;">${esc(companyAddr)}</div>` : ""}
-      ${co.tel ? `<div style="font-size:11px;">TEL: ${esc(co.tel)}</div>` : ""}
-      ${co.invoice_no ? `<div style="font-size:11px;">登録番号: ${esc(co.invoice_no)}</div>` : ""}
+      <div class="nm">${esc(companyName)}</div>
+      ${co.postcode ? `〒${esc(co.postcode)}<br>` : ""}${esc(companyAddr)}<br>${esc(co.tel ?? "")}
     </div>
   </div>
-  <div class="info">
-    通夜：${fmtdt(e.wakeAt) || "—"}／葬儀：${fmtdt(e.funeralAt) || "—"}<br>
-    式場：${esc(e.venueName) || "—"}　火葬場：${esc(e.crematoriumName) || "—"}
-  </div>
+
   <table>
-    <thead><tr><th>品名</th><th>単価</th><th>数量</th><th>税率</th><th>金額</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#999;">明細なし</td></tr>'}</tbody>
+    <thead><tr><th>取引日</th><th>項目名</th><th>数量</th><th>単価</th><th>税抜金額</th><th>税込金額</th></tr></thead>
+    <tbody>
+      ${itemRows || '<tr><td colspan="6" class="c" style="color:#999">明細なし</td></tr>'}
+      <tr class="sep"><td colspan="6">その他オプション、お供えにかかる費用</td></tr>
+      <tr><td colspan="4" class="r" style="font-weight:bold">小計</td><td class="r">${yen(itemsExTax)}</td><td class="r">${yen(itemsIncTax)}</td></tr>
+    </tbody>
   </table>
-  <div class="total">
-    <div><span>小計（税抜）</span><span>${e.subtotal.toLocaleString()} 円</span></div>
-    <div><span>値引</span><span>-${e.discountTotal.toLocaleString()} 円</span></div>
-    <div><span>消費税</span><span>${e.taxTotal.toLocaleString()} 円</span></div>
-    <div class="grand"><span>合計（税込）</span><span>${e.total.toLocaleString()} 円</span></div>
-    ${e.advancePayment > 0 ? `<div><span>前受金</span><span>${e.advancePayment.toLocaleString()} 円</span></div>` : ""}
-  </div>
-</div></body></html>`;
+
+  <table class="breakdown">
+    <thead><tr><th>内訳</th><th>税込金額</th><th>消費税額</th></tr></thead>
+    <tbody><tr><td class="c">10%対象計</td><td class="r">${yen(itemsIncTax)}</td><td class="r">${yen(itemsTax)}</td></tr></tbody>
+  </table>
+
+  ${discounts.length ? `
+  <table>
+    <thead><tr><th>取引日</th><th>割引・返品項目名</th><th>数量</th><th>単価</th><th>税抜金額</th><th>税込金額</th></tr></thead>
+    <tbody>${discRows}</tbody>
+  </table>
+  <table class="breakdown">
+    <thead><tr><th>内訳</th><th>税込金額</th><th>消費税額</th></tr></thead>
+    <tbody><tr><td class="c">10%対象計</td><td class="r">${yen(grandIncTax)}</td><td class="r">${yen(grandTax)}</td></tr></tbody>
+  </table>` : ""}
+
+  <div class="note">＊ 軽減税率対象</div>
+  <div style="text-align:center;margin-top:8px;font-weight:bold">摘要</div>
+  <div style="min-height:24px;border-bottom:1px solid #ccc">${esc(e.memo ?? "")}</div>
+
+  <table class="sign">
+    <tr><th style="width:6em">署名日</th><td></td></tr>
+    <tr><th>喪主様サイン</th><td style="height:40px"></td></tr>
+    <tr><th>施主サイン</th><td style="height:40px"></td></tr>
+  </table>
+</body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
