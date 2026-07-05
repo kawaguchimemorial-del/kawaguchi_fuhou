@@ -208,6 +208,23 @@ export async function addCustomerNote(fd: FormData): Promise<void> {
   });
   revalidatePath(`/kanri/customers/${customerId}`);
 }
+// ===== 関連顧客 =====
+export async function addRelatedCustomer(fd: FormData): Promise<void> {
+  const customerId = s(fd, "customer_id");
+  const relatedId = s(fd, "related_customer_id");
+  if (!customerId || !relatedId || customerId === relatedId) return;
+  await admin().from("fk_related_customers").insert({
+    funeral_home_id: KANRI_HOME_ID, customer_id: customerId, related_customer_id: relatedId, relation: s(fd, "relation"),
+  });
+  revalidatePath(`/kanri/customers/${customerId}`);
+}
+export async function deleteRelatedCustomer(fd: FormData): Promise<void> {
+  const id = s(fd, "id"); const customerId = s(fd, "customer_id");
+  if (!id) return;
+  await admin().from("fk_related_customers").delete().eq("id", id);
+  if (customerId) revalidatePath(`/kanri/customers/${customerId}`);
+}
+
 // ===== 顧客ダブりチェック =====
 // 統合: survivor_id に他のidを統合（FK付け替え＋他をソフト削除）
 export async function mergeCustomers(fd: FormData): Promise<void> {

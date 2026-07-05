@@ -4,6 +4,8 @@ import { getCustomer, listCustomerNotes, findRelatedCustomers, type Customer } f
 import { addCustomerNote, deleteCustomerNote, deleteCustomer } from "@/lib/kanri/actions";
 import { listEstimatesByCustomer, deceasedFullName } from "@/lib/kanri/estimates";
 import { listInvoicesByCustomer } from "@/lib/kanri/invoices";
+import { listRelatedCustomers } from "@/lib/kanri/related";
+import { RelatedCustomers } from "@/components/kanri/RelatedCustomers";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> };
@@ -30,6 +32,7 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
   const invoices = active === "contract" ? await listInvoicesByCustomer(id) : [];
   const notes = active === "history" ? await listCustomerNotes(id) : [];
   const related = active === "related" ? await findRelatedCustomers(c) : null;
+  const relatedLinks = active === "related" ? await listRelatedCustomers(id) : [];
   const addr = [c.postcode ? `〒${c.postcode}` : "", c.prefectureCode, c.addressCity, c.addressStreet, c.addressBuilding].filter(Boolean).join(" ");
 
   return (
@@ -183,10 +186,7 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
 
       {active === "related" && related && (
         <div className="space-y-4">
-          <div className="rounded-lg bg-white p-5 shadow-sm">
-            <div className="mb-3 flex items-center justify-between"><p className="font-bold text-gray-800">関連顧客</p><button className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">＋ 関連追加</button></div>
-            <RelTable cols={["氏名", "関連"]} rows={[]} />
-          </div>
+          <RelatedCustomers customerId={id} links={relatedLinks} />
           <RelatedCard title="電話番号が一致する顧客" list={related.byPhone} />
           <RelatedCard title="携帯番号が一致する顧客" list={related.byMobile} />
           <RelatedCard title="住所が一致する顧客" list={related.byAddress} />

@@ -492,3 +492,9 @@
 ## 2026-07-05 葬儀管理 CRMトップ カレンダーに担当者/表示対象/月週トグル追加
 - components/kanri/Calendar.tsx: 実画面のカレンダーヘッダーに合わせ、担当者(既定=松澤 覚)/表示対象(すべて/通夜/葬儀)セレクトと月・週トグルを追加。週表示は今日(当月内)を含む1週間を表示。既存のお知らせ帯/ショートカットタイル群/月別顧客登録数/新規登録顧客テーブルは既に実装済みで一致を確認。
 - 検証: /kanri をPlaywright撮影し実スクショと突き合わせ一致確認。tsc(該当ファイル)エラー無し。
+
+## 2026-07-05 葬儀管理 関連顧客 関連追加(2段モーダル)を実スクショと一致
+- 追加DB: migration 0016 — fk_related_customers(顧客同士の紐付け)。pooler経由で適用済み。
+- 追加: lib/kanri/related.ts listRelatedCustomers、app/kanri/customers/search/route.ts(関連追加用の顧客検索JSON API)、actions.ts addRelatedCustomer/deleteRelatedCustomer。
+- 追加: components/kanri/RelatedCustomers.tsx(client) — 関連顧客カード[+関連追加]→「関連顧客」モーダル(関連顧客[選択]＋関連ラベル必須＋登録する)→[選択]で「顧客を選択してください。」ピッカーモーダル(キーワード検索＋選択リスト:氏名/電話番号・住所/生年月日)。登録で紐付け、一覧に氏名/関連/削除表示。顧客詳細の関連顧客タブに組み込み(電話/携帯/住所一致カードは従来通り併存)。
+- 検証: 関連追加→ピッカー検索→選択→関連入力→登録→一覧反映(小宮 清/長男)をPlaywrightで確認、実スクショと一致確認後にテストリンク削除。tsc(該当ファイル)エラー無し。
