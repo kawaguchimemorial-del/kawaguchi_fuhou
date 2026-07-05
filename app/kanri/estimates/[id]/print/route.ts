@@ -1,4 +1,5 @@
 import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
+import { getCompanyInfo } from "@/lib/kanri/masters";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const e = await getEstimate(id);
   if (!e) return new Response("not found", { status: 404 });
+  const co = await getCompanyInfo();
+  const companyName = co.company_name || "株式会社 川口典礼";
+  const companyAddr = [co.postcode ? `〒${co.postcode}` : "", co.prefecture, co.address_city, co.address_street, co.address_building].filter(Boolean).join(" ");
   const items = e.items ?? [];
   const rows = items.map((it) => `<tr><td>${esc(it.name)}${it.lineKind === "discount" ? "（値引）" : ""}</td><td class="r">${it.unitPrice.toLocaleString()}</td><td class="c">${it.quantity}</td><td class="c">${Math.round(it.taxRate * 100)}%</td><td class="r">${it.amount.toLocaleString()}</td></tr>`).join("");
 
@@ -41,7 +45,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     <div class="company">
       <div>見積日：${fmtd(e.estimateOn) || "—"}</div>
       <div>有効期限：${fmtd(e.estimateLimitOn) || "—"}</div>
-      <div style="margin-top:8px;font-weight:bold;">株式会社 川口典礼</div>
+      <div style="margin-top:8px;font-weight:bold;">${esc(companyName)}</div>
+      ${companyAddr ? `<div style="font-size:11px;">${esc(companyAddr)}</div>` : ""}
+      ${co.tel ? `<div style="font-size:11px;">TEL: ${esc(co.tel)}</div>` : ""}
+      ${co.invoice_no ? `<div style="font-size:11px;">登録番号: ${esc(co.invoice_no)}</div>` : ""}
     </div>
   </div>
   <div class="info">

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 import { KANRI_HOME_ID } from "./constants";
+import { masterFields } from "./master-defs";
 
 export type KanriResult = { ok: true; id: string } | { ok: false; error: string };
 
@@ -62,14 +63,34 @@ function num(fd: FormData, k: string): number | null {
 // ===== マスタ =====
 export async function addMasterItem(fd: FormData): Promise<void> {
   const type = s(fd, "master_type");
-  const name = s(fd, "name");
-  if (!type || !name) return;
-  await admin().from("fk_master_items").insert({
-    funeral_home_id: KANRI_HOME_ID, master_type: type, name,
-    kana: s(fd, "kana"), price: num(fd, "price"), sort_order: num(fd, "sort_order") ?? 0,
-  });
+  if (!type) return;
+  const fields = masterFields(type);
+  const row: Record<string, unknown> = { funeral_home_id: KANRI_HOME_ID, master_type: type, sort_order: 0 };
+  const extra: Record<string, string> = {};
+  for (const f of fields) {
+    const v = s(fd, `f_${f.key}`);
+    if (f.col === "name") row.name = v;
+    else if (f.col === "kana") row.kana = v;
+    else if (f.col === "price") row.price = v ? Number(v.replace(/,/g, "")) : null;
+    else if (v != null) extra[f.key] = v;
+  }
+  if (!row.name) return; // 名称必須
+  row.extra = extra;
+  await admin().from("fk_master_items").insert(row);
   revalidatePath(`/kanri/settings/${type}`);
 }
+export async function saveCompanyInfo(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const { COMPANY_FIELDS } = await import("./master-defs");
+  const extra: Record<string, string> = {};
+  for (const f of COMPANY_FIELDS) { const v = s(fd, `f_${f.key}`); if (v != null) extra[f.key] = v; }
+  const c = admin();
+  const { data: existing } = await c.from("fk_master_items").select("id").eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", "company_info").is("deleted_at", null).limit(1).maybeSingle();
+  if (existing) await c.from("fk_master_items").update({ extra, name: extra.company_name || "会社情報" }).eq("id", existing.id);
+  else await c.from("fk_master_items").insert({ funeral_home_id: KANRI_HOME_ID, master_type: "company_info", name: extra.company_name || "会社情報", extra });
+  revalidatePath("/kanri/settings/company");
+  return { ok: true, id: "company" };
+}
+
 export async function deleteMasterItem(fd: FormData): Promise<void> {
   const id = s(fd, "id"); const type = s(fd, "master_type");
   if (!id) return;

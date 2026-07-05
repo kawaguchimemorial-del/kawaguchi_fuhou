@@ -1,5 +1,6 @@
 import { getInvoice } from "@/lib/kanri/invoices";
 import { deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
+import { getCompanyInfo } from "@/lib/kanri/masters";
 export const dynamic = "force-dynamic";
 function esc(v?: string|number|null){ return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function fmt(iso?: string){ if(!iso) return ""; const d=new Date(iso); if(isNaN(d.getTime()))return ""; return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`; }
@@ -9,6 +10,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if(!res) return new Response("not found",{status:404});
   const { invoice: iv, estimate: e } = res;
   const name = e ? mournerFullName(e) : "";
+  const co = await getCompanyInfo();
+  const companyName = co.company_name || "株式会社 川口典礼";
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>領収書</title>
 <style>@page{size:A4 landscape;margin:20mm;}body{font-family:"Noto Serif JP",serif;color:#222;}
 .wrap{max-width:700px;margin:0 auto;border:2px solid #333;padding:30px;}
@@ -23,7 +26,7 @@ h1{text-align:center;letter-spacing:.5em;font-size:28px;margin:0 0 20px;}
 <div class="row">但し　故 ${esc(e?deceasedFullName(e):"")} 儀 葬儀費用として</div>
 <div class="row">上記正に領収いたしました。</div>
 <div class="row">発行日：${fmt(iv.billedOn)||fmt(new Date().toISOString())}</div>
-<div class="company">株式会社 川口典礼</div>
+<div class="company">${esc(companyName)}</div>
 </div></body></html>`;
   return new Response(html,{headers:{"Content-Type":"text/html; charset=utf-8"}});
 }
