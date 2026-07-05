@@ -618,6 +618,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     crematorium_name: s(fd, "crematorium_name"), brand: s(fd, "brand"),
     product_set_id: s(fd, "product_set_id"), product_set_price: num(fd, "product_set_price") ?? 0,
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),
+    staff_name: s(fd, "staff_name"),
     advance_payment: num(fd, "advance_payment") ?? 0,
     subtotal, discount_total: discountTotal, tax_total: taxTotal, total,
     ...addresseeCols(fd),
@@ -659,6 +660,7 @@ export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): 
     invoice_target_address_building: a.addressee_address_building,
     product_set_id: s(fd, "product_set_id"), advance_payment: num(fd, "advance_payment") ?? 0,
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),
+    staff_name: s(fd, "staff_name"),
     total,
   };
   let invoiceId = id;

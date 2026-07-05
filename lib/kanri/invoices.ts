@@ -23,6 +23,7 @@ export interface Invoice {
   invoiceTargetCity?: string; invoiceTargetStreet?: string; invoiceTargetBuilding?: string;
   issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   productSetId?: string; advancePayment?: number;
+  staffName?: string; // 最終更新者(葬儀担当者)
 }
 
 export interface InvoiceDetail {
@@ -54,6 +55,7 @@ function map(r: any): Invoice {
     invoiceTargetBuilding: r.invoice_target_address_building ?? undefined,
     issuerCompany: r.issuer_company ?? undefined, chargedOrg: r.charged_org ?? undefined, chargedUser: r.charged_user ?? undefined,
     productSetId: r.product_set_id ?? undefined, advancePayment: r.advance_payment ?? undefined,
+    staffName: r.staff_name ?? undefined,
   };
 }
 

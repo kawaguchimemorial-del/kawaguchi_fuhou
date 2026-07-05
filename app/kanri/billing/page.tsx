@@ -28,7 +28,7 @@ export default async function BillingPage({ searchParams }: SP) {
   const qsBase = new URLSearchParams(Object.entries(sp).filter(([k, v]) => k !== "p" && v) as [string, string][]).toString();
   const pageHref = (n: number) => `/kanri/billing?${qsBase ? qsBase + "&" : ""}p=${n}`;
 
-  const cols = ["ID", "顧客", "対象者", "件名", "請求日", "合計金額", "売上区分", "施行番号", "請求先", "操作"];
+  const cols = ["ID", "顧客", "対象者", "件名", "請求日", "合計金額", "売上区分", "施行番号", "請求先", "最終更新者", "操作"];
 
   return (
     <div>
@@ -83,6 +83,7 @@ export default async function BillingPage({ searchParams }: SP) {
                     <td className="px-3 py-2 whitespace-nowrap">{iv.saleCategory ?? ""}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{iv.constructionNo ?? ""}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{iv.invoiceTargetName ?? ""}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{iv.staffName ?? ""}</td>
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
                         <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-blue-400 px-2 py-1 text-[11px] text-blue-500">詳細</Link>

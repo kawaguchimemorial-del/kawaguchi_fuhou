@@ -35,6 +35,7 @@ export default async function EditInvoice({ params }: Params) {
     title: iv.title, date1: iv.billedOn, date2: iv.dueOn,
     productSetId: iv.productSetId,
     advance: iv.advancePayment, issuerCompany: iv.issuerCompany, chargedOrg: iv.chargedOrg, chargedUser: iv.chargedUser,
+    staffName: iv.staffName,
     items: details.map((d) => ({ lineKind: d.amount < 0 ? "discount" as const : "item" as const, name: d.title, unitPrice: Math.abs(d.price), quantity: d.quantity })),
   };
   return (

@@ -28,6 +28,7 @@ export default async function EditEstimate({ params }: Params) {
     crematorium: e.crematoriumName, brand: e.brand, productSetId: e.productSetId,
     items: (e.items ?? []).map((it) => ({ lineKind: it.lineKind, productId: it.productId, name: it.name, unitPrice: it.unitPrice, quantity: it.quantity })),
     advance: e.advancePayment, issuerCompany: e.issuerCompany, chargedOrg: e.chargedOrg, chargedUser: e.chargedUser,
+    staffName: e.staffName,
   };
   return (
     <div className="mx-auto max-w-4xl">

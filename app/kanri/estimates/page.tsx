@@ -32,7 +32,7 @@ export default async function EstimatesPage({ searchParams }: SP) {
   const qsBase = new URLSearchParams(Object.entries(sp).filter(([k, v]) => k !== "p" && v) as [string, string][]).toString();
   const pageHref = (n: number) => `/kanri/estimates?${qsBase ? qsBase + "&" : ""}p=${n}`;
 
-  const cols = ["ID", "顧客", "対象者", "件名", "合計金額", "見積日", "施行番号", "操作"];
+  const cols = ["ID", "顧客", "対象者", "件名", "合計金額", "見積日", "施行番号", "最終更新者", "操作"];
 
   return (
     <div>
@@ -85,6 +85,7 @@ export default async function EstimatesPage({ searchParams }: SP) {
                     <td className="px-3 py-2 whitespace-nowrap text-right">{e.total.toLocaleString()}円</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{fmt(e.estimateOn)}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{e.estimateNo ?? ""}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{e.staffName ?? ""}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
                         <Link href={`/kanri/estimates/${e.id}`} className="rounded bg-gray-100 px-2 py-1 text-[11px] text-gray-700">詳細</Link>
