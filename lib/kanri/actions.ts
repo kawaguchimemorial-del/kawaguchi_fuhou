@@ -553,6 +553,114 @@ export async function deletePaymentSlip(fd: FormData): Promise<void> {
   revalidatePath(`/kanri/billing/${invoiceId}`);
 }
 
+// ===== 見積/請求 作成（実スマート葬儀フォーム準拠: 顧客直結・宛名/請求先・セット商品） =====
+type FullItem = { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; taxRate: number };
+
+async function resolveCustomerId(c: ReturnType<typeof admin>, fd: FormData): Promise<string | null> {
+  let customerId = s(fd, "customer_id");
+  if (!customerId && bool(fd, "create_customer")) {
+    const last = s(fd, "new_customer_last_name");
+    if (last) {
+      const { data } = await c.from("fk_customers").insert({ funeral_home_id: KANRI_HOME_ID, last_name: last, first_name: s(fd, "new_customer_first_name") }).select("id").single();
+      customerId = data?.id ?? null;
+    }
+  }
+  return customerId;
+}
+
+function addresseeCols(fd: FormData) {
+  return {
+    addressee_kind: s(fd, "addressee_kind") ?? "喪主",
+    addressee_last_name: s(fd, "addressee_last_name"), addressee_first_name: s(fd, "addressee_first_name"),
+    addressee_honorific: s(fd, "addressee_honorific") ?? "様",
+    addressee_last_name_kana: s(fd, "addressee_last_name_kana"), addressee_first_name_kana: s(fd, "addressee_first_name_kana"),
+    addressee_postcode: s(fd, "addressee_postcode"), addressee_prefecture: s(fd, "addressee_prefecture"),
+    addressee_address_city: s(fd, "addressee_address_city"), addressee_address_street: s(fd, "addressee_address_street"),
+    addressee_address_building: s(fd, "addressee_address_building"),
+  };
+}
+
+function computeItems(fd: FormData) {
+  let items: FullItem[] = [];
+  try { items = JSON.parse(s(fd, "items") ?? "[]"); } catch { /* noop */ }
+  let subtotal = 0, discountTotal = 0, taxTotal = 0;
+  const computed = items.map((it, i) => {
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.unitPrice) || 0;
+    const amount = it.lineKind === "discount" ? -Math.abs(price * qty) : price * qty;
+    const rate = Number(it.taxRate) || 0;
+    if (it.lineKind === "discount") discountTotal += Math.abs(amount); else subtotal += amount;
+    taxTotal += amount * rate;
+    return { product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i };
+  });
+  taxTotal = Math.round(taxTotal);
+  return { computed, subtotal, discountTotal, taxTotal, total: subtotal - discountTotal + taxTotal };
+}
+
+export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const title = s(fd, "title");
+  if (!title) return { ok: false, error: "件名は必須です。" };
+  const c = admin();
+  const customerId = await resolveCustomerId(c, fd);
+  if (!customerId) return { ok: false, error: "顧客を選択してください。" };
+  const { computed, subtotal, discountTotal, taxTotal, total } = computeItems(fd);
+  const deceased = (s(fd, "deceased_name") ?? "").replace(/　/g, " ");
+  const dsp = deceased.indexOf(" ");
+  const now = new Date();
+  const estimateNo = s(fd, "construction_no") || `E${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  const { data, error } = await c.from("fk_estimates").insert({
+    funeral_home_id: KANRI_HOME_ID, customer_id: customerId, kind: "funeral", status: "confirmed",
+    estimate_no: estimateNo, title, memo: s(fd, "memo"),
+    estimate_on: s(fd, "estimate_on"), estimate_limit_on: s(fd, "estimate_limit_on"),
+    deceased_last_name: deceased ? (dsp > 0 ? deceased.slice(0, dsp) : deceased) : null,
+    deceased_first_name: dsp > 0 ? deceased.slice(dsp + 1) : null,
+    crematorium_name: s(fd, "crematorium_name"), brand: s(fd, "brand"),
+    product_set_id: s(fd, "product_set_id"), product_set_price: num(fd, "product_set_price") ?? 0,
+    issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),
+    advance_payment: num(fd, "advance_payment") ?? 0,
+    subtotal, discount_total: discountTotal, tax_total: taxTotal, total,
+    ...addresseeCols(fd),
+  }).select("id").single();
+  if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
+  if (computed.length) await c.from("fk_estimate_items").insert(computed.map((x) => ({ ...x, estimate_id: data.id })));
+  redirect(`/kanri/estimates/${data.id}`);
+}
+
+export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const title = s(fd, "title");
+  if (!title) return { ok: false, error: "件名は必須です。" };
+  const billedOn = s(fd, "billed_on");
+  if (!billedOn) return { ok: false, error: "請求日は必須です。" };
+  const c = admin();
+  const customerId = await resolveCustomerId(c, fd);
+  if (!customerId) return { ok: false, error: "顧客を選択してください。" };
+  const { computed, total } = computeItems(fd);
+  const a = addresseeCols(fd);
+  const targetName = [a.addressee_last_name, a.addressee_first_name].filter(Boolean).join(" ");
+  const { data, error } = await c.from("fk_invoices").insert({
+    funeral_home_id: KANRI_HOME_ID, customer_id: customerId,
+    title, billed_on: billedOn, due_on: s(fd, "due_on"),
+    construction_no: s(fd, "construction_no"), deceased_name: s(fd, "deceased_name"),
+    invoice_target_kind: a.addressee_kind, invoice_target_name: targetName || null,
+    invoice_target_first_name: a.addressee_first_name, invoice_target_name_kana: [a.addressee_last_name_kana, a.addressee_first_name_kana].filter(Boolean).join(" ") || null,
+    invoice_target_postcode: a.addressee_postcode, invoice_target_prefecture: a.addressee_prefecture,
+    invoice_target_address_city: a.addressee_address_city, invoice_target_address_street: a.addressee_address_street,
+    invoice_target_address_building: a.addressee_address_building,
+    product_set_id: s(fd, "product_set_id"), advance_payment: num(fd, "advance_payment") ?? 0,
+    issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),
+    total, paid_total: 0, status: "unpaid",
+  }).select("id").single();
+  if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
+  if (computed.length) {
+    await c.from("fk_invoice_details").insert(computed.map((x, i) => ({
+      invoice_id: data.id, title: x.name, price: x.unit_price, tax: x.tax_rate, quantity: x.quantity,
+      amount: x.amount, tax_amount: Math.round(x.amount * x.tax_rate), amount_including_tax: x.amount + Math.round(x.amount * x.tax_rate),
+      sort_order: i,
+    })));
+  }
+  redirect(`/kanri/billing/${data.id}`);
+}
+
 // ===== 請求書 一括登録（宛先ごとに請求書を作成） =====
 export async function createBulkInvoices(fd: FormData): Promise<void> {
   const customerId = s(fd, "customer_id");
