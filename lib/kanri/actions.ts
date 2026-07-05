@@ -143,6 +143,13 @@ export async function deleteProduct(fd: FormData): Promise<void> {
   revalidatePath("/kanri/products");
 }
 
+export async function deleteCustomer(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  if (!id) return;
+  await admin().from("fk_customers").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/kanri/customers");
+}
+
 // ===== 顧客 CSV一括取り込み =====
 export async function importCustomers(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
   let rows: Record<string, string>[] = [];
