@@ -22,6 +22,22 @@ export default async function SettingsPage() {
           <p className="font-medium text-[#1aa39a]">商品</p>
           <p className="mt-1 text-xs text-gray-500">{products.length} 件 — 単価・税率・種別</p>
         </Link>
+        <Link href="/kanri/settings/service-fee" className="rounded-lg bg-white p-4 shadow-sm hover:bg-gray-50">
+          <p className="font-medium text-[#1aa39a]">サービス利用料</p>
+          <p className="mt-1 text-xs text-gray-500">商品種別ごとの利用料率</p>
+        </Link>
+        <Link href="/kanri/settings/field-visibility" className="rounded-lg bg-white p-4 shadow-sm hover:bg-gray-50">
+          <p className="font-medium text-[#1aa39a]">項目の表示、非表示設定</p>
+          <p className="mt-1 text-xs text-gray-500">顧客/葬家/請求書の項目表示</p>
+        </Link>
+        <Link href="/kanri/settings/required-fields" className="rounded-lg bg-white p-4 shadow-sm hover:bg-gray-50">
+          <p className="font-medium text-[#1aa39a]">CRM入力必須項目設定</p>
+          <p className="mt-1 text-xs text-gray-500">入力フォームの必須項目</p>
+        </Link>
+        <Link href="/kanri/settings/purchase-notice" className="rounded-lg bg-white p-4 shadow-sm hover:bg-gray-50">
+          <p className="font-medium text-[#1aa39a]">購入に関する通知設定</p>
+          <p className="mt-1 text-xs text-gray-500">注文・決済の通知先</p>
+        </Link>
       </div>
 
       {MASTER_CATEGORIES.map((cat) => (

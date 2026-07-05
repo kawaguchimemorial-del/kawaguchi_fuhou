@@ -29,6 +29,14 @@ export async function getCompanyInfo(): Promise<Record<string, string>> {
   return data?.extra ?? {};
 }
 
+// アプリ設定の取得（master_type="app_setting"）
+export async function getAppSetting(key: string): Promise<Record<string, string>> {
+  const c = db();
+  if (!c) return {};
+  const { data } = await c.from("fk_master_items").select("extra").eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", "app_setting").eq("name", key).is("deleted_at", null).limit(1).maybeSingle();
+  return data?.extra ?? {};
+}
+
 export async function masterCounts(): Promise<Record<string, number>> {
   const c = db();
   if (!c) return {};

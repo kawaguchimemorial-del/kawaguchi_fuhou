@@ -222,6 +222,25 @@ export async function addCustomerNote(fd: FormData): Promise<void> {
   });
   revalidatePath(`/kanri/customers/${customerId}`);
 }
+// ===== アプリ設定（項目表示/必須/通知/サービス利用料 等） =====
+// fk_master_items master_type="app_setting" name=設定キー extra=値JSON で保存
+export async function saveAppSetting(fd: FormData): Promise<void> {
+  const key = s(fd, "setting_key");
+  const back = s(fd, "back") ?? "/kanri/settings";
+  if (!key) return;
+  const c = admin();
+  const extra: Record<string, string> = {};
+  for (const [k, v] of fd.entries()) {
+    if (["setting_key", "back"].includes(k) || typeof v !== "string") continue;
+    if (extra[k] != null) extra[k] += "," + v; else extra[k] = v;
+  }
+  const { data: exist } = await c.from("fk_master_items").select("id").eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", "app_setting").eq("name", key).is("deleted_at", null).limit(1).maybeSingle();
+  if (exist) await c.from("fk_master_items").update({ extra }).eq("id", exist.id);
+  else await c.from("fk_master_items").insert({ funeral_home_id: KANRI_HOME_ID, master_type: "app_setting", name: key, extra });
+  revalidatePath(back);
+  redirect(back);
+}
+
 // ===== 関連顧客 =====
 export async function addRelatedCustomer(fd: FormData): Promise<void> {
   const customerId = s(fd, "customer_id");

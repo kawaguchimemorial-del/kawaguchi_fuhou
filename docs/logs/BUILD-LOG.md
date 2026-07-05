@@ -526,3 +526,12 @@
 - /kanri/settings を「葬儀会社」ダッシュボードに刷新(実トップ.jpg準拠): 詳細情報カード(葬儀会社名/ロゴ/電話番号/FAX番号/住所)＋KPI4カード(総故人数/総葬儀ページ閲覧数/総参列者数/総売上、[月別]バッジ＋時点表記)。KPIは実データ(memorials/memorial_views/condolence_messages/請求入金)に接続。旧マスタ一覧は /kanri/settings/masters へ移設。
 - 新ページ: 故人(/settings/deceased=deceasedテーブル一覧)、参列者(/settings/attendees=記帳一覧)、参列者からのメッセージ(/settings/messages=メッセージ+公開状態)、売上(/settings/sales=請求ベースの売上一覧+CSVリンク)、口座(/settings/bank=口座一覧: 銀行名/銀行支店名/口座名義人＋口座追加/編集/削除、実「口座.png」準拠)。
 - 検証: 葬儀会社ダッシュボード/口座/故人をPlaywright撮影し実スクショと一致確認(KPIに実データ206件/8回/2人)。ロゴ画像404をプレースホルダに修正。tscエラー無し。
+
+## 2026-07-05 葬儀管理 残設定4画面(サービス利用料/項目表示/必須項目/購入通知)を追加
+- 汎用アプリ設定基盤: actions.ts saveAppSetting(master_type=app_setting name=キー extra=JSON)、masters.ts getAppSetting。
+- サービス利用料(/kanri/settings/service-fee): 実「サービス利用料.png」準拠 — 種別(商品:○○)×サービス利用料率(%)一覧＋編集＋戻る。率は商品種別マスタごとに保存。
+- 項目の表示、非表示設定(/kanri/settings/field-visibility): 実画面のセクション構造(顧客/葬家[基本/対象者/喪主/葬儀・告別式]/請求書)を当システムの実装フィールドで再現。チェック状態を保存・復元、更新する/キャンセル。
+  ※実画面は数百項目の全フィールド網羅だが、当クローンに存在しないフィールドのトグルは機能し得ないため、実装済みフィールドに対応する項目のみ掲載(構造・操作性は準拠)。CRM入力必須項目設定(/kanri/settings/required-fields)も同方針。
+- 購入に関する通知設定(/kanri/settings/purchase-notice): 通知タイミング(注文/決済完了/キャンセル)＋通知先メール(カンマ区切り)。
+- マスタ一覧に4画面への導線カードを追加。
+- 検証: 3画面をPlaywright撮影し構造一致を確認。tscエラー無し。
