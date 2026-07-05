@@ -14,45 +14,71 @@ export interface Invoice {
   id: string; invoiceNo?: string; estimateId?: string | null;
   billedOn?: string; dueOn?: string; total: number; paidTotal: number; status: string; createdAt: string;
   deceasedName?: string; mournerName?: string;
+  // リレーション（実スマート葬儀準拠: 請求書は顧客に直接紐付く）
+  customerId?: string | null; customerName?: string;
+  title?: string; saleCategory?: string; constructionNo?: string;
+  invoiceTargetName?: string; // 請求先（顧客と異なる宛先に請求できる）
+}
+
+export interface InvoiceDetail {
+  id: string; divideTitle?: string; title: string; tagName?: string;
+  price: number; priceIncludingTax?: number; tax: number; quantity: number;
+  amount: number; taxAmount: number; amountIncludingTax: number;
+  supplier?: string; categoryLarge?: string; saleKind?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function map(r: any): Invoice {
   const e = r.fk_estimates;
+  const cu = r.fk_customers;
   return {
     id: r.id, invoiceNo: r.invoice_no ?? undefined, estimateId: r.estimate_id ?? undefined,
     billedOn: r.billed_on ?? undefined, dueOn: r.due_on ?? undefined, total: r.total ?? 0, paidTotal: r.paid_total ?? 0,
     status: r.status ?? "unpaid", createdAt: r.created_at,
-    deceasedName: e ? [e.deceased_last_name, e.deceased_first_name].filter(Boolean).join(" ") : undefined,
-    mournerName: e ? [e.mourner_last_name, e.mourner_first_name].filter(Boolean).join(" ") : undefined,
+    deceasedName: r.deceased_name ?? (e ? [e.deceased_last_name, e.deceased_first_name].filter(Boolean).join(" ") : undefined) ?? undefined,
+    mournerName: r.mourner_name ?? (e ? [e.mourner_last_name, e.mourner_first_name].filter(Boolean).join(" ") : undefined) ?? undefined,
+    customerId: r.customer_id ?? undefined,
+    customerName: cu ? [cu.last_name, cu.first_name].filter(Boolean).join(" ") : undefined,
+    title: r.title ?? undefined, saleCategory: r.sale_category ?? undefined, constructionNo: r.construction_no ?? undefined,
+    invoiceTargetName: r.invoice_target_name ?? undefined,
   };
 }
+
+const SELECT = "*,fk_estimates(deceased_last_name,deceased_first_name,mourner_last_name,mourner_first_name),fk_customers(last_name,first_name)";
 
 export async function listInvoices(): Promise<Invoice[]> {
   const c = db();
   if (!c) return [];
-  const { data } = await c.from("fk_invoices").select("*,fk_estimates(deceased_last_name,deceased_first_name,mourner_last_name,mourner_first_name)").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("created_at", { ascending: false });
+  const { data } = await c.from("fk_invoices").select(SELECT).eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("billed_on", { ascending: false }).limit(3000);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map(map);
 }
 
-export async function getInvoice(id: string): Promise<{ invoice: Invoice; estimate: Estimate | null } | null> {
+export async function getInvoice(id: string): Promise<{ invoice: Invoice; estimate: Estimate | null; details: InvoiceDetail[] } | null> {
   const c = db();
   if (!c) return null;
-  const { data } = await c.from("fk_invoices").select("*,fk_estimates(deceased_last_name,deceased_first_name,mourner_last_name,mourner_first_name)").eq("id", id).is("deleted_at", null).single();
+  const { data } = await c.from("fk_invoices").select(SELECT).eq("id", id).is("deleted_at", null).single();
   if (!data) return null;
   const invoice = map(data);
   const estimate = invoice.estimateId ? await getEstimate(invoice.estimateId) : null;
-  return { invoice, estimate };
+  const { data: det } = await c.from("fk_invoice_details").select("*").eq("invoice_id", id).order("sort_order", { ascending: true });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const details = ((det ?? []) as any[]).map((d) => ({
+    id: d.id, divideTitle: d.divide_title ?? undefined, title: d.title, tagName: d.tag_name ?? undefined,
+    price: d.price ?? 0, priceIncludingTax: d.price_including_tax ?? undefined, tax: Number(d.tax ?? 0.1), quantity: Number(d.quantity ?? 1),
+    amount: d.amount ?? 0, taxAmount: d.tax_amount ?? 0, amountIncludingTax: d.amount_including_tax ?? 0,
+    supplier: d.supplier ?? undefined, categoryLarge: d.category_large ?? undefined, saleKind: d.sale_kind ?? undefined,
+  }));
+  return { invoice, estimate, details };
 }
 
-// 顧客に紐づく請求書（見積のcustomer_id経由）
-export async function listInvoicesByCustomer(customerId: string): Promise<(Invoice & { title?: string })[]> {
+// 顧客に紐づく請求書（customer_id 直接リレーション）
+export async function listInvoicesByCustomer(customerId: string): Promise<Invoice[]> {
   const c = db();
   if (!c) return [];
-  const { data } = await c.from("fk_invoices").select("*,fk_estimates!inner(customer_id,title,deceased_last_name,deceased_first_name,mourner_last_name,mourner_first_name)").eq("funeral_home_id", KANRI_HOME_ID).eq("fk_estimates.customer_id", customerId).is("deleted_at", null).order("billed_on", { ascending: false }).limit(10);
+  const { data } = await c.from("fk_invoices").select(SELECT).eq("funeral_home_id", KANRI_HOME_ID).eq("customer_id", customerId).is("deleted_at", null).order("billed_on", { ascending: false }).limit(10);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((r) => ({ ...map(r), title: r.fk_estimates?.title ?? undefined }));
+  return ((data ?? []) as any[]).map(map);
 }
 
 export const INVOICE_STATUS_LABEL: Record<string, string> = { unpaid: "未入金", partial: "一部入金", paid: "入金済" };

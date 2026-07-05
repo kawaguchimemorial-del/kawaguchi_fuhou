@@ -157,7 +157,7 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
                 <thead className="border-b bg-gray-50 text-xs text-gray-500"><tr>{["請求先名(氏)", "件名", "請求日", "請求金額", "入金", "残高", ""].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
                 <tbody className="divide-y">{invoices.map((iv) => (
                   <tr key={iv.id}>
-                    <td className="px-3 py-3">{iv.mournerName ?? "—"}</td>
+                    <td className="px-3 py-3">{iv.invoiceTargetName ?? iv.mournerName ?? "—"}</td>
                     <td className="px-3 py-3">{iv.title ?? "—"}</td>
                     <td className="px-3 py-3 text-gray-500">{fmtd(iv.billedOn)}</td>
                     <td className="px-3 py-3">{iv.total.toLocaleString()}円</td>

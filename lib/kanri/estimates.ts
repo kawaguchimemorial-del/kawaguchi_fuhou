@@ -37,6 +37,7 @@ export interface Estimate {
   createdAt: string;
   items?: EstimateItem[];
   customerName?: string;
+  sourceId?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,6 +53,7 @@ function mapEstimate(r: any): Estimate {
     subtotal: r.subtotal ?? 0, discountTotal: r.discount_total ?? 0, taxTotal: r.tax_total ?? 0, total: r.total ?? 0, advancePayment: r.advance_payment ?? 0,
     status: r.status ?? "draft", memorialId: r.memorial_id ?? undefined, createdAt: r.created_at,
     customerName: r.fk_customers ? `${r.fk_customers.last_name ?? ""} ${r.fk_customers.first_name ?? ""}`.trim() : undefined,
+    sourceId: r.source_id ?? undefined,
   };
 }
 

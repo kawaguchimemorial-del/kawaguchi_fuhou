@@ -13,31 +13,36 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const res = await getInvoice(id);
   if (!res) return new Response("not found", { status: 404 });
-  const { invoice: iv, estimate: e } = res;
+  const { invoice: iv, estimate: e, details } = res;
   const co = await getCompanyInfo();
   const companyName = co.company_name || "株式会社 川口典礼";
   const companyAddr = [co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
-  const items = (e?.items ?? []).filter((it) => it.lineKind === "item");
-  const discounts = (e?.items ?? []).filter((it) => it.lineKind === "discount");
+  // 明細: 請求書明細(実データ)があればそれを優先。無ければ見積明細。
+  const fromDetails = details.length > 0;
+  const items = fromDetails
+    ? details.filter((d) => d.amount >= 0).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax }))
+    : (e?.items ?? []).filter((it) => it.lineKind === "item").map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)) }));
+  const discounts = fromDetails
+    ? details.filter((d) => d.amount < 0).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax }))
+    : (e?.items ?? []).filter((it) => it.lineKind === "discount").map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)) }));
   const on = fmtd(iv.billedOn) || fmtd(iv.createdAt);
-  const withTax = (amt: number, rate: number) => Math.round(amt * (1 + rate));
-  const mournerName = e ? mournerFullName(e) : "";
+  const mournerName = iv.invoiceTargetName || iv.mournerName || iv.customerName || (e ? mournerFullName(e) : "");
   const mournerAddr = e ? [e.mourner.prefecture, e.mourner.addressCity, e.mourner.addressStreet, e.mourner.addressBuilding].filter(Boolean).join("") : "";
 
   const itemsExTax = items.reduce((a, it) => a + it.amount, 0);
-  const itemsIncTax = items.reduce((a, it) => a + withTax(it.amount, it.taxRate), 0);
+  const itemsIncTax = items.reduce((a, it) => a + it.incTax, 0);
   const itemsTax = itemsIncTax - itemsExTax;
   const discExTax = discounts.reduce((a, it) => a + it.amount, 0);
-  const discIncTax = discounts.reduce((a, it) => a + withTax(it.amount, it.taxRate), 0);
+  const discIncTax = discounts.reduce((a, it) => a + it.incTax, 0);
   const grandIncTax = itemsIncTax + discIncTax;
   const grandTax = itemsTax + (discIncTax - discExTax);
 
   const itemRows = items.map((it) => `<tr>
     <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(withTax(it.amount, it.taxRate))}</td></tr>`).join("");
+    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(it.incTax)}</td></tr>`).join("");
   const discRows = discounts.map((it) => `<tr>
     <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(withTax(it.amount, it.taxRate))}</td></tr>`).join("");
+    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(it.incTax)}</td></tr>`).join("");
 
   const bankType = co.bank_account_type || "普通";
   const bankLine = [co.bank_name, co.bank_branch, [bankType, co.bank_account_no].filter(Boolean).join(" "), co.bank_account_name].filter(Boolean);
