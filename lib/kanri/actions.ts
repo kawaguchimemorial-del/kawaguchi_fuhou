@@ -208,6 +208,36 @@ export async function addCustomerNote(fd: FormData): Promise<void> {
   });
   revalidatePath(`/kanri/customers/${customerId}`);
 }
+// ===== 顧客ダブりチェック =====
+// 統合: survivor_id に他のidを統合（FK付け替え＋他をソフト削除）
+export async function mergeCustomers(fd: FormData): Promise<void> {
+  const survivor = s(fd, "survivor_id");
+  const ids = fd.getAll("id").map((v) => String(v)).filter((v) => v && v !== survivor);
+  if (!survivor || ids.length === 0) return;
+  const c = admin();
+  // 関連レコードを survivor に付け替え
+  await c.from("fk_estimates").update({ customer_id: survivor }).in("customer_id", ids);
+  await c.from("fk_customer_notes").update({ customer_id: survivor }).in("customer_id", ids);
+  // 残りをソフト削除
+  await c.from("fk_customers").update({ deleted_at: new Date().toISOString() }).in("id", ids);
+  revalidatePath("/kanri/customers/duplicates");
+}
+
+// ダブり対象から除外（グループ内全員に除外フラグ）
+export async function excludeFromDedup(fd: FormData): Promise<void> {
+  const ids = fd.getAll("id").map((v) => String(v)).filter(Boolean);
+  if (ids.length === 0) return;
+  await admin().from("fk_customers").update({ dedup_excluded: true }).in("id", ids);
+  revalidatePath("/kanri/customers/duplicates");
+}
+
+export async function deleteCustomerFromDedup(fd: FormData): Promise<void> {
+  const id = s(fd, "del_id");
+  if (!id) return;
+  await admin().from("fk_customers").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/kanri/customers/duplicates");
+}
+
 export async function deleteCustomerNote(fd: FormData): Promise<void> {
   const id = s(fd, "id"); const customerId = s(fd, "customer_id");
   if (!id) return;

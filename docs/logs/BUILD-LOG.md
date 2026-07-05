@@ -481,3 +481,10 @@
 - 葬家パネルの「＋新規作成」を見積・施行作成フロー(/kanri/estimates/new?customer_id=)へリンク。
   ※葬家新規作成の実画面は約7500pxの全施行登録フォームで、故人/喪主/式場等は既存の見積・施行フローと重複するため、専用巨大フォームの新規実装は行わず既存フローに委譲(重複実装と無限調整の回避)。
 - 検証: サンプル顧客でhistory/contract/relatedの3タブをPlaywright撮影、実スクショと突き合わせて一致確認。tsc(該当ファイル)エラー無し。
+
+## 2026-07-05 葬儀管理 顧客ダブりチェック＋顧客一覧CSVボタン群を実スクショと一致
+- 追加DB: migration 0015 — fk_customers.dedup_excluded(除外フラグ)。pooler経由で適用済み。
+- 追加: app/kanri/customers/duplicates/page.tsx — 実画面「顧客ダブりチェック」準拠。氏名で重複グループ化し「名前がかぶっているお客様一覧」＋赤注意文、各メンバー行(統合先ラジオ/ID/生年月日/自宅/携帯/作成日時/×このデータを削除)、グループ操作(データを統合する/選択して統合/ダブり対象から除外)、一覧に戻る。
+- 追加: lib/kanri/data.ts findDuplicateCustomerGroups、actions.ts mergeCustomers(FK付け替え＋他ソフト削除)/excludeFromDedup(除外フラグ)/deleteCustomerFromDedup。
+- 変更: 顧客一覧ヘッダーのボタン群を実画面順に刷新 — 顧客CSVダウンロード/葬家CSVダウンロード/会員CSVダウンロード/顧客 追加/顧客 CSVインポート/顧客 ダブリチェック。export routeに?type=(customer/souke/member)対応(ファイル名分岐)。
+- 検証: 重複顧客2件を投入しPlaywrightで撮影、実スクショと一致確認後にテストデータ削除。tsc(該当ファイル)エラー無し。devのhydration警告はNext内部(RedirectErrorBoundary)由来のノイズで当ページ描画は正常(サーバーコンポーネント)。

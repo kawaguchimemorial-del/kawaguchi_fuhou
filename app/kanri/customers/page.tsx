@@ -21,9 +21,12 @@ export default async function CustomersPage({ searchParams }: SP) {
       <div className="-m-5 mb-4 flex flex-wrap items-center justify-between gap-2 bg-[#2c8c6f] px-5 py-3">
         <h1 className="text-lg font-bold text-white">顧客</h1>
         <div className="flex flex-wrap gap-2 text-xs">
-          <a href="/kanri/customers/export" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">顧客CSVダウンロード</a>
-          <Link href="/kanri/customers/import" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">顧客CSVインポート</Link>
+          <a href="/kanri/customers/export?type=customer" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">顧客CSVダウンロード</a>
+          <a href="/kanri/customers/export?type=souke" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">葬家CSVダウンロード</a>
+          <a href="/kanri/customers/export?type=member" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">会員CSVダウンロード</a>
           <Link href="/kanri/customers/new" className="rounded bg-white px-3 py-1.5 font-medium text-[#2c8c6f]">顧客 追加</Link>
+          <Link href="/kanri/customers/import" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">顧客 CSVインポート</Link>
+          <Link href="/kanri/customers/duplicates" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">顧客 ダブリチェック</Link>
         </div>
       </div>
 
