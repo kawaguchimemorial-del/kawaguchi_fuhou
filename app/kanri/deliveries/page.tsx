@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listPurchaseOrders, ORDER_STATUS_LABEL } from "@/lib/kanri/orders";
 export const metadata = { title: "納品管理" };
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ export default async function DeliveriesPage(){
   const orders = await listPurchaseOrders();
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">納品管理</h1>
+      <PageHeader title="納品管理" />
       <p className="text-sm text-gray-500">発注の納品状況を管理します。</p>
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[680px] text-left text-sm">

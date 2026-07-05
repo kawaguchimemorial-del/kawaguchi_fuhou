@@ -46,7 +46,7 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
   const removeRow = (key: string) => setRows((rs) => rs.filter((r) => r.key !== key));
 
   const itemsJson = JSON.stringify(rows.map((r) => ({ productId: r.productId || null, lineKind: r.lineKind, name: r.name, unitPrice: r.unitPrice, quantity: r.quantity, taxRate: r.taxRate })));
-  const inp = "w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-[#9b2fae] focus:outline-none";
+  const inp = "w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-[#1aa39a] focus:outline-none";
   const d = estimate?.deceased ?? {}; const mo = estimate?.mourner ?? {};
 
   return (
@@ -141,7 +141,7 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
           </table>
         </div>
         <div className="mt-3 flex gap-2">
-          <button type="button" onClick={() => addRow("item")} className="rounded border border-[#9b2fae] px-3 py-1.5 text-xs text-[#9b2fae]">＋ 商品行</button>
+          <button type="button" onClick={() => addRow("item")} className="rounded border border-[#1aa39a] px-3 py-1.5 text-xs text-[#1aa39a]">＋ 商品行</button>
           <button type="button" onClick={() => addRow("discount")} className="rounded border border-gray-400 px-3 py-1.5 text-xs text-gray-600">＋ 値引行</button>
         </div>
         <div className="mt-4 ml-auto max-w-xs space-y-1 text-sm">
@@ -157,7 +157,7 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
       </Card>
 
       <div className="flex gap-3">
-        <button disabled={pending} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "保存中…" : "見積を保存"}</button>
+        <button disabled={pending} className="rounded bg-[#1aa39a] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "保存中…" : "見積を保存"}</button>
         <Link href="/kanri/estimates" className="rounded border px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
     </form>
@@ -165,7 +165,7 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div className="rounded-lg bg-white p-5 shadow-sm"><p className="mb-3 font-bold text-[#9b2fae]">{title}</p>{children}</div>;
+  return <div className="rounded-lg bg-white p-5 shadow-sm"><p className="mb-3 font-bold text-[#1aa39a]">{title}</p>{children}</div>;
 }
 function Grid({ children }: { children: React.ReactNode }) { return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{children}</div>; }
 function F({ label, children }: { label: string; children: React.ReactNode }) {

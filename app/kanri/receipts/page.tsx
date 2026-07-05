@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listInvoices } from "@/lib/kanri/invoices";
 export const metadata = { title: "領収書" };
 export const dynamic = "force-dynamic";
@@ -6,7 +7,7 @@ export default async function ReceiptsPage(){
   const invoices = await listInvoices();
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">領収書</h1>
+      <PageHeader title="領収書" />
       <p className="text-sm text-gray-500">請求書ごとに領収書を発行できます。</p>
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[620px] text-left text-sm">

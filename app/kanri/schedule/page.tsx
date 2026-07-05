@@ -34,7 +34,7 @@ export default async function SchedulePage() {
                   <td className="px-3 py-2">{deceasedFullName(ev.est) || "—"}</td>
                   <td className="px-3 py-2">{mournerFullName(ev.est) || "—"}</td>
                   <td className="px-3 py-2 text-gray-500">{ev.est.venueName ?? "—"}</td>
-                  <td className="px-3 py-2"><Link href={`/kanri/estimates/${ev.est.id}`} className="text-xs text-[#9b2fae] underline">見積</Link></td>
+                  <td className="px-3 py-2"><Link href={`/kanri/estimates/${ev.est.id}`} className="text-xs text-[#1aa39a] underline">見積</Link></td>
                 </tr>
               ))}
           </tbody>

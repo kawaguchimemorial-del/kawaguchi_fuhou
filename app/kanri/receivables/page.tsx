@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listInvoices } from "@/lib/kanri/invoices";
 export const metadata = { title: "売掛残高" };
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ export default async function ReceivablesPage(){
   const total = rows.reduce((a,i)=>a+i.remaining,0);
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">売掛残高</h1>
+      <PageHeader title="売掛残高" />
       <p className="text-sm text-gray-500">未回収(売掛)残高合計：{total.toLocaleString()}円</p>
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[620px] text-left text-sm">

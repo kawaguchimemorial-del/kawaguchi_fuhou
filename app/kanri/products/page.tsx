@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listProducts } from "@/lib/kanri/products";
 import { deleteProduct } from "@/lib/kanri/actions";
 
@@ -9,10 +10,7 @@ export default async function ProductsPage() {
   const products = await listProducts();
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">商品</h1>
-        <Link href="/kanri/products/new" className="rounded bg-[#9b2fae] px-4 py-2 text-sm text-white">＋ 商品登録</Link>
-      </div>
+      <PageHeader title="商品" action={{ label: "＋ 商品登録", href: "/kanri/products/new" }} />
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-600">
@@ -24,7 +22,7 @@ export default async function ProductsPage() {
             ) : products.map((p)=>(
               <tr key={p.id} className="hover:bg-gray-50">
                 <td className="px-3 py-2 text-gray-500">{p.productKind ?? "—"}</td>
-                <td className="px-3 py-2"><Link href={`/kanri/products/${p.id}/edit`} className="text-[#9b2fae] underline">{p.name}</Link></td>
+                <td className="px-3 py-2"><Link href={`/kanri/products/${p.id}/edit`} className="text-[#1aa39a] underline">{p.name}</Link></td>
                 <td className="px-3 py-2">{p.unitPrice.toLocaleString()}円</td>
                 <td className="px-3 py-2">{Math.round(p.taxRate*100)}%</td>
                 <td className="px-3 py-2 text-gray-500">{p.unit ?? ""}</td>

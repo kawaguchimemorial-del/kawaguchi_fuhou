@@ -49,7 +49,7 @@ export default async function CustomersPage({ searchParams }: SP) {
               rows.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2 text-gray-500">{c.customerNo ?? "—"}</td>
-                  <td className="px-3 py-2"><Link href={`/kanri/customers/${c.id}`} className="font-medium text-[#9b2fae] underline">{c.lastName} {c.firstName ?? ""}</Link></td>
+                  <td className="px-3 py-2"><Link href={`/kanri/customers/${c.id}`} className="font-medium text-[#1aa39a] underline">{c.lastName} {c.firstName ?? ""}</Link></td>
                   <td className="px-3 py-2 text-gray-500">{[c.lastNameKana, c.firstNameKana].filter(Boolean).join(" ")}</td>
                   <td className="px-3 py-2">{c.status ?? "—"}</td>
                   <td className="px-3 py-2">{c.inflow ?? "—"}</td>

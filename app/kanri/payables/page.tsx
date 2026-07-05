@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listPurchaseOrders } from "@/lib/kanri/orders";
 export const metadata = { title: "買掛残高" };
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ export default async function PayablesPage(){
   const total = rows.reduce((a,o)=>a+o.total,0);
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">買掛残高</h1>
+      <PageHeader title="買掛残高" />
       <p className="text-sm text-gray-500">未払(買掛)残高合計：{total.toLocaleString()}円</p>
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[560px] text-left text-sm">

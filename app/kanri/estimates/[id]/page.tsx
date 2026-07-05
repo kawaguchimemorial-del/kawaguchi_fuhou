@@ -21,16 +21,16 @@ export default async function EstimateDetail({ params }: Params) {
         <h1 className="text-xl font-bold">{e.title || "見積"}</h1>
         <div className="flex flex-wrap gap-2 text-sm">
           <Link href="/kanri/estimates" className="rounded border px-3 py-1.5">一覧へ</Link>
-          <Link href={`/kanri/estimates/${id}/edit`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">編集</Link>
-          <a href={`/kanri/estimates/${id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">見積書PDF</a>
-          <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">請求書を作成</button></form>
-          <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">発注書を作成</button></form>
+          <Link href={`/kanri/estimates/${id}/edit`} className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">編集</Link>
+          <a href={`/kanri/estimates/${id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">見積書PDF</a>
+          <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">請求書を作成</button></form>
+          <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">発注書を作成</button></form>
           {e.memorialId ? (
             <Link href={`/admin/ceremonies/${e.memorialId}`} className="rounded bg-green-600 px-3 py-1.5 text-white">訃報案内を開く</Link>
           ) : (
             <form action={createMemorialFromEstimate}>
               <input type="hidden" name="id" value={id} />
-              <button className="rounded bg-[#9b2fae] px-3 py-1.5 text-white">訃報案内を作成</button>
+              <button className="rounded bg-[#1aa39a] px-3 py-1.5 text-white">訃報案内を作成</button>
             </form>
           )}
         </div>
@@ -61,7 +61,7 @@ export default async function EstimateDetail({ params }: Params) {
       </Section>
 
       <div className="rounded-lg bg-white p-5 shadow-sm">
-        <p className="mb-3 font-bold text-[#9b2fae]">明細</p>
+        <p className="mb-3 font-bold text-[#1aa39a]">明細</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="border-b text-xs text-gray-500"><tr>{["品名", "単価", "数量", "税率", "金額"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}</tr></thead>
@@ -92,7 +92,7 @@ export default async function EstimateDetail({ params }: Params) {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div className="rounded-lg bg-white p-5 shadow-sm"><p className="mb-3 font-bold text-[#9b2fae]">{title}</p><div className="divide-y">{children}</div></div>;
+  return <div className="rounded-lg bg-white p-5 shadow-sm"><p className="mb-3 font-bold text-[#1aa39a]">{title}</p><div className="divide-y">{children}</div></div>;
 }
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="flex gap-4 py-2"><span className="w-28 shrink-0 text-sm text-gray-500">{label}</span><span className="text-sm">{children}</span></div>;

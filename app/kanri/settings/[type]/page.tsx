@@ -28,7 +28,7 @@ export default async function MasterTypePage({ params }: Params) {
             <input name={`f_${f.key}`} type={f.kind === "number" ? "number" : "text"} required={f.col === "name"} className="mt-1 w-44 rounded border px-3 py-2" />
           </div>
         ))}
-        <button className="rounded bg-[#9b2fae] px-4 py-2 text-white">追加</button>
+        <button className="rounded bg-[#1aa39a] px-4 py-2 text-white">追加</button>
       </form>
 
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">

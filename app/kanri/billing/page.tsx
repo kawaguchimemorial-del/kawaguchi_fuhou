@@ -25,7 +25,7 @@ export default async function BillingPage() {
                   <td className="px-3 py-2 whitespace-nowrap">{iv.total.toLocaleString()}円</td>
                   <td className="px-3 py-2 whitespace-nowrap">{iv.paidTotal.toLocaleString()}円</td>
                   <td className="px-3 py-2"><span className={iv.status === "paid" ? "text-green-600" : iv.status === "partial" ? "text-amber-600" : "text-gray-500"}>{INVOICE_STATUS_LABEL[iv.status] ?? iv.status}</span></td>
-                  <td className="px-3 py-2"><Link href={`/kanri/billing/${iv.id}`} className="text-xs text-[#9b2fae] underline">詳細</Link></td>
+                  <td className="px-3 py-2"><Link href={`/kanri/billing/${iv.id}`} className="text-xs text-[#1aa39a] underline">詳細</Link></td>
                 </tr>
               ))}
           </tbody>

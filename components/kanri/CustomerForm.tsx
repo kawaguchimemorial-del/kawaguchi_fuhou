@@ -73,14 +73,14 @@ export function CustomerForm() {
       <Field label="問い合わせ理由"><textarea name="reason" rows={3} className={inp} /></Field>
 
       <div className="flex gap-3">
-        <button type="submit" disabled={pending} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "登録中…" : "登録する"}</button>
+        <button type="submit" disabled={pending} className="rounded bg-[#1aa39a] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "登録中…" : "登録する"}</button>
         <Link href="/kanri/customers" className="rounded border px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
     </form>
   );
 }
 
-const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#9b2fae] focus:outline-none";
+const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#1aa39a] focus:outline-none";
 
 function Grid({ children }: { children: React.ReactNode }) {
   return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;

@@ -12,7 +12,7 @@ export default function AiPortraitPage() {
           専用のAI遺影作成ツールで、お写真から遺影を生成します。
         </p>
         <div className="mt-6">
-          <Link href="/kanri/ai-portrait/create" className="inline-block rounded bg-[#9b2fae] px-6 py-3 text-sm text-white">
+          <Link href="/kanri/ai-portrait/create" className="inline-block rounded bg-[#1aa39a] px-6 py-3 text-sm text-white">
             AI遺影写真を作成する
           </Link>
         </div>

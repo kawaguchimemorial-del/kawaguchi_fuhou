@@ -62,7 +62,7 @@ export default async function KanriDashboard() {
               <p className="text-xs text-gray-500">未読のお知らせがあります</p>
               <p className="text-lg font-bold">0 件</p>
             </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#9b2fae] text-white"><Bell size={20} /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1aa39a] text-white"><Bell size={20} /></span>
           </div>
         </div>
       </div>

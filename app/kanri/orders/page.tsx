@@ -25,7 +25,7 @@ export default async function OrdersPage(){
                   <td className="px-3 py-2 whitespace-nowrap">{o.total.toLocaleString()}円</td>
                   <td className="px-3 py-2"><span className={o.status==="delivered"?"text-green-600 text-xs":"text-gray-500 text-xs"}>{ORDER_STATUS_LABEL[o.status]??o.status}</span></td>
                   <td className="px-3 py-2"><span className={o.paymentStatus==="paid"?"text-green-600 text-xs":"text-amber-600 text-xs"}>{PAYABLE_STATUS_LABEL[o.paymentStatus]??o.paymentStatus}</span></td>
-                  <td className="px-3 py-2"><Link href={`/kanri/orders/${o.id}`} className="text-xs text-[#9b2fae] underline">詳細</Link></td>
+                  <td className="px-3 py-2"><Link href={`/kanri/orders/${o.id}`} className="text-xs text-[#1aa39a] underline">詳細</Link></td>
                 </tr>
               ))}
           </tbody>
