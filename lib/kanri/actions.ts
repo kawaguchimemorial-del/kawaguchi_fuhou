@@ -246,3 +246,60 @@ export async function recordPayment(fd: FormData): Promise<void> {
   await c.from("fk_invoices").update({ paid_total: paid, status }).eq("id", id);
   revalidatePath(`/kanri/billing/${id}`);
 }
+
+// ===== 発注（見積の商品を発注先ごとにまとめて発注） =====
+export async function createPurchaseOrdersFromEstimate(fd: FormData): Promise<void> {
+  const estimateId = s(fd, "id");
+  if (!estimateId) return;
+  const c = admin();
+  const { data: items } = await c.from("fk_estimate_items").select("name,unit_price,quantity,line_kind,fk_products(supplier,cost_price)").eq("estimate_id", estimateId);
+  if (!items) return;
+  const today = new Date().toISOString().slice(0, 10);
+  // 発注先ごとにグループ化（原価があれば原価、なければ売価）
+  const groups = new Map<string, { name: string; unit_price: number; quantity: number; amount: number }[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const it of items as any[]) {
+    if (it.line_kind !== "item") continue;
+    const prod = Array.isArray(it.fk_products) ? it.fk_products[0] : it.fk_products;
+    const supplier = prod?.supplier || "未設定";
+    const unit = prod?.cost_price ?? it.unit_price ?? 0;
+    const qty = it.quantity ?? 1;
+    if (!groups.has(supplier)) groups.set(supplier, []);
+    groups.get(supplier)!.push({ name: it.name, unit_price: unit, quantity: qty, amount: unit * qty });
+  }
+  for (const [supplier, rows] of groups) {
+    const total = rows.reduce((a, r) => a + r.amount, 0);
+    const { data: po } = await c.from("fk_purchase_orders").insert({
+      funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, supplier, ordered_on: today, status: "ordered", total,
+    }).select("id").single();
+    if (po) await c.from("fk_purchase_order_items").insert(rows.map((r, i) => ({ ...r, order_id: po.id, sort_order: i })));
+  }
+  redirect("/kanri/orders");
+}
+export async function markOrderDelivered(fd: FormData): Promise<void> {
+  const id = s(fd, "id"); if (!id) return;
+  await admin().from("fk_purchase_orders").update({ status: "delivered", delivered_on: new Date().toISOString().slice(0, 10) }).eq("id", id);
+  revalidatePath(`/kanri/orders/${id}`); revalidatePath("/kanri/orders");
+}
+export async function toggleOrderPaid(fd: FormData): Promise<void> {
+  const id = s(fd, "id"); const paid = s(fd, "paid") === "1"; if (!id) return;
+  await admin().from("fk_purchase_orders").update({ payment_status: paid ? "paid" : "unpaid" }).eq("id", id);
+  revalidatePath(`/kanri/orders/${id}`); revalidatePath("/kanri/orders");
+}
+export async function deletePurchaseOrder(fd: FormData): Promise<void> {
+  const id = s(fd, "id"); if (!id) return;
+  await admin().from("fk_purchase_orders").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  redirect("/kanri/orders");
+}
+
+// ===== SMS（送信ログ記録。実送信は外部プロバイダ連携時に差し替え） =====
+export async function sendSms(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const phone = s(fd, "phone");
+  const body = s(fd, "body");
+  if (!phone || !body) return { ok: false, error: "電話番号と本文は必須です。" };
+  const { error } = await admin().from("fk_sms_logs").insert({
+    funeral_home_id: KANRI_HOME_ID, customer_id: s(fd, "customer_id"), phone, body, status: "sent",
+  });
+  if (error) return { ok: false, error: error.message };
+  redirect("/kanri/sms?sent=1");
+}
