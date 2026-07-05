@@ -1,7 +1,8 @@
+import { PageHeader } from "@/components/kanri/PageHeader";
 export function KanriStub({ title, items, note }: { title: string; items: string[]; note?: string }) {
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <h1 className="text-xl font-bold">{title}</h1>
+    <div>
+      <PageHeader title={title} />
       <div className="rounded-lg bg-white p-6 shadow-sm">
         <p className="text-sm text-gray-600">{note ?? "このモジュールは順次実装します。"}</p>
         {items.length > 0 && (

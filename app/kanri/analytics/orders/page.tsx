@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listPurchaseOrders } from "@/lib/kanri/orders";
 export const metadata = { title: "発注分析" };
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export default async function OrderAnalyticsPage(){
   const max=Math.max(1,...rows.map(r=>r[1]));
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">発注分析</h1>
+      <PageHeader title="発注分析" />
       <div className="rounded-lg bg-white p-5 shadow-sm">
         <p className="mb-4 text-sm font-bold text-gray-700">発注先別 発注額</p>
         {rows.length===0 ? <p className="text-sm text-gray-400">発注データがありません。</p> :

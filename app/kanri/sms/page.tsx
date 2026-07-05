@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { SmsForm } from "@/components/kanri/SmsForm";
 import { listSmsLogs } from "@/lib/kanri/orders";
 export const metadata = { title: "SMS" };
@@ -9,7 +10,7 @@ export default async function SmsPage({ searchParams }: SP){
   const logs = await listSmsLogs();
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <h1 className="text-xl font-bold">SMS配信</h1>
+      <PageHeader title="SMS配信" />
       {sent && <p className="rounded bg-green-50 px-4 py-2 text-sm text-green-700">SMSを送信しました。</p>}
       <SmsForm />
       <div className="rounded-lg bg-white p-5 shadow-sm">

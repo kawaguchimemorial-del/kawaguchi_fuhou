@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listEstimates, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
 
 export const metadata = { title: "スケジュール管理" };

@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { countCustomers, monthlyCustomerCounts } from "@/lib/kanri/data";
 import { listEstimates } from "@/lib/kanri/estimates";
 import { listInvoices } from "@/lib/kanri/invoices";

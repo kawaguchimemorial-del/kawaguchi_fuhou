@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { listEstimates } from "@/lib/kanri/estimates";
 import { listInvoices } from "@/lib/kanri/invoices";
 export const metadata = { title: "売上分析" };
@@ -10,7 +11,7 @@ export default async function SalesPage(){
   const max=Math.max(1,...rows.map(r=>r[1]));
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">売上分析</h1>
+      <PageHeader title="売上分析" />
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">見積合計</p><p className="mt-1 text-2xl font-bold">{est.reduce((a,e)=>a+e.total,0).toLocaleString()}円</p></div>
         <div className="rounded-lg bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">請求合計</p><p className="mt-1 text-2xl font-bold">{inv.reduce((a,i)=>a+i.total,0).toLocaleString()}円</p></div>
