@@ -90,6 +90,22 @@ export async function countCustomers(): Promise<number> {
   return count ?? 0;
 }
 
+// 関連顧客（電話/携帯/住所が一致する他顧客）
+export interface RelatedGroups { byPhone: Customer[]; byMobile: Customer[]; byAddress: Customer[] }
+export async function findRelatedCustomers(self: Customer): Promise<RelatedGroups> {
+  const c = db();
+  if (!c) return { byPhone: [], byMobile: [], byAddress: [] };
+  const base = () => c.from("fk_customers").select("*").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).neq("id", self.id).limit(20);
+  const [ph, mo, ad] = await Promise.all([
+    self.telephoneNumber ? base().eq("telephone_number", self.telephoneNumber) : Promise.resolve({ data: [] }),
+    self.mobileNumber ? base().eq("mobile_number", self.mobileNumber) : Promise.resolve({ data: [] }),
+    self.addressCity && self.addressStreet ? base().eq("address_city", self.addressCity).eq("address_street", self.addressStreet) : Promise.resolve({ data: [] }),
+  ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const m = (d: any) => ((d?.data ?? []) as any[]).map(mapCustomer);
+  return { byPhone: m(ph), byMobile: m(mo), byAddress: m(ad) };
+}
+
 export interface CustomerNote { id: string; kind?: string; body: string; createdBy?: string; createdAt: string }
 export async function listCustomerNotes(customerId: string): Promise<CustomerNote[]> {
   const c = db();

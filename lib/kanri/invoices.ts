@@ -46,4 +46,13 @@ export async function getInvoice(id: string): Promise<{ invoice: Invoice; estima
   return { invoice, estimate };
 }
 
+// 顧客に紐づく請求書（見積のcustomer_id経由）
+export async function listInvoicesByCustomer(customerId: string): Promise<(Invoice & { title?: string })[]> {
+  const c = db();
+  if (!c) return [];
+  const { data } = await c.from("fk_invoices").select("*,fk_estimates!inner(customer_id,title,deceased_last_name,deceased_first_name,mourner_last_name,mourner_first_name)").eq("funeral_home_id", KANRI_HOME_ID).eq("fk_estimates.customer_id", customerId).is("deleted_at", null).order("billed_on", { ascending: false }).limit(10);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => ({ ...map(r), title: r.fk_estimates?.title ?? undefined }));
+}
+
 export const INVOICE_STATUS_LABEL: Record<string, string> = { unpaid: "未入金", partial: "一部入金", paid: "入金済" };

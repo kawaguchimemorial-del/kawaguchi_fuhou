@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCustomer, listCustomerNotes } from "@/lib/kanri/data";
+import { getCustomer, listCustomerNotes, findRelatedCustomers, type Customer } from "@/lib/kanri/data";
 import { addCustomerNote, deleteCustomerNote, deleteCustomer } from "@/lib/kanri/actions";
 import { listEstimatesByCustomer, deceasedFullName } from "@/lib/kanri/estimates";
+import { listInvoicesByCustomer } from "@/lib/kanri/invoices";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> };
@@ -26,7 +27,9 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
   const c = await getCustomer(id);
   if (!c) notFound();
   const estimates = active === "contract" ? await listEstimatesByCustomer(id) : [];
+  const invoices = active === "contract" ? await listInvoicesByCustomer(id) : [];
   const notes = active === "history" ? await listCustomerNotes(id) : [];
+  const related = active === "related" ? await findRelatedCustomers(c) : null;
   const addr = [c.postcode ? `〒${c.postcode}` : "", c.prefectureCode, c.addressCity, c.addressStreet, c.addressBuilding].filter(Boolean).join(" ");
 
   return (
@@ -80,42 +83,116 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
 
           {/* 会員管理 */}
           <Panel title="会員管理" cols={["入会日", "会員種別", "ステータス", "入会者"]} />
-          {/* 葬家 */}
-          <Panel title="葬家" cols={["氏名", "続柄", "施行番号", "葬儀日"]} />
+          {/* 葬家（新規作成は見積・施行フローへ） */}
+          <Panel title="葬家" cols={["氏名", "続柄", "施行番号", "葬儀日"]} newHref={`/kanri/estimates/new?customer_id=${id}`} />
         </div>
       )}
 
       {active === "history" && (
-        <div className="space-y-4">
-          <div className="rounded-lg bg-white p-5 shadow-sm">
-            <p className="mb-3 font-bold text-[#1aa39a]">対応履歴を追加</p>
-            <form action={addCustomerNote} className="flex flex-wrap items-end gap-3 text-sm">
-              <input type="hidden" name="customer_id" value={id} />
-              <div><label className="block text-xs text-gray-500">種別</label><select name="kind" className="mt-1 rounded border px-3 py-2"><option value="電話">電話</option><option value="来店">来店</option><option value="メール">メール</option><option value="訪問">訪問</option><option value="その他">その他</option></select></div>
-              <div className="flex-1"><label className="block text-xs text-gray-500">内容 <span className="text-red-500">必須</span></label><input name="body" required className="mt-1 w-full rounded border px-3 py-2" placeholder="対応内容を入力" /></div>
-              <button className="rounded bg-[#1aa39a] px-4 py-2 text-white">追加</button>
-            </form>
-          </div>
-          <div className="rounded-lg bg-white p-5 shadow-sm">
-            <p className="mb-3 font-bold text-[#1aa39a]">履歴</p>
-            {notes.length === 0 ? <p className="py-6 text-center text-sm text-gray-400">対応履歴はまだありません。</p> : (
-              <ul className="divide-y">{notes.map((n) => (<li key={n.id} className="flex items-start gap-3 py-3"><span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{n.kind ?? "—"}</span><div className="flex-1"><p className="text-sm">{n.body}</p><p className="mt-0.5 text-xs text-gray-400">{fmt(n.createdAt)} ・ {n.createdBy ?? ""}</p></div><form action={deleteCustomerNote}><input type="hidden" name="id" value={n.id} /><input type="hidden" name="customer_id" value={id} /><button className="text-xs text-red-400 hover:underline">削除</button></form></li>))}</ul>
-            )}
-          </div>
-        </div>
-      )}
-
-      {active === "contract" && (
         <div className="rounded-lg bg-white p-5 shadow-sm">
-          <div className="mb-3 flex items-center justify-between"><p className="font-bold text-[#1aa39a]">契約情報（見積・葬儀）</p><Link href={`/kanri/estimates/new?customer_id=${id}`} className="rounded border border-[#1aa39a] px-3 py-1.5 text-xs text-[#1aa39a]">見積を作成</Link></div>
-          {estimates.length === 0 ? <p className="py-6 text-center text-sm text-gray-400">見積・契約はありません。</p> : (
-            <table className="w-full text-left text-sm"><thead className="border-b text-xs text-gray-500"><tr>{["件名", "故人", "合計", "見積日", "訃報連携"].map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}</tr></thead>
-              <tbody className="divide-y">{estimates.map((e) => (<tr key={e.id}><td className="px-2 py-2"><Link href={`/kanri/estimates/${e.id}`} className="text-[#1aa39a] underline">{e.title || "（無題）"}</Link></td><td className="px-2 py-2">{deceasedFullName(e) || "—"}</td><td className="px-2 py-2">{e.total.toLocaleString()}円</td><td className="px-2 py-2">{fmtd(e.estimateOn)}</td><td className="px-2 py-2">{e.memorialId ? <span className="text-green-600 text-xs">連携済</span> : <span className="text-gray-400 text-xs">未</span>}</td></tr>))}</tbody></table>
+          <p className="mb-4 font-bold text-gray-800">対応履歴</p>
+          <form action={addCustomerNote} className="mb-6 max-w-3xl text-sm">
+            <input type="hidden" name="customer_id" value={id} />
+            <p className="mb-1 text-gray-600">引継ぎ</p>
+            <div className="mb-4 flex gap-6">
+              <label className="flex items-center gap-1"><input type="radio" name="kind" value="不要" defaultChecked /> 不要</label>
+              <label className="flex items-center gap-1"><input type="radio" name="kind" value="必要" /> 必要</label>
+            </div>
+            <p className="mb-1 text-gray-600">メッセージ</p>
+            <textarea name="body" required rows={4} className="mb-3 w-full rounded border border-gray-300 px-3 py-2" />
+            <button className="rounded bg-[#2c8c6f] px-5 py-2 text-white">登録する</button>
+          </form>
+
+          <p className="mb-2 font-bold text-gray-800">一覧</p>
+          {notes.length === 0 ? <p className="py-6 text-center text-sm text-gray-400">対応履歴はまだありません。</p> : (
+            <table className="w-full text-left text-sm">
+              <thead className="border-b bg-gray-50 text-xs text-gray-500"><tr>{["登録日時", "引継ぎ", "メッセージ", ""].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
+              <tbody className="divide-y">{notes.map((n) => {
+                const need = n.kind === "必要";
+                return (
+                  <tr key={n.id}>
+                    <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">{fmt(n.createdAt)}<br />{n.createdBy ?? ""}</td>
+                    <td className="px-3 py-3"><span className={"rounded px-2 py-0.5 text-xs " + (need ? "bg-red-100 text-red-600" : "bg-gray-200 text-gray-600")}>{n.kind ?? "不要"}</span></td>
+                    <td className="px-3 py-3">{n.body}</td>
+                    <td className="px-3 py-3 text-right"><form action={deleteCustomerNote}><input type="hidden" name="id" value={n.id} /><input type="hidden" name="customer_id" value={id} /><button className="rounded bg-red-500 px-2 py-1 text-xs text-white">削除</button></form></td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
           )}
         </div>
       )}
 
-      {active === "related" && <Empty>関連顧客は登録されていません。</Empty>}
+      {active === "contract" && (
+        <div className="space-y-4">
+          {/* 見積もり（最新10件） */}
+          <div className="rounded-lg bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between"><p className="font-bold text-gray-800">見積もり（最新10件）</p><Link href="/kanri/estimates" className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">一覧</Link></div>
+            {estimates.length === 0 ? <p className="py-6 text-center text-sm text-gray-400">見積もりはありません。</p> : (
+              <table className="w-full text-left text-sm">
+                <thead className="border-b bg-gray-50 text-xs text-gray-500"><tr>{["件名", "見積日", "合計金額", ""].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
+                <tbody className="divide-y">{estimates.map((e) => (
+                  <tr key={e.id}>
+                    <td className="px-3 py-3">{e.title || deceasedFullName(e) || "（無題）"}</td>
+                    <td className="px-3 py-3 text-gray-500">{fmtd(e.estimateOn)}</td>
+                    <td className="px-3 py-3">{e.total.toLocaleString()}円</td>
+                    <td className="px-3 py-3 text-right"><div className="flex justify-end gap-2">
+                      <a href={`/kanri/estimates/${e.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-blue-400 px-2 py-1 text-xs text-blue-500">🖨 見積書</a>
+                      <Link href={`/kanri/estimates/${e.id}`} className="rounded border border-green-500 px-2 py-1 text-xs text-green-600">✎ 編集</Link>
+                    </div></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            )}
+          </div>
+
+          {/* 請求書（最新10件） */}
+          <div className="rounded-lg bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between"><p className="font-bold text-gray-800">請求書（最新10件）</p><Link href="/kanri/billing" className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">一覧</Link></div>
+            {invoices.length === 0 ? <p className="py-6 text-center text-sm text-gray-400">請求書はありません。</p> : (
+              <table className="w-full text-left text-sm">
+                <thead className="border-b bg-gray-50 text-xs text-gray-500"><tr>{["請求先名(氏)", "件名", "請求日", "請求金額", "入金", "残高", ""].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
+                <tbody className="divide-y">{invoices.map((iv) => (
+                  <tr key={iv.id}>
+                    <td className="px-3 py-3">{iv.mournerName ?? "—"}</td>
+                    <td className="px-3 py-3">{iv.title ?? "—"}</td>
+                    <td className="px-3 py-3 text-gray-500">{fmtd(iv.billedOn)}</td>
+                    <td className="px-3 py-3">{iv.total.toLocaleString()}円</td>
+                    <td className="px-3 py-3">{iv.paidTotal.toLocaleString()}円</td>
+                    <td className="px-3 py-3">{(iv.total - iv.paidTotal).toLocaleString()}円</td>
+                    <td className="px-3 py-3 text-right"><div className="flex justify-end gap-2">
+                      <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-blue-400 px-2 py-1 text-xs text-blue-500">🖨 請求書</a>
+                      <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-green-500 px-2 py-1 text-xs text-green-600">✎ 編集</Link>
+                    </div></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            )}
+          </div>
+
+          {/* 関連請求書 */}
+          <div className="rounded-lg bg-white p-5 shadow-sm">
+            <p className="mb-3 font-bold text-gray-800">関連請求書</p>
+            <table className="w-full text-left text-sm">
+              <thead className="border-b bg-gray-50 text-xs text-gray-500"><tr>{["請求先名(氏)", "件名", "請求日", "請求金額", "入金", "残高"].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
+              <tbody><tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-gray-400">関連請求書はありません。</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {active === "related" && related && (
+        <div className="space-y-4">
+          <div className="rounded-lg bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between"><p className="font-bold text-gray-800">関連顧客</p><button className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">＋ 関連追加</button></div>
+            <RelTable cols={["氏名", "関連"]} rows={[]} />
+          </div>
+          <RelatedCard title="電話番号が一致する顧客" list={related.byPhone} />
+          <RelatedCard title="携帯番号が一致する顧客" list={related.byMobile} />
+          <RelatedCard title="住所が一致する顧客" list={related.byAddress} />
+          <RelatedCard title="会員番号が一致する顧客" list={[]} />
+        </div>
+      )}
       {active === "files" && <Empty>顧客別ファイルはありません。</Empty>}
       {active === "events" && <Empty>参加イベントはありません。</Empty>}
 
@@ -127,12 +204,35 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="min-w-[110px]"><p className="text-xs text-gray-400">{label}</p><div className="mt-0.5 text-sm">{children}</div></div>;
 }
-function Panel({ title, cols }: { title: string; cols: string[] }) {
+function Panel({ title, cols, newHref }: { title: string; cols: string[]; newHref?: string }) {
   return (
     <div className="rounded-lg bg-white p-5 shadow-sm">
-      <div className="mb-3 flex items-center justify-between"><p className="font-bold text-[#1aa39a]">{title}</p><button className="rounded border border-[#1aa39a] px-3 py-1 text-xs text-[#1aa39a]">＋ 新規作成</button></div>
+      <div className="mb-3 flex items-center justify-between"><p className="font-bold text-[#1aa39a]">{title}</p>
+        {newHref
+          ? <Link href={newHref} className="rounded border border-[#1aa39a] px-3 py-1 text-xs text-[#1aa39a]">＋ 新規作成</Link>
+          : <button className="rounded border border-[#1aa39a] px-3 py-1 text-xs text-[#1aa39a]">＋ 新規作成</button>}
+      </div>
       <table className="w-full text-left text-sm"><thead className="border-b text-xs text-gray-500"><tr>{cols.map((h) => <th key={h} className="px-2 py-2 font-medium">{h}</th>)}</tr></thead>
         <tbody><tr><td colSpan={cols.length} className="px-2 py-6 text-center text-sm text-gray-400">登録されていません。</td></tr></tbody></table>
+    </div>
+  );
+}
+function RelTable({ cols, rows }: { cols: string[]; rows: Customer[] }) {
+  return (
+    <table className="w-full text-left text-sm">
+      <thead className="border-b bg-gray-50 text-xs text-gray-500"><tr>{cols.map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
+      <tbody className="divide-y">{rows.length === 0
+        ? <tr><td colSpan={cols.length} className="px-3 py-6 text-center text-gray-400">該当なし</td></tr>
+        : rows.map((r) => (<tr key={r.id}><td className="px-3 py-3"><Link href={`/kanri/customers/${r.id}`} className="text-[#1aa39a] underline">{r.lastName} {r.firstName ?? ""}</Link></td>{cols.length > 1 && <td className="px-3 py-3 text-gray-500">—</td>}</tr>))}
+      </tbody>
+    </table>
+  );
+}
+function RelatedCard({ title, list }: { title: string; list: Customer[] }) {
+  return (
+    <div className="rounded-lg bg-white p-5 shadow-sm">
+      <p className="mb-3 font-bold text-gray-800">{title}</p>
+      <RelTable cols={["氏名"]} rows={list} />
     </div>
   );
 }
