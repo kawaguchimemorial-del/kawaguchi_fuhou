@@ -27,9 +27,12 @@ export async function createCustomer(_prev: KanriResult | null, fd: FormData): P
   const bd = [s(fd, "birth_y"), s(fd, "birth_m"), s(fd, "birth_d")];
   const birthDate = bd.every(Boolean) ? `${bd[0]}-${String(bd[1]).padStart(2, "0")}-${String(bd[2]).padStart(2, "0")}` : null;
 
+  // 顧客番号：空なら自動採番
+  let customerNo = s(fd, "customer_no");
+  if (!customerNo) customerNo = `C${new Date().toISOString().slice(0, 10).replace(/-/g, "")}${String(Math.floor(Math.random() * 9000) + 1000)}`;
   const row = {
     funeral_home_id: KANRI_HOME_ID,
-    customer_no: s(fd, "customer_no"),
+    customer_no: customerNo,
     last_name: lastName, first_name: s(fd, "first_name"),
     last_name_kana: s(fd, "last_name_kana"), first_name_kana: s(fd, "first_name_kana"),
     status: s(fd, "status"), inflow: s(fd, "inflow"), staff_name: s(fd, "staff_name"),

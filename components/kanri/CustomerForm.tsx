@@ -69,7 +69,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
         <Field label="番地"><input name="address_street" defaultValue={c?.addressStreet ?? ""} className={inp} /></Field>
         <Field label="建物名など"><input name="address_building" defaultValue={c?.addressBuilding ?? ""} className={inp} /></Field>
         <Field label="顧客ランク"><input name="rank" defaultValue={c?.rank ?? ""} className={inp} /></Field>
-        <Field label="顧客番号"><input name="customer_no" defaultValue={c?.customerNo ?? ""} className={inp} placeholder="空の場合そのまま" /></Field>
+        <Field label="顧客番号"><input name="customer_no" defaultValue={c?.customerNo ?? ""} className={inp} placeholder="空の場合、自動で採番されます" /></Field>
       </Grid>
 
       <Field label="その他備考"><textarea name="note" rows={3} defaultValue={c?.note ?? ""} className={inp} /></Field>
