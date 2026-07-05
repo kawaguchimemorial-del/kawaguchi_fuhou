@@ -28,12 +28,22 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-bold">分析</h1>
-        <div className="flex gap-2 text-xs">
-          <a href="/kanri/analytics/sales/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">売上集計CSV</a>
-          <a href="/kanri/analytics/sales-detail/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">売上分析 明細CSV</a>
-        </div>
+      {/* 実画面準拠: 「分析 - 売上実績」＋年月レンジ＋表示 */}
+      <div className="-m-5 mb-4 flex flex-wrap items-center justify-between gap-3 bg-[#2c8c6f] px-5 py-3">
+        <h1 className="text-lg font-bold text-white">分析 - 売上実績</h1>
+        <form className="flex flex-wrap items-center gap-1.5 text-sm">
+          <select name="fy" defaultValue={new Date().getFullYear()} className="rounded border-0 px-2 py-1.5">{[2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}年</option>)}</select>
+          <select name="fm" defaultValue={new Date().getMonth() + 1} className="rounded border-0 px-2 py-1.5">{Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}月</option>)}</select>
+          <span className="text-white">〜</span>
+          <select name="ty" defaultValue={new Date().getFullYear()} className="rounded border-0 px-2 py-1.5">{[2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}年</option>)}</select>
+          <select name="tm" defaultValue={new Date().getMonth() + 1} className="rounded border-0 px-2 py-1.5">{Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}月</option>)}</select>
+          <select name="unit" className="rounded border-0 px-2 py-1.5"><option>月間</option><option>週間</option><option>日間</option></select>
+          <button className="rounded bg-white px-3 py-1.5 font-medium text-[#2c8c6f]">🔍 表示</button>
+        </form>
+      </div>
+      <div className="flex justify-end gap-2 text-xs">
+        <a href="/kanri/analytics/sales/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">売上集計CSV</a>
+        <a href="/kanri/analytics/sales-detail/export" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">売上分析 明細CSV</a>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
