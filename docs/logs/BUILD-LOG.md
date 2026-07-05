@@ -326,3 +326,13 @@
 - お悔やみメッセージ: 画像を最大3枚(各5MB)アップロード可能に。クライアントからSupabase Storage(condolenceバケット, public, 5MB/画像mime制限, anon insertポリシー)へ直アップし、condolence_messages.image_paths(text[])に保存。送信後は /m/[slug]/messages(一覧)へ遷移。
 - メッセージ一覧ページ /m/[slug]/messages を新設(名前/メッセージ/画像を一覧、非表示・却下を除く)。getPublicMessages(service_role)。
 - 過去施行のVimeo動画は at-sougi ドメインにリファラ制限され当サイトから再生不可 → サーバープロキシ /api/vid/[id] で at-sougi リファラを付与しHLS(マスター/プレイリスト/セグメント)を中継、SSRF対策(Vimeoホスト限定)。クライアントは hls.js(HlsPlayer, クリックで再生)。管理式場ビュー・公開式場の動画をこのプレイヤーに差し替え。ローカルで再生(readyState4)確認。
+
+## 2026-07-04 供花供物注文の詳細/日付・式場内容確認・アルバム表示（後日追記 / commit 26d4afc）
+※ 当時BUILD-LOG未記載だったため2026-07-05に後追いで記録。
+- 供花・供物注文の**注文日時**を@葬儀の実注文日時(orderId=epoch秒)から復元して再取り込み（一括移植でcreated_atが同時刻になっていた問題を修正）。
+- 供花・供物注文一覧（全体/案件）の**各行をクリックで注文詳細ページ** `/admin/orders/[id]` へ。詳細に商品明細・合計・ステータス・注文日時・対象葬儀・注文者/法人/札名/住所/電話/メール/領収書宛名を表示（getOrderDetail）。
+- オンライン式場セクションに「**オンライン式場を表示**」ボタン追加。公開終了案件でも当時の式場(遺影/写真/アルバム/動画/挨拶)を管理プレビュー `/admin/ceremonies/[id]/venue` で確認可能に。
+- 葬儀詳細の「葬儀の様子」「アルバム」を**サムネイル表示**（クリックで拡大）。
+- `getAdminMemorial` を新設し、管理の葬儀詳細/アルバム/葬儀の様子/式場を**公開状態非依存**で表示（公開終了195件も管理側で閲覧可、公開ゲスト /m は従来通りpublishedのみ）。
+- `/admin/orders` を offering_orders 接続（listAllOrders）に実装、移植注文337件を一覧表示。
+- 葬儀一覧を**公開日(published_at)の降順**ソートに変更（一括移植でcreated_atがほぼ同時刻になり並びが崩れていたため / commit 162ace2）。
