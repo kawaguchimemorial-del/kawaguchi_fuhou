@@ -344,3 +344,16 @@
   - `/admin/ceremonies/[id]/orders/export` を実データ出力に実装。CSV(UTF-8 BOM) と Excel(HTMLテーブル .xls, application/vnd.ms-excel) の両方に、注文日時/ステータス/商品名/数量/金額/注文者/法人/札名/郵便番号/住所/電話/メール/領収書宛名/喪主名/故人名 を出力。errorは除外。
   - 訃報・香典の「印刷ダウンロード」を実装。`/admin/ceremonies/[id]/obituary?fmt=doc` は application/msword(.doc)で直接DL、`?fmt=pdf` は印刷用HTML(window.print()で日本語をPDF保存)。getAdminMemorialから訃報文・故人・喪主・式・儀式形態・葬儀社を生成。
 - 検証: 菅原(3 captured + 1 error)でCSV=3行・error除外を確認、Excel content-type確認、doc/pdf生成確認。`npx tsc --noEmit` パス。
+
+## 2026-07-05 葬儀管理ソフト(スマート葬儀クローン) Phase1: 基盤＋顧客管理
+- スマート葬儀(app.smartsougi.jp)を解析（全画面routemap・顧客/見積フォーム項目・ヘルプ39ページ）。解析物: tmp/smart/。設計: docs/kanri/00-analysis-and-plan.md。
+- 訃報案内とは別に `/kanri`(川口典礼 葬儀管理ソフト)を新設。名称はスマート葬儀を一切表示しない。
+- Phase1実装:
+  - DB: fk_customers（顧客テーブル, 0010_kanri_customers.sql, pooler経由で適用）。
+  - レイアウト/サイドバー(顧客管理/請求管理/発注管理/スケジュール管理/AI遺影写真/分析/SMS/設定)。
+  - ダッシュボード(クイックアクション/月別顧客登録数/新規登録顧客)。
+  - 顧客管理: 一覧(検索/ステータス絞込)・新規登録フォーム(スマート葬儀の顧客項目を踏襲)・詳細。
+  - AI遺影写真: 仮ページへのボタンのみ(/kanri/ai-portrait → /create 仮)。
+  - 他モジュール(請求/発注/スケジュール/分析/SMS/設定)はシェル(準備中)。
+- 検証: ローカルで顧客登録→詳細遷移、ダッシュボード表示を確認。tsc パス。
+- 次: Phase2 マスタ、Phase3 見積(故人/喪主入力)→訃報案内連携。
