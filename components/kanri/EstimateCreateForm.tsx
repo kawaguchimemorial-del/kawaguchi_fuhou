@@ -8,12 +8,30 @@ import type { Product, ProductSet } from "@/lib/kanri/products";
 import type { MasterItem } from "@/lib/kanri/master-defs";
 
 // 実スマート葬儀の「見積もり作成」「請求書追加」フォーム準拠（両者ほぼ同一・請求は宛名→請求先情報）
+export interface FormInitial {
+  id?: string;
+  constructionNo?: string;
+  customerId?: string; customerName?: string;
+  deceasedName?: string;
+  addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
+  addresseeLastNameKana?: string; addresseeFirstNameKana?: string;
+  addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
+  title?: string; memo?: string; date1?: string; date2?: string;
+  crematorium?: string; brand?: string;
+  productSetId?: string;
+  items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number }[];
+  advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
+}
 interface Props {
   asInvoice?: boolean;
+  initial?: FormInitial;     // 編集モード
   products: Product[];
   productSets: ProductSet[];
   osonae: MasterItem[];      // その他オプション、お供えにかかる費用
   discounts: MasterItem[];   // 値引商品マスタ
+  memorialServices?: MasterItem[]; // 葬儀・法要等マスタ
+  purposes?: MasterItem[];         // 摘要設定マスタ
+  templates?: MasterItem[];        // 見積書/請求書テンプレート
 }
 interface OptRow { key: number; productId: string; name: string; unitPrice: number; quantity: number }
 interface DiscRow { key: number; name: string; amount: number }
@@ -21,25 +39,50 @@ interface Hit { id: string; name: string; phone: string; address: string; birth:
 
 let seq = 1;
 
-export function EstimateCreateForm({ asInvoice, products, productSets, osonae, discounts }: Props) {
+export function EstimateCreateForm({ asInvoice, initial, products, productSets, osonae, discounts, memorialServices = [], purposes = [], templates = [] }: Props) {
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(asInvoice ? saveInvoiceFull : saveEstimateFull, null);
-  const [customer, setCustomer] = useState<{ id: string; name: string } | null>(null);
+  const [customer, setCustomer] = useState<{ id: string; name: string } | null>(initial?.customerId ? { id: initial.customerId, name: initial.customerName ?? "" } : null);
   const [newCustomer, setNewCustomer] = useState(false);
   const [pickOpen, setPickOpen] = useState(false);
   const [q, setQ] = useState(""); const [hits, setHits] = useState<Hit[]>([]); const [loading, setLoading] = useState(false);
   const [setOpen, setSetOpen] = useState(false);
-  const [chosenSet, setChosenSet] = useState<ProductSet | null>(null);
+  const [chosenSet, setChosenSet] = useState<ProductSet | null>(initial?.productSetId ? (productSets.find((s) => s.id === initial.productSetId) ?? null) : null);
   const [prodOpen, setProdOpen] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [opts, setOpts] = useState<OptRow[]>([]);
+  // 編集時: 既存明細を復元（セット行=セット名一致は除外、値引は値引行へ、他はオプション行へ）
+  const initItems = initial?.items ?? [];
+  const initSetName = initial?.productSetId ? productSets.find((s) => s.id === initial.productSetId)?.name : undefined;
+  const [opts, setOpts] = useState<OptRow[]>(initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ key: seq++, productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity })));
   const [osonaeQty, setOsonaeQty] = useState<Record<string, number>>({});
-  const [discRows, setDiscRows] = useState<DiscRow[]>([]);
-  const [advance, setAdvance] = useState("");
+  const [discRows, setDiscRows] = useState<DiscRow[]>(initItems.filter((it) => it.lineKind === "discount").map((it) => ({ key: seq++, name: it.name, amount: Math.abs(it.unitPrice * it.quantity) })));
+  const [advance, setAdvance] = useState(initial?.advance ? String(initial.advance) : "");
+  // 参照モーダル・読込
+  const [purposeOpen, setPurposeOpen] = useState(false);
+  const [tplOpen, setTplOpen] = useState(false);
+  const [memoVal, setMemoVal] = useState(initial?.memo ?? "");
+  const [titleVal, setTitleVal] = useState(initial?.title ?? "");
+  const [pno, setPno] = useState(initial?.constructionNo ?? "");
+  const [deceased, setDeceased] = useState(initial?.deceasedName ?? "");
+  const [lookupMsg, setLookupMsg] = useState("");
 
   async function search() {
     setLoading(true);
     try { const res = await fetch(`/kanri/customers/search?q=${encodeURIComponent(q)}`); setHits(await res.json()); }
     finally { setLoading(false); }
+  }
+  // 施行番号から対象者情報を読込む
+  async function lookupPno() {
+    if (!pno.trim()) { setLookupMsg("施行番号を入力してください"); return; }
+    setLookupMsg("検索中…");
+    try {
+      const res = await fetch(`/kanri/estimates/lookup?pno=${encodeURIComponent(pno.trim())}`);
+      const d = await res.json();
+      if (d && d.found) {
+        setDeceased(d.deceasedName ?? "");
+        if (d.customerId) setCustomer({ id: d.customerId, name: d.customerName ?? "" });
+        setLookupMsg("読込みました");
+      } else setLookupMsg("該当する施行が見つかりません");
+    } catch { setLookupMsg("読込みに失敗しました"); }
   }
   function addOpt(p?: Product) {
     setOpts((rs) => [...rs, { key: seq++, productId: p?.id ?? "", name: p?.name ?? "", unitPrice: p?.unitPrice ?? 0, quantity: 1 }]);
@@ -72,6 +115,7 @@ export function EstimateCreateForm({ asInvoice, products, productSets, osonae, d
   return (
     <form action={action} className="space-y-4 pb-20">
       {state && state.ok === false && <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">{state.error}</p>}
+      {initial?.id && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="items" value={itemsJson} />
       <input type="hidden" name="customer_id" value={customer?.id ?? ""} />
       <input type="hidden" name="product_set_id" value={chosenSet?.id ?? ""} />
@@ -82,9 +126,10 @@ export function EstimateCreateForm({ asInvoice, products, productSets, osonae, d
       <Card>
         <F label="施行番号">
           <div className="flex gap-2">
-            <input name="construction_no" className={inp} />
-            <button type="button" className="whitespace-nowrap rounded border px-3 py-2 text-xs text-gray-600">施行番号から<br />対象者情報を読込む</button>
+            <input name="construction_no" value={pno} onChange={(e) => setPno(e.target.value)} className={inp} />
+            <button type="button" onClick={lookupPno} className="whitespace-nowrap rounded border px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">施行番号から<br />対象者情報を読込む</button>
           </div>
+          {lookupMsg && <p className="mt-1 text-xs text-[#2c8c6f]">{lookupMsg}</p>}
         </F>
       </Card>
 
@@ -103,47 +148,52 @@ export function EstimateCreateForm({ asInvoice, products, productSets, osonae, d
             <F label="顧客名"><input name="new_customer_first_name" className={inp} /></F>
           </div>
         )}
-        <div className="mt-3"><F label="対象者"><input name="deceased_name" className={inp} placeholder="対象者（故人）氏名" /></F></div>
+        <div className="mt-3"><F label="対象者"><input name="deceased_name" value={deceased} onChange={(e) => setDeceased(e.target.value)} className={inp} placeholder="対象者（故人）氏名" /></F></div>
       </Card>
 
       {/* 宛名情報 / 請求先情報 */}
       <Card title={label}>
         <F label={label}>
-          <select name="addressee_kind" defaultValue="喪主" className={inp}><option>喪主</option><option>顧客</option><option>その他</option></select>
+          <select name="addressee_kind" defaultValue={initial?.addresseeKind ?? "喪主"} className={inp}><option>喪主</option><option>顧客</option><option>その他</option></select>
         </F>
         <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_90px]">
-          <F label={asInvoice ? "請求先名(氏)" : "宛名(氏)"}><input name="addressee_last_name" className={inp} /><p className="mt-0.5 text-[11px] text-gray-400">企業名などはこちらに入力してください</p></F>
-          <F label={asInvoice ? "請求先名(名)" : "宛名(名)"}><input name="addressee_first_name" className={inp} /></F>
-          <F label="敬称"><select name="addressee_honorific" defaultValue="様" className={inp}><option>様</option><option>御中</option><option value="">なし</option></select></F>
+          <F label={asInvoice ? "請求先名(氏)" : "宛名(氏)"}><input name="addressee_last_name" defaultValue={initial?.addresseeLastName ?? ""} className={inp} /><p className="mt-0.5 text-[11px] text-gray-400">企業名などはこちらに入力してください</p></F>
+          <F label={asInvoice ? "請求先名(名)" : "宛名(名)"}><input name="addressee_first_name" defaultValue={initial?.addresseeFirstName ?? ""} className={inp} /></F>
+          <F label="敬称"><select name="addressee_honorific" defaultValue={initial?.addresseeHonorific ?? "様"} className={inp}><option>様</option><option>御中</option><option value="">なし</option></select></F>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <F label={asInvoice ? "請求先名カナ(氏)" : "宛名カナ(氏)"}><input name="addressee_last_name_kana" className={inp} /></F>
-          <F label={asInvoice ? "請求先名カナ(名)" : "宛名カナ(名)"}><input name="addressee_first_name_kana" className={inp} /></F>
+          <F label={asInvoice ? "請求先名カナ(氏)" : "宛名カナ(氏)"}><input name="addressee_last_name_kana" defaultValue={initial?.addresseeLastNameKana ?? ""} className={inp} /></F>
+          <F label={asInvoice ? "請求先名カナ(名)" : "宛名カナ(名)"}><input name="addressee_first_name_kana" defaultValue={initial?.addresseeFirstNameKana ?? ""} className={inp} /></F>
         </div>
-        <div className="mt-3"><F label="郵便番号"><input name="addressee_postcode" className={inp} placeholder="ハイフン(-)無しで入力してください" /></F></div>
+        <div className="mt-3"><F label="郵便番号"><input name="addressee_postcode" defaultValue={initial?.addresseePostcode ?? ""} className={inp} placeholder="ハイフン(-)無しで入力してください" /></F></div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <F label="都道府県"><select name="addressee_prefecture" className={inp}><option value="">選択</option>{PREFECTURES.map((p) => <option key={p}>{p}</option>)}</select></F>
-          <F label="市区町村"><input name="addressee_address_city" className={inp} /></F>
-          <F label="番地"><input name="addressee_address_street" className={inp} /></F>
-          <F label="建物名など"><input name="addressee_address_building" className={inp} /></F>
+          <F label="都道府県"><select name="addressee_prefecture" defaultValue={initial?.addresseePrefecture ?? ""} className={inp}><option value="">選択</option>{PREFECTURES.map((p) => <option key={p}>{p}</option>)}</select></F>
+          <F label="市区町村"><input name="addressee_address_city" defaultValue={initial?.addresseeCity ?? ""} className={inp} /></F>
+          <F label="番地"><input name="addressee_address_street" defaultValue={initial?.addresseeStreet ?? ""} className={inp} /></F>
+          <F label="建物名など"><input name="addressee_address_building" defaultValue={initial?.addresseeBuilding ?? ""} className={inp} /></F>
         </div>
       </Card>
 
       {/* 件名・摘要・日付 */}
       <Card>
-        <F label="件名" required><input name="title" required className={inp} /></F>
-        <div className="mt-3"><F label="摘要"><input name="memo" className={inp} /></F></div>
+        <F label="件名" required><input name="title" required value={titleVal} onChange={(e) => setTitleVal(e.target.value)} className={inp} /></F>
+        <div className="mt-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600">摘要
+            {purposes.length > 0 && <button type="button" onClick={() => setPurposeOpen(true)} className="rounded border border-blue-400 px-2 py-0.5 text-xs text-blue-500">参照</button>}
+          </label>
+          <input name="memo" value={memoVal} onChange={(e) => setMemoVal(e.target.value)} className={inp + " mt-1"} />
+        </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {asInvoice ? (<>
-            <F label="請求日" required><input type="date" name="billed_on" required className={inp} /></F>
-            <F label="お支払い期限"><input type="date" name="due_on" className={inp} /></F>
+            <F label="請求日" required><input type="date" name="billed_on" required defaultValue={initial?.date1 ?? ""} className={inp} /></F>
+            <F label="お支払い期限"><input type="date" name="due_on" defaultValue={initial?.date2 ?? ""} className={inp} /></F>
           </>) : (<>
-            <F label="見積日"><input type="date" name="estimate_on" className={inp} /></F>
-            <F label="見積有効期限"><input type="date" name="estimate_limit_on" className={inp} /></F>
+            <F label="見積日"><input type="date" name="estimate_on" defaultValue={initial?.date1 ?? ""} className={inp} /></F>
+            <F label="見積有効期限"><input type="date" name="estimate_limit_on" defaultValue={initial?.date2 ?? ""} className={inp} /></F>
           </>)}
         </div>
-        <div className="mt-3"><F label="火葬場"><input name="crematorium_name" className={inp} /></F></div>
-        <div className="mt-3"><F label="ブランド"><select name="brand" className={inp}><option value=""></option><option>川口典礼</option></select></F></div>
+        <div className="mt-3"><F label="火葬場"><input name="crematorium_name" defaultValue={initial?.crematorium ?? ""} className={inp} /></F></div>
+        <div className="mt-3"><F label="ブランド"><select name="brand" defaultValue={initial?.brand ?? ""} className={inp}><option value=""></option><option>川口典礼</option></select></F></div>
         <div className="mt-3"><F label="在庫管理会場"><input name="stock_venue" className={inp} /></F></div>
       </Card>
 
@@ -218,12 +268,30 @@ export function EstimateCreateForm({ asInvoice, products, productSets, osonae, d
         <button type="button" onClick={() => setDiscRows((rs) => [...rs, { key: seq++, name: "", amount: 0 }])} className="rounded bg-sky-400 px-3 py-1.5 text-xs text-white">＋ 追加</button>
       </Card>
 
+      {/* 葬儀・法要等 */}
+      <Card title="葬儀・法要等">
+        <button type="button" onClick={() => { if (memorialServices.length === 0) return; const m = memorialServices[0]; setOpts((rs) => [...rs, { key: seq++, productId: "", name: m.name, unitPrice: m.price ?? 0, quantity: 1 }]); }} className="rounded bg-sky-400 px-3 py-1.5 text-xs text-white">葬儀・法要等 追加</button>
+        {memorialServices.length === 0 && <p className="mt-1 text-xs text-gray-400">法要マスタが未登録です（設定 &gt; 法要設定）。登録するとここから追加できます。</p>}
+        {memorialServices.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {memorialServices.map((m) => (
+              <button key={m.id} type="button" onClick={() => setOpts((rs) => [...rs, { key: seq++, productId: "", name: m.name, unitPrice: m.price ?? 0, quantity: 1 }])} className="rounded border border-[#2c8c6f] px-2.5 py-1 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">{m.name}</button>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* 前受金・発行情報 */}
       <Card>
         <F label="前受金"><input type="number" value={advance} onChange={(e) => setAdvance(e.target.value)} className={inp} /></F>
-        <div className="mt-3"><F label="発行会社"><input name="issuer_company" defaultValue="株式会社 川口典礼" className={inp} /></F></div>
-        <div className="mt-3"><F label="計上組織"><input name="charged_org" className={inp} /></F></div>
-        <div className="mt-3"><F label="計上担当者"><input name="charged_user" defaultValue="松澤 覚" className={inp} /></F></div>
+        <div className="mt-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            {templates.length > 0 && <button type="button" onClick={() => setTplOpen(true)} className="rounded border border-blue-400 px-2 py-0.5 text-xs text-blue-500">テンプレート参照</button>}
+          </label>
+        </div>
+        <div className="mt-2"><F label="発行会社"><input name="issuer_company" defaultValue={initial?.issuerCompany ?? "株式会社 川口典礼"} className={inp} /></F></div>
+        <div className="mt-3"><F label="計上組織"><input name="charged_org" defaultValue={initial?.chargedOrg ?? ""} className={inp} /></F></div>
+        <div className="mt-3"><F label="計上担当者"><input name="charged_user" defaultValue={initial?.chargedUser ?? "松澤 覚"} className={inp} /></F></div>
       </Card>
 
       <div className="flex gap-3">
@@ -284,6 +352,31 @@ export function EstimateCreateForm({ asInvoice, products, productSets, osonae, d
                 ))}
               </tbody>
             </table>
+          </div>
+        </Modal>
+      )}
+
+      {/* 摘要 参照モーダル */}
+      {purposeOpen && (
+        <Modal title="摘要 参照" onClose={() => setPurposeOpen(false)}>
+          <div className="max-h-80 overflow-y-auto divide-y">
+            {purposes.map((m) => (
+              <button key={m.id} type="button" onClick={() => { setMemoVal(m.name); setPurposeOpen(false); }} className="block w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">{m.name}</button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* テンプレート参照モーダル */}
+      {tplOpen && (
+        <Modal title="テンプレート参照" onClose={() => setTplOpen(false)}>
+          <div className="max-h-80 overflow-y-auto divide-y">
+            {templates.map((m) => (
+              <button key={m.id} type="button" onClick={() => { setTitleVal(m.name); if (m.extra?.body) setMemoVal(m.extra.body); setTplOpen(false); }} className="block w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">
+                <span className="font-medium">{m.name}</span>
+                {m.extra?.body && <span className="ml-2 text-xs text-gray-400">{m.extra.body.slice(0, 40)}</span>}
+              </button>
+            ))}
           </div>
         </Modal>
       )}

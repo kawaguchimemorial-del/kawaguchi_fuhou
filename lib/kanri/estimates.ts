@@ -38,6 +38,11 @@ export interface Estimate {
   items?: EstimateItem[];
   customerName?: string;
   sourceId?: string;
+  // 宛名情報・セット商品・発行情報（作成/編集フォーム用）
+  addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
+  addresseeLastNameKana?: string; addresseeFirstNameKana?: string;
+  addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
+  productSetId?: string; brand?: string; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,6 +59,12 @@ function mapEstimate(r: any): Estimate {
     status: r.status ?? "draft", memorialId: r.memorial_id ?? undefined, createdAt: r.created_at,
     customerName: r.fk_customers ? `${r.fk_customers.last_name ?? ""} ${r.fk_customers.first_name ?? ""}`.trim() : undefined,
     sourceId: r.source_id ?? undefined,
+    addresseeKind: r.addressee_kind ?? undefined, addresseeLastName: r.addressee_last_name ?? undefined, addresseeFirstName: r.addressee_first_name ?? undefined,
+    addresseeHonorific: r.addressee_honorific ?? undefined, addresseeLastNameKana: r.addressee_last_name_kana ?? undefined, addresseeFirstNameKana: r.addressee_first_name_kana ?? undefined,
+    addresseePostcode: r.addressee_postcode ?? undefined, addresseePrefecture: r.addressee_prefecture ?? undefined,
+    addresseeCity: r.addressee_address_city ?? undefined, addresseeStreet: r.addressee_address_street ?? undefined, addresseeBuilding: r.addressee_address_building ?? undefined,
+    productSetId: r.product_set_id ?? undefined, brand: r.brand ?? undefined,
+    issuerCompany: r.issuer_company ?? undefined, chargedOrg: r.charged_org ?? undefined, chargedUser: r.charged_user ?? undefined,
   };
 }
 

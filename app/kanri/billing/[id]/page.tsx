@@ -28,6 +28,7 @@ export default async function PaymentSlipManage({ params }: Params) {
       <div className="-m-5 mb-4 flex flex-wrap items-center justify-between gap-2 bg-[#2c8c6f] px-5 py-3">
         <h1 className="text-lg font-bold text-white">請求書:{title}:伝票(入金)管理</h1>
         <div className="flex flex-wrap gap-2 text-xs">
+          <Link href={`/kanri/billing/${iv.id}/edit`} className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">編集</Link>
           <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書PDF</a>
           <Link href={`/kanri/billing/${iv.id}/slip/new`} className="rounded bg-white px-3 py-1.5 font-medium text-[#2c8c6f]">伝票発行</Link>
         </div>

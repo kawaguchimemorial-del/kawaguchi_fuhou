@@ -607,8 +607,9 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
   const deceased = (s(fd, "deceased_name") ?? "").replace(/　/g, " ");
   const dsp = deceased.indexOf(" ");
   const now = new Date();
+  const id = s(fd, "id");
   const estimateNo = s(fd, "construction_no") || `E${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-  const { data, error } = await c.from("fk_estimates").insert({
+  const row = {
     funeral_home_id: KANRI_HOME_ID, customer_id: customerId, kind: "funeral", status: "confirmed",
     estimate_no: estimateNo, title, memo: s(fd, "memo"),
     estimate_on: s(fd, "estimate_on"), estimate_limit_on: s(fd, "estimate_limit_on"),
@@ -620,10 +621,19 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     advance_payment: num(fd, "advance_payment") ?? 0,
     subtotal, discount_total: discountTotal, tax_total: taxTotal, total,
     ...addresseeCols(fd),
-  }).select("id").single();
-  if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
-  if (computed.length) await c.from("fk_estimate_items").insert(computed.map((x) => ({ ...x, estimate_id: data.id })));
-  redirect(`/kanri/estimates/${data.id}`);
+  };
+  let estimateId = id;
+  if (id) {
+    const { error } = await c.from("fk_estimates").update(row).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await c.from("fk_estimate_items").delete().eq("estimate_id", id);
+  } else {
+    const { data, error } = await c.from("fk_estimates").insert(row).select("id").single();
+    if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
+    estimateId = data.id;
+  }
+  if (computed.length) await c.from("fk_estimate_items").insert(computed.map((x) => ({ ...x, estimate_id: estimateId })));
+  redirect(`/kanri/estimates/${estimateId}`);
 }
 
 export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
@@ -637,7 +647,8 @@ export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): 
   const { computed, total } = computeItems(fd);
   const a = addresseeCols(fd);
   const targetName = [a.addressee_last_name, a.addressee_first_name].filter(Boolean).join(" ");
-  const { data, error } = await c.from("fk_invoices").insert({
+  const id = s(fd, "id");
+  const row = {
     funeral_home_id: KANRI_HOME_ID, customer_id: customerId,
     title, billed_on: billedOn, due_on: s(fd, "due_on"),
     construction_no: s(fd, "construction_no"), deceased_name: s(fd, "deceased_name"),
@@ -648,17 +659,26 @@ export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): 
     invoice_target_address_building: a.addressee_address_building,
     product_set_id: s(fd, "product_set_id"), advance_payment: num(fd, "advance_payment") ?? 0,
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),
-    total, paid_total: 0, status: "unpaid",
-  }).select("id").single();
-  if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
+    total,
+  };
+  let invoiceId = id;
+  if (id) {
+    const { error } = await c.from("fk_invoices").update(row).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await c.from("fk_invoice_details").delete().eq("invoice_id", id);
+  } else {
+    const { data, error } = await c.from("fk_invoices").insert({ ...row, paid_total: 0, status: "unpaid" }).select("id").single();
+    if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
+    invoiceId = data.id;
+  }
   if (computed.length) {
     await c.from("fk_invoice_details").insert(computed.map((x, i) => ({
-      invoice_id: data.id, title: x.name, price: x.unit_price, tax: x.tax_rate, quantity: x.quantity,
+      invoice_id: invoiceId, title: x.name, price: x.unit_price, tax: x.tax_rate, quantity: x.quantity,
       amount: x.amount, tax_amount: Math.round(x.amount * x.tax_rate), amount_including_tax: x.amount + Math.round(x.amount * x.tax_rate),
       sort_order: i,
     })));
   }
-  redirect(`/kanri/billing/${data.id}`);
+  redirect(`/kanri/billing/${invoiceId}`);
 }
 
 // ===== 請求書 一括登録（宛先ごとに請求書を作成） =====

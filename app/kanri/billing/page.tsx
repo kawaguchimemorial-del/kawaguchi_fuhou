@@ -77,6 +77,7 @@ export default async function BillingPage({ searchParams }: SP) {
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
                         <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-blue-400 px-2 py-1 text-[11px] text-blue-500">詳細</Link>
+                        <Link href={`/kanri/billing/${iv.id}/edit`} className="rounded border border-[#2c8c6f] px-2 py-1 text-[11px] text-[#2c8c6f]">編集</Link>
                         <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">請求書</a>
                         <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収書</a>
                       </div>
