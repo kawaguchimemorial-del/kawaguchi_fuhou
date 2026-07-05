@@ -364,3 +364,10 @@
 - 商品: /kanri/products 一覧・登録・編集(種別/単価税抜/税率/単位/原価/発注先)。
 - サイドバーに 見積管理・商品 を追加。
 - 検証: tsc パス。
+
+## 2026-07-05 葬儀管理ソフト Phase3+7: 見積＋訃報案内連携
+- 見積: /kanri/estimates 一覧・作成・詳細・編集。故人情報/喪主情報/日程(通夜・葬儀)/会場/火葬場/宗教＋動的明細(商品選択で単価自動/値引行)＋税込自動計算(小計/値引/消費税/合計)＋前受金。データ: fk_estimates + fk_estimate_items。
+- 見積書PDF: /kanri/estimates/[id]/print (印刷用HTML→PDF保存)。
+- **訃報案内連携(Phase7先行)**: 見積詳細の「訃報案内を作成」で、見積の故人・喪主・日程から memorials/deceased/funeral_events を自動生成し、fk_estimates.memorial_id にリンク。作成後は訃報案内(/admin/ceremonies/[slug])へ遷移。以後は「訃報案内を開く」表示。
+- 顧客詳細・ダッシュボードの見積作成導線を /kanri/estimates/new に接続。
+- 検証: ローカルE2Eで 見積作成(税込440,000)→訃報案内作成→故人反映 を確認。tsc パス。

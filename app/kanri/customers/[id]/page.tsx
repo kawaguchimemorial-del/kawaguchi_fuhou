@@ -24,7 +24,7 @@ export default async function CustomerDetail({ params }: Params) {
         <h1 className="text-xl font-bold">{c.lastName} {c.firstName ?? ""} <span className="ml-2 text-sm font-normal text-gray-500">様</span></h1>
         <div className="flex gap-2 text-sm">
           <Link href="/kanri/customers" className="rounded border px-3 py-1.5">一覧へ</Link>
-          <Link href="/kanri/billing" className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">見積を作成</Link>
+          <Link href={`/kanri/estimates/new?customer_id=${c.id}`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">見積を作成</Link>
         </div>
       </div>
 

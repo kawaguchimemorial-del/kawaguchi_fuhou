@@ -10,11 +10,11 @@ const ACTIONS = [
   ] },
   { group: "事前相談", items: [
     { label: "顧客呼び出し", href: "/kanri/customers" },
-    { label: "事前見積作成", href: "/kanri/billing" },
+    { label: "事前見積作成", href: "/kanri/estimates/new" },
   ] },
   { group: "葬儀発生", items: [
     { label: "顧客呼び出し", href: "/kanri/customers" },
-    { label: "葬儀見積作成", href: "/kanri/billing" },
+    { label: "葬儀見積作成", href: "/kanri/estimates/new" },
     { label: "請求書作成", href: "/kanri/billing" },
   ] },
   { group: "その他", items: [

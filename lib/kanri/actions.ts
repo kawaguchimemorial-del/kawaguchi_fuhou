@@ -104,3 +104,117 @@ export async function deleteProduct(fd: FormData): Promise<void> {
   await admin().from("fk_products").update({ deleted_at: new Date().toISOString() }).eq("id", id);
   revalidatePath("/kanri/products");
 }
+
+// ===== 見積 =====
+function dt(fd: FormData, k: string): string | null {
+  const v = s(fd, k);
+  if (!v) return null;
+  // datetime-local (YYYY-MM-DDTHH:mm) を +09:00 として保存
+  return /T/.test(v) ? `${v}:00+09:00` : v;
+}
+
+interface RawItem { productId?: string | null; lineKind: "item" | "discount"; name: string; unitPrice: number; quantity: number; taxRate: number }
+
+export async function saveEstimate(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const c = admin();
+  const id = s(fd, "id");
+  let items: RawItem[] = [];
+  try { items = JSON.parse(s(fd, "items") ?? "[]"); } catch { items = []; }
+  items = items.filter((it) => it && it.name && (it.unitPrice || it.quantity));
+
+  let subtotal = 0, discountTotal = 0, taxTotal = 0;
+  const computed = items.map((it, i) => {
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.unitPrice) || 0;
+    const amount = it.lineKind === "discount" ? -Math.abs(price * qty) : price * qty;
+    const rate = Number(it.taxRate) || 0;
+    if (it.lineKind === "discount") discountTotal += Math.abs(amount); else subtotal += amount;
+    taxTotal += amount * rate;
+    return { product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i };
+  });
+  taxTotal = Math.round(taxTotal);
+  const total = subtotal - discountTotal + taxTotal;
+
+  const row = {
+    funeral_home_id: KANRI_HOME_ID,
+    estimate_no: s(fd, "estimate_no"),
+    customer_id: s(fd, "customer_id"),
+    title: s(fd, "title"), memo: s(fd, "memo"),
+    estimate_on: s(fd, "estimate_on"), estimate_limit_on: s(fd, "estimate_limit_on"),
+    kind: s(fd, "kind") ?? "funeral",
+    deceased_last_name: s(fd, "deceased_last_name"), deceased_first_name: s(fd, "deceased_first_name"),
+    deceased_last_name_kana: s(fd, "deceased_last_name_kana"), deceased_first_name_kana: s(fd, "deceased_first_name_kana"),
+    deceased_gender: s(fd, "deceased_gender"), deceased_birth_date: s(fd, "deceased_birth_date"),
+    deceased_death_date: s(fd, "deceased_death_date"), deceased_age: num(fd, "deceased_age"),
+    mourner_last_name: s(fd, "mourner_last_name"), mourner_first_name: s(fd, "mourner_first_name"),
+    mourner_kana: s(fd, "mourner_kana"), mourner_relation: s(fd, "mourner_relation"),
+    mourner_phone: s(fd, "mourner_phone"), mourner_postcode: s(fd, "mourner_postcode"), mourner_prefecture: s(fd, "mourner_prefecture"),
+    mourner_address_city: s(fd, "mourner_address_city"), mourner_address_street: s(fd, "mourner_address_street"), mourner_address_building: s(fd, "mourner_address_building"),
+    religion: s(fd, "religion"), wake_at: dt(fd, "wake_at"), funeral_at: dt(fd, "funeral_at"),
+    venue_name: s(fd, "venue_name"), venue_address: s(fd, "venue_address"), crematorium_name: s(fd, "crematorium_name"),
+    subtotal, discount_total: discountTotal, tax_total: taxTotal, total, advance_payment: num(fd, "advance_payment") ?? 0,
+  };
+
+  let estimateId = id;
+  if (id) {
+    const { error } = await c.from("fk_estimates").update(row).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await c.from("fk_estimate_items").delete().eq("estimate_id", id);
+  } else {
+    const { data, error } = await c.from("fk_estimates").insert(row).select("id").single();
+    if (error) return { ok: false, error: error.message };
+    estimateId = data.id;
+  }
+  if (computed.length) {
+    const { error } = await c.from("fk_estimate_items").insert(computed.map((x) => ({ ...x, estimate_id: estimateId })));
+    if (error) return { ok: false, error: error.message };
+  }
+  redirect(`/kanri/estimates/${estimateId}`);
+}
+
+export async function deleteEstimate(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  if (!id) return;
+  await admin().from("fk_estimates").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  redirect("/kanri/estimates");
+}
+
+// ===== 訃報案内連携: 見積の故人・喪主・日程から訃報案内(memorials)を作成 =====
+const RELIGION_MAP: Record<string, string> = { "仏式": "仏式", "浄土真宗": "浄土真宗", "神式": "神式", "神道": "神式", "キリスト教": "キリスト教式", "キリスト教式": "キリスト教式", "無宗教": "無宗教" };
+
+export async function createMemorialFromEstimate(fd: FormData): Promise<void> {
+  const estimateId = s(fd, "id");
+  if (!estimateId) return;
+  const c = admin();
+  const { data: e } = await c.from("fk_estimates").select("*").eq("id", estimateId).single();
+  if (!e) return;
+
+  // slug（推測不能）
+  const slug = (globalThis.crypto?.randomUUID?.() ?? `est-${estimateId}`).replace(/-/g, "").slice(0, 24);
+  const mournerName = [e.mourner_last_name, e.mourner_first_name].filter(Boolean).join(" ");
+  const religion = RELIGION_MAP[(e.religion ?? "").trim()] ?? "仏式";
+
+  const { data: mem, error: me } = await c.from("memorials").insert({
+    funeral_home_id: KANRI_HOME_ID, slug, status: "draft", access_level: "unlisted", noindex_flag: true,
+    religion_type: religion, koden_decline: true,
+    obituary_title: "訃報", announce_mourner_name: mournerName ? `喪主 ${mournerName}` : null,
+  }).select("id").single();
+  if (me || !mem) return;
+  const mid = mem.id;
+
+  await c.from("deceased").insert({
+    memorial_id: mid,
+    name_kanji: [e.deceased_last_name, e.deceased_first_name].filter(Boolean).join(" ") || "—",
+    name_kana: [e.deceased_last_name_kana, e.deceased_first_name_kana].filter(Boolean).join(" ") || null,
+    age_kazoe: e.deceased_age ?? null, death_date: e.deceased_death_date ?? null,
+    relation_to_mourner: e.mourner_relation ?? null,
+  });
+
+  const events: Record<string, unknown>[] = [];
+  if (e.wake_at) events.push({ memorial_id: mid, event_type: "通夜", start_at: e.wake_at, venue_name: e.venue_name ?? null, venue_address: e.venue_address ?? null, sort_order: 0 });
+  if (e.funeral_at) events.push({ memorial_id: mid, event_type: "葬儀", start_at: e.funeral_at, venue_name: e.venue_name ?? null, venue_address: e.venue_address ?? null, sort_order: 1 });
+  if (events.length) await c.from("funeral_events").insert(events);
+
+  await c.from("fk_estimates").update({ memorial_id: mid }).eq("id", estimateId);
+  redirect(`/admin/ceremonies/${slug}`);
+}
