@@ -153,12 +153,23 @@ export function EstimateForm({ products, estimate, defaultCustomerId }: { produc
       </Card>
 
       <Card title="その他">
-        <F label="前受金"><input name="advance_payment" type="number" defaultValue={estimate?.advancePayment ?? 0} className={inp + " max-w-xs"} /></F>
+        <Grid>
+          <F label="前受金"><input name="advance_payment" type="number" defaultValue={estimate?.advancePayment ?? 0} className={inp} /></F>
+          <F label="発行会社"><input name="issuer_company" className={inp} placeholder="株式会社 川口典礼" /></F>
+          <F label="計上組織"><input name="charged_org" className={inp} /></F>
+          <F label="計上担当者"><input name="charged_user" defaultValue="松澤 覚" className={inp} /></F>
+        </Grid>
       </Card>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 pb-16">
         <button disabled={pending} className="rounded bg-[#1aa39a] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "保存中…" : "見積を保存"}</button>
         <Link href="/kanri/estimates" className="rounded border px-6 py-2.5 text-sm">キャンセル</Link>
+      </div>
+
+      {/* 右下 固定 合計バー（スマート葬儀準拠） */}
+      <div className="fixed bottom-0 right-0 z-30 flex items-center gap-6 bg-[#f2683f] px-6 py-3 text-white shadow-lg">
+        <span className="text-sm">合計（税込）</span>
+        <span className="text-xl font-bold">{totals.total.toLocaleString()} 円</span>
       </div>
     </form>
   );
