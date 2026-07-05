@@ -35,6 +35,7 @@ export default async function CustomersPage({ searchParams }: SP) {
           </select>
         </div>
         <button className="rounded bg-gray-700 px-4 py-2 text-white">検索</button>
+        <a href="/kanri/customers/export" className="rounded border border-[#1aa39a] px-4 py-2 text-[#1aa39a]">CSVダウンロード</a>
       </form>
 
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
