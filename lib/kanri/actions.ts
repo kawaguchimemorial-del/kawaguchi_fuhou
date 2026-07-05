@@ -126,6 +126,27 @@ export async function deleteProduct(fd: FormData): Promise<void> {
   revalidatePath("/kanri/products");
 }
 
+// ===== 顧客 CSV一括取り込み =====
+export async function importCustomers(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  let rows: Record<string, string>[] = [];
+  try { rows = JSON.parse(s(fd, "rows") ?? "[]"); } catch { return { ok: false, error: "CSVの解析に失敗しました。" }; }
+  rows = rows.filter((r) => (r["氏"] || r["顧客氏"] || r["last_name"] || "").trim());
+  if (rows.length === 0) return { ok: false, error: "取り込む行がありません（氏が必須）。" };
+  const g = (r: Record<string, string>, ...keys: string[]) => { for (const k of keys) { if (r[k] != null && r[k] !== "") return r[k].trim(); } return null; };
+  const payload = rows.map((r) => ({
+    funeral_home_id: KANRI_HOME_ID,
+    customer_no: g(r, "顧客番号"), last_name: g(r, "氏", "顧客氏", "last_name"), first_name: g(r, "名", "顧客名"),
+    last_name_kana: g(r, "セイ", "顧客セイ"), first_name_kana: g(r, "メイ", "顧客メイ"),
+    status: g(r, "ステータス"), inflow: g(r, "流入経路"), gender: g(r, "性別"),
+    telephone_number: g(r, "自宅番号"), mobile_number: g(r, "携帯番号"), email: g(r, "メールアドレス"),
+    postcode: g(r, "郵便番号"), prefecture_code: g(r, "都道府県"), address_city: g(r, "市区町村"),
+    address_street: g(r, "番地"), address_building: g(r, "建物名"), note: g(r, "備考"),
+  }));
+  const { error } = await admin().from("fk_customers").insert(payload);
+  if (error) return { ok: false, error: error.message };
+  redirect("/kanri/customers");
+}
+
 // ===== 顧客 対応履歴 =====
 export async function addCustomerNote(fd: FormData): Promise<void> {
   const customerId = s(fd, "customer_id");
