@@ -126,6 +126,23 @@ export async function deleteProduct(fd: FormData): Promise<void> {
   revalidatePath("/kanri/products");
 }
 
+// ===== 顧客 対応履歴 =====
+export async function addCustomerNote(fd: FormData): Promise<void> {
+  const customerId = s(fd, "customer_id");
+  const body = s(fd, "body");
+  if (!customerId || !body) return;
+  await admin().from("fk_customer_notes").insert({
+    funeral_home_id: KANRI_HOME_ID, customer_id: customerId, kind: s(fd, "kind"), body, created_by: "松澤 覚",
+  });
+  revalidatePath(`/kanri/customers/${customerId}`);
+}
+export async function deleteCustomerNote(fd: FormData): Promise<void> {
+  const id = s(fd, "id"); const customerId = s(fd, "customer_id");
+  if (!id) return;
+  await admin().from("fk_customer_notes").delete().eq("id", id);
+  if (customerId) revalidatePath(`/kanri/customers/${customerId}`);
+}
+
 // ===== 見積 =====
 function dt(fd: FormData, k: string): string | null {
   const v = s(fd, k);

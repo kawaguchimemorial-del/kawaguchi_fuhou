@@ -90,6 +90,15 @@ export async function countCustomers(): Promise<number> {
   return count ?? 0;
 }
 
+export interface CustomerNote { id: string; kind?: string; body: string; createdBy?: string; createdAt: string }
+export async function listCustomerNotes(customerId: string): Promise<CustomerNote[]> {
+  const c = db();
+  if (!c) return [];
+  const { data } = await c.from("fk_customer_notes").select("id,kind,body,created_by,created_at").eq("customer_id", customerId).order("created_at", { ascending: false });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => ({ id: r.id, kind: r.kind ?? undefined, body: r.body, createdBy: r.created_by ?? undefined, createdAt: r.created_at }));
+}
+
 /** 月別顧客登録数（直近7ヶ月）。 */
 export async function monthlyCustomerCounts(): Promise<{ month: string; count: number }[]> {
   const c = db();

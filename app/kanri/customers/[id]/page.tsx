@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCustomer } from "@/lib/kanri/data";
+import { getCustomer, listCustomerNotes } from "@/lib/kanri/data";
+import { addCustomerNote, deleteCustomerNote } from "@/lib/kanri/actions";
 import { listEstimatesByCustomer, deceasedFullName } from "@/lib/kanri/estimates";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
   const c = await getCustomer(id);
   if (!c) notFound();
   const estimates = active === "contract" ? await listEstimatesByCustomer(id) : [];
+  const notes = active === "history" ? await listCustomerNotes(id) : [];
   const addr = [c.prefectureCode, c.addressCity, c.addressStreet, c.addressBuilding].filter(Boolean).join(" ");
 
   return (
@@ -111,7 +113,42 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
       )}
 
       {active === "history" && (
-        <div className="rounded-lg bg-white p-8 text-center text-sm text-gray-400 shadow-sm">対応履歴はまだありません。</div>
+        <div className="space-y-4">
+          <div className="rounded-lg bg-white p-5 shadow-sm">
+            <p className="mb-3 font-bold text-[#1aa39a]">対応履歴を追加</p>
+            <form action={addCustomerNote} className="flex flex-wrap items-end gap-3 text-sm">
+              <input type="hidden" name="customer_id" value={id} />
+              <div>
+                <label className="block text-xs text-gray-500">種別</label>
+                <select name="kind" className="mt-1 rounded border px-3 py-2">
+                  <option value="電話">電話</option><option value="来店">来店</option><option value="メール">メール</option><option value="訪問">訪問</option><option value="その他">その他</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500">内容 <span className="text-red-500">必須</span></label>
+                <input name="body" required className="mt-1 w-full rounded border px-3 py-2" placeholder="対応内容を入力" />
+              </div>
+              <button className="rounded bg-[#1aa39a] px-4 py-2 text-white">追加</button>
+            </form>
+          </div>
+          <div className="rounded-lg bg-white p-5 shadow-sm">
+            <p className="mb-3 font-bold text-[#1aa39a]">履歴</p>
+            {notes.length === 0 ? <p className="py-6 text-center text-sm text-gray-400">対応履歴はまだありません。</p> : (
+              <ul className="divide-y">
+                {notes.map((n) => (
+                  <li key={n.id} className="flex items-start gap-3 py-3">
+                    <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{n.kind ?? "—"}</span>
+                    <div className="flex-1">
+                      <p className="text-sm">{n.body}</p>
+                      <p className="mt-0.5 text-xs text-gray-400">{fmt(n.createdAt)} ・ {n.createdBy ?? ""}</p>
+                    </div>
+                    <form action={deleteCustomerNote}><input type="hidden" name="id" value={n.id} /><input type="hidden" name="customer_id" value={id} /><button className="text-xs text-red-400 hover:underline">削除</button></form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
 
       {active === "family" && (
