@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 import { KANRI_HOME_ID } from "./constants";
 
@@ -44,4 +45,62 @@ export async function createCustomer(_prev: KanriResult | null, fd: FormData): P
   const { data, error } = await db.from("fk_customers").insert(row).select("id").single();
   if (error) return { ok: false, error: error.message };
   redirect(`/kanri/customers/${data.id}`);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function admin(): { from: (t: string) => any } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return createAdminClient() as unknown as { from: (t: string) => any };
+}
+function num(fd: FormData, k: string): number | null {
+  const v = s(fd, k);
+  if (v == null) return null;
+  const n = Number(v.replace(/,/g, ""));
+  return isNaN(n) ? null : n;
+}
+
+// ===== マスタ =====
+export async function addMasterItem(fd: FormData): Promise<void> {
+  const type = s(fd, "master_type");
+  const name = s(fd, "name");
+  if (!type || !name) return;
+  await admin().from("fk_master_items").insert({
+    funeral_home_id: KANRI_HOME_ID, master_type: type, name,
+    kana: s(fd, "kana"), price: num(fd, "price"), sort_order: num(fd, "sort_order") ?? 0,
+  });
+  revalidatePath(`/kanri/settings/${type}`);
+}
+export async function deleteMasterItem(fd: FormData): Promise<void> {
+  const id = s(fd, "id"); const type = s(fd, "master_type");
+  if (!id) return;
+  await admin().from("fk_master_items").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  if (type) revalidatePath(`/kanri/settings/${type}`);
+}
+
+// ===== 商品 =====
+export async function saveProduct(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const name = s(fd, "name");
+  if (!name) return { ok: false, error: "商品名は必須です。" };
+  const id = s(fd, "id");
+  const row = {
+    funeral_home_id: KANRI_HOME_ID,
+    product_kind: s(fd, "product_kind"), name, kana: s(fd, "kana"),
+    unit_price: num(fd, "unit_price") ?? 0, cost_price: num(fd, "cost_price"),
+    tax_rate: num(fd, "tax_rate") ?? 0.1, unit: s(fd, "unit"), supplier: s(fd, "supplier"), note: s(fd, "note"),
+  };
+  const c = admin();
+  if (id) {
+    const { error } = await c.from("fk_products").update(row).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await c.from("fk_products").insert(row);
+    if (error) return { ok: false, error: error.message };
+  }
+  redirect("/kanri/products");
+}
+export async function deleteProduct(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  if (!id) return;
+  await admin().from("fk_products").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/kanri/products");
 }

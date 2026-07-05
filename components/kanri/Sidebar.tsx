@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 const NAV = [
   { href: "/kanri", label: "ダッシュボード", exact: true },
   { href: "/kanri/customers", label: "顧客管理" },
+  { href: "/kanri/estimates", label: "見積管理" },
+  { href: "/kanri/products", label: "商品" },
   { href: "/kanri/billing", label: "請求管理" },
   { href: "/kanri/orders", label: "発注管理" },
   { href: "/kanri/schedule", label: "スケジュール管理" },
