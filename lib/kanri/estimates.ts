@@ -58,7 +58,7 @@ function mapEstimate(r: any): Estimate {
 export async function listEstimates(): Promise<Estimate[]> {
   const c = db();
   if (!c) return [];
-  const { data } = await c.from("fk_estimates").select("*,fk_customers(last_name,first_name)").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("created_at", { ascending: false }).limit(500);
+  const { data } = await c.from("fk_estimates").select("*,fk_customers(last_name,first_name)").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("created_at", { ascending: false }).limit(2000);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map(mapEstimate);
 }
