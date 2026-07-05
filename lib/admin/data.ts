@@ -164,6 +164,7 @@ export async function listAllOrders(): Promise<AllOrderRow[]> {
       "id,product_name,quantity,unit_price_jpy,orderer_name,company,address,name_plate_text,status,created_at,memorials!inner(funeral_home_id,announce_mourner_name,deceased(name_kanji))"
     )
     .eq("memorials.funeral_home_id", DEMO_FUNERAL_HOME_ID)
+    .neq("status", "error") // 決済未成立(error)は除外
     .order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => {
@@ -295,7 +296,8 @@ export async function listOrders(slug: string): Promise<OrderRow[]> {
   if (!c) return [];
   const mid = await memorialIdBySlug(slug);
   if (!mid) return [];
-  const { data } = await c.from("offering_orders").select("id,product_name,quantity,unit_price_jpy,orderer_name,email,name_plate_text,status,created_at").eq("memorial_id", mid).order("created_at", { ascending: false });
+  // status=error は決済が通っていない注文のため一覧に出さない
+  const { data } = await c.from("offering_orders").select("id,product_name,quantity,unit_price_jpy,orderer_name,email,name_plate_text,status,created_at").eq("memorial_id", mid).neq("status", "error").order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => ({
     id: r.id, productName: r.product_name ?? "—", quantity: r.quantity ?? 1, amountJpy: (r.unit_price_jpy ?? 0) * (r.quantity ?? 1),
@@ -358,6 +360,59 @@ export async function getOrderDetail(id: string): Promise<OrderDetail | null> {
     namePlate: r.name_plate_text ?? "", oldChar: !!r.old_char, invoiceName: r.invoice_name ?? "", memo: r.memo ?? "",
     payment: "オンラインカード決済", items, total,
   };
+}
+
+export interface ExportOrderRow {
+  createdAt: string;
+  status: string;
+  productName: string;
+  quantity: number;
+  amountJpy: number;
+  ordererName: string;
+  company: string;
+  namePlate: string;
+  postalCode: string;
+  address: string;
+  phone: string;
+  email: string;
+  invoiceName: string;
+  mournerName: string;
+  deceasedName: string;
+}
+/** 供花・供物 注文一覧のエクスポート用データ（error=決済未成立は除外）。 */
+export async function getOrdersForExport(slug: string): Promise<ExportOrderRow[]> {
+  const c = await db();
+  if (!c) return [];
+  const mid = await memorialIdBySlug(slug);
+  if (!mid) return [];
+  const { data } = await c
+    .from("offering_orders")
+    .select("created_at,status,product_name,quantity,unit_price_jpy,orderer_name,company,name_plate_text,postal_code,address,phone,email,invoice_name,memorials(announce_mourner_name,deceased(name_kanji))")
+    .eq("memorial_id", mid)
+    .neq("status", "error")
+    .order("created_at", { ascending: false });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => {
+    const m = Array.isArray(r.memorials) ? r.memorials[0] : r.memorials;
+    const dec = m && (Array.isArray(m.deceased) ? m.deceased[0] : m.deceased);
+    return {
+      createdAt: r.created_at,
+      status: ORDER_STATUS_LABEL[r.status] ?? r.status ?? "",
+      productName: r.product_name ?? "",
+      quantity: r.quantity ?? 1,
+      amountJpy: (r.unit_price_jpy ?? 0) * (r.quantity ?? 1),
+      ordererName: r.orderer_name ?? "",
+      company: r.company ?? "",
+      namePlate: r.name_plate_text ?? "",
+      postalCode: r.postal_code ?? "",
+      address: r.address ?? "",
+      phone: r.phone ?? "",
+      email: r.email ?? "",
+      invoiceName: r.invoice_name ?? "",
+      mournerName: (m?.announce_mourner_name ?? "").replace(/^喪主\s*/, ""),
+      deceasedName: dec?.name_kanji ?? "",
+    };
+  });
 }
 
 export interface KodenRow { donorName: string; amountJpy: number; hyogaki: string; status: string; createdAt: string }

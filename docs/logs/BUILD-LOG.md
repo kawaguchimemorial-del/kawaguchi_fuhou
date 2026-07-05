@@ -336,3 +336,11 @@
 - `getAdminMemorial` を新設し、管理の葬儀詳細/アルバム/葬儀の様子/式場を**公開状態非依存**で表示（公開終了195件も管理側で閲覧可、公開ゲスト /m は従来通りpublishedのみ）。
 - `/admin/orders` を offering_orders 接続（listAllOrders）に実装、移植注文337件を一覧表示。
 - 葬儀一覧を**公開日(published_at)の降順**ソートに変更（一括移植でcreated_atがほぼ同時刻になり並びが崩れていたため / commit 162ace2）。
+
+## 2026-07-05 注文一覧のerror除外・CSV/Excel実データ出力・訃報PDF/Word出力
+- ユーザー指摘: 供花・供物注文一覧で status=error(決済未成立)を表示しない／CSV・Excelに一覧データが入っていない／訃報の印刷DL(PDF/Word)が準備中のまま。
+- 対応:
+  - 注文取得(listOrders/listAllOrders/getOrdersForExport)で `status != error` を除外（error=決済が通っていない注文）。
+  - `/admin/ceremonies/[id]/orders/export` を実データ出力に実装。CSV(UTF-8 BOM) と Excel(HTMLテーブル .xls, application/vnd.ms-excel) の両方に、注文日時/ステータス/商品名/数量/金額/注文者/法人/札名/郵便番号/住所/電話/メール/領収書宛名/喪主名/故人名 を出力。errorは除外。
+  - 訃報・香典の「印刷ダウンロード」を実装。`/admin/ceremonies/[id]/obituary?fmt=doc` は application/msword(.doc)で直接DL、`?fmt=pdf` は印刷用HTML(window.print()で日本語をPDF保存)。getAdminMemorialから訃報文・故人・喪主・式・儀式形態・葬儀社を生成。
+- 検証: 菅原(3 captured + 1 error)でCSV=3行・error除外を確認、Excel content-type確認、doc/pdf生成確認。`npx tsc --noEmit` パス。

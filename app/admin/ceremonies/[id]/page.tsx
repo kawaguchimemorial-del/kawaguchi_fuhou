@@ -68,7 +68,10 @@ export default async function CeremonyDetail({ params }: Params) {
           <a href={`/admin/ceremonies/${id}/qr?url=${encodeURIComponent(obituaryUrl)}&dl=1`} className="text-[#9b2fae] underline">QRコードダウンロード</a>
         </Row>
         <Row label="印刷ダウンロード">
-          <span className="text-xs text-gray-400">PDFダウンロード / Wordダウンロード（準備中）</span>
+          <span className="flex flex-wrap gap-3">
+            <a href={`/admin/ceremonies/${id}/obituary?fmt=pdf`} target="_blank" rel="noopener noreferrer" className="text-[#9b2fae] underline">PDFダウンロード</a>
+            <a href={`/admin/ceremonies/${id}/obituary?fmt=doc`} className="text-[#9b2fae] underline">Wordダウンロード</a>
+          </span>
         </Row>
         <Row label="訃報タイトル">{m.obituaryTitle}</Row>
         {m.obituaryBody && (
