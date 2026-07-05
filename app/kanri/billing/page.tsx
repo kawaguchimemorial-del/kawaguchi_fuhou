@@ -37,7 +37,7 @@ export default async function BillingPage() {
                     <td className="px-4 py-2"><span className={iv.status === "paid" ? "text-green-600" : iv.status === "partial" ? "text-amber-600" : "text-gray-500"}>{INVOICE_STATUS_LABEL[iv.status] ?? iv.status}</span></td>
                     <td className="px-4 py-2">
                       <div className="flex gap-1">
-                        <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-blue-400 px-2 py-1 text-[11px] text-blue-500">詳細確認</Link>
+                        <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-blue-400 px-2 py-1 text-[11px] text-blue-500">請求書</a>
                         <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収書</a>
                         <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-[#e8613c] px-2 py-1 text-[11px] text-[#e8613c]">入金</Link>
                       </div>

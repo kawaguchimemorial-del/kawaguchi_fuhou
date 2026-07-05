@@ -21,6 +21,7 @@ export default async function InvoiceDetail({ params }: Params){
         <div className="flex gap-2 text-sm">
           <Link href="/kanri/billing" className="rounded border px-3 py-1.5">一覧へ</Link>
           {e && <Link href={`/kanri/estimates/${e.id}`} className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">見積を開く</Link>}
+          <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">請求書PDF</a>
           <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">領収書PDF</a>
         </div>
       </div>
