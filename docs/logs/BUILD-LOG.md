@@ -488,3 +488,7 @@
 - 追加: lib/kanri/data.ts findDuplicateCustomerGroups、actions.ts mergeCustomers(FK付け替え＋他ソフト削除)/excludeFromDedup(除外フラグ)/deleteCustomerFromDedup。
 - 変更: 顧客一覧ヘッダーのボタン群を実画面順に刷新 — 顧客CSVダウンロード/葬家CSVダウンロード/会員CSVダウンロード/顧客 追加/顧客 CSVインポート/顧客 ダブリチェック。export routeに?type=(customer/souke/member)対応(ファイル名分岐)。
 - 検証: 重複顧客2件を投入しPlaywrightで撮影、実スクショと一致確認後にテストデータ削除。tsc(該当ファイル)エラー無し。devのhydration警告はNext内部(RedirectErrorBoundary)由来のノイズで当ページ描画は正常(サーバーコンポーネント)。
+
+## 2026-07-05 葬儀管理 CRMトップ カレンダーに担当者/表示対象/月週トグル追加
+- components/kanri/Calendar.tsx: 実画面のカレンダーヘッダーに合わせ、担当者(既定=松澤 覚)/表示対象(すべて/通夜/葬儀)セレクトと月・週トグルを追加。週表示は今日(当月内)を含む1週間を表示。既存のお知らせ帯/ショートカットタイル群/月別顧客登録数/新規登録顧客テーブルは既に実装済みで一致を確認。
+- 検証: /kanri をPlaywright撮影し実スクショと突き合わせ一致確認。tsc(該当ファイル)エラー無し。
