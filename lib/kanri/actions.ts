@@ -111,6 +111,15 @@ export async function saveProduct(_prev: KanriResult | null, fd: FormData): Prom
     product_kind: s(fd, "product_kind"), name, kana: s(fd, "kana"),
     unit_price: num(fd, "unit_price") ?? 0, cost_price: num(fd, "cost_price"),
     tax_rate: num(fd, "tax_rate") ?? 0.1, unit: s(fd, "unit"), supplier: s(fd, "supplier"), note: s(fd, "note"),
+    // 実スマート葬儀の商品フィールド
+    product_code: s(fd, "product_code"), model_code: s(fd, "model_code"),
+    cost_tax: num(fd, "cost_tax") ?? 0.1, deduction: s(fd, "deduction"),
+    refundable: bool(fd, "refundable"), description: s(fd, "description"), remarks: s(fd, "remarks"),
+    available_ec: bool(fd, "available_ec"), available_homepage: bool(fd, "available_homepage"),
+    available_attendant: bool(fd, "available_attendant"), available_returned_item: bool(fd, "available_returned_item"),
+    available_item: bool(fd, "available_item"), grouped: bool(fd, "grouped"),
+    not_ordering: bool(fd, "not_ordering"), order_only: bool(fd, "order_only"),
+    hidden_picking: bool(fd, "hidden_picking"), hidden: bool(fd, "hidden"),
   };
   const c = admin();
   if (id) {
@@ -122,6 +131,42 @@ export async function saveProduct(_prev: KanriResult | null, fd: FormData): Prom
   }
   redirect("/kanri/products");
 }
+// ===== セット商品 =====
+export async function saveProductSet(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
+  const name = s(fd, "name");
+  if (!name) return { ok: false, error: "セット名は必須です。" };
+  const id = s(fd, "id");
+  const c = admin();
+  const row = {
+    funeral_home_id: KANRI_HOME_ID,
+    code: s(fd, "code"), name, description: s(fd, "description"),
+    price: num(fd, "price") ?? 0, tax_included_price: num(fd, "tax_included_price") ?? 0,
+    tax: num(fd, "tax") ?? 0.1, hidden: bool(fd, "hidden"),
+  };
+  let setId = id;
+  if (id) {
+    const { error } = await c.from("fk_product_sets").update(row).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await c.from("fk_product_set_items").delete().eq("set_id", id);
+  } else {
+    const { data, error } = await c.from("fk_product_sets").insert(row).select("id").single();
+    if (error) return { ok: false, error: error.message };
+    setId = data.id;
+  }
+  // 内訳: product_id[], quantity[]
+  const productIds = fd.getAll("item_product_id").map((v) => String(v));
+  const quantities = fd.getAll("item_quantity").map((v) => Number(String(v)) || 1);
+  const items = productIds.map((pid, i) => ({ set_id: setId, product_id: pid || null, quantity: quantities[i] ?? 1, sort_order: i })).filter((x) => x.product_id);
+  if (items.length) await c.from("fk_product_set_items").insert(items);
+  redirect("/kanri/product-sets");
+}
+export async function deleteProductSet(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  if (!id) return;
+  await admin().from("fk_product_sets").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/kanri/product-sets");
+}
+
 export async function importProducts(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
   let rows: Record<string, string>[] = [];
   try { rows = JSON.parse(s(fd, "rows") ?? "[]"); } catch { return { ok: false, error: "CSVの解析に失敗しました。" }; }
