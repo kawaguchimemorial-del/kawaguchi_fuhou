@@ -65,7 +65,7 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
               <Cell label="ステータス">{c.status ?? "—"}</Cell>
               <Cell label="流入経路">{c.inflow ?? "未設定"}</Cell>
               <Cell label="顧客担当">{c.staffName ?? "—"}</Cell>
-              <Cell label="お問い合わせ（登録）日時">{fmt(c.createdAt)}</Cell>
+              <Cell label="お問い合わせ（登録）日時">{fmt(c.registeredAt ?? c.createdAt)}</Cell>
               <Cell label="性別">{c.gender ?? "—"}</Cell>
               <Cell label="生年月日">{c.birthDate ?? "—"}</Cell>
               <Cell label="自宅番号">{c.telephoneNumber ?? "—"}</Cell>

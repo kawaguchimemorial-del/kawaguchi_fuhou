@@ -71,7 +71,7 @@ export default async function CustomersPage({ searchParams }: SP) {
                     <td className="px-4 py-2 text-gray-500">{[c.lastNameKana, c.firstNameKana].filter(Boolean).join(" ")}</td>
                     <td className="px-4 py-2 whitespace-nowrap">{c.mobileNumber ?? c.telephoneNumber ?? "—"}</td>
                     <td className="px-4 py-2 text-gray-500">{c.email ?? ""}</td>
-                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">{fmt(c.createdAt)}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">{fmt(c.registeredAt ?? c.createdAt)}</td>
                     <td className="px-4 py-2">
                       <div className="flex gap-1">
                         <Link href={`/kanri/customers/${c.id}`} className="rounded border border-blue-400 px-2 py-1 text-[11px] text-blue-500">詳細確認</Link>
