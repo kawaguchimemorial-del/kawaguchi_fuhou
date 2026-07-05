@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { notFound } from "next/navigation";
 import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
 import { createMemorialFromEstimate, createInvoiceFromEstimate, createPurchaseOrdersFromEstimate } from "@/lib/kanri/actions";
@@ -17,6 +18,7 @@ export default async function EstimateDetail({ params }: Params) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
+      <PageHeader title="見積もり詳細" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">{e.title || "見積"}</h1>
         <div className="flex flex-wrap gap-2 text-sm">

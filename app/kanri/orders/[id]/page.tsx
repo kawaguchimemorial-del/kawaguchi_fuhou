@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { notFound } from "next/navigation";
 import { getPurchaseOrder, ORDER_STATUS_LABEL, PAYABLE_STATUS_LABEL } from "@/lib/kanri/orders";
 import { markOrderDelivered, toggleOrderPaid, deletePurchaseOrder } from "@/lib/kanri/actions";
@@ -11,6 +12,7 @@ export default async function OrderDetail({ params }: Params){
   if(!o) notFound();
   return (
     <div className="mx-auto max-w-3xl space-y-4">
+      <PageHeader title="発注詳細" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">発注書詳細</h1>
         <div className="flex flex-wrap gap-2 text-sm">

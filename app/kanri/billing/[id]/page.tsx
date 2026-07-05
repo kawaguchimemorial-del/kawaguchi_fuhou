@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/kanri/PageHeader";
 import { notFound } from "next/navigation";
 import { getInvoice, INVOICE_STATUS_LABEL } from "@/lib/kanri/invoices";
 import { deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
@@ -14,6 +15,7 @@ export default async function InvoiceDetail({ params }: Params){
   const remaining = iv.total - iv.paidTotal;
   return (
     <div className="mx-auto max-w-3xl space-y-4">
+      <PageHeader title="請求書詳細" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">請求書詳細</h1>
         <div className="flex gap-2 text-sm">
