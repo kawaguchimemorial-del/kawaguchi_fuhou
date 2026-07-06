@@ -56,6 +56,12 @@ function admin(): { from: (t: string) => any } {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return createAdminClient() as unknown as { from: (t: string) => any };
 }
+// 請求書番号を連番採番（スマート葬儀と同方式・移植済み最大値の次から）。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function nextInvoiceNo(c: any): Promise<string | null> {
+  const { data } = await c.rpc("next_invoice_no");
+  return typeof data === "string" ? data : null;
+}
 function num(fd: FormData, k: string): number | null {
   const v = s(fd, k);
   if (v == null) return null;
@@ -413,8 +419,9 @@ export async function saveEstimate(_prev: KanriResult | null, fd: FormData): Pro
   }
   // 請求書追加モード: 見積＋請求書を同時作成して請求書へ遷移
   if (bool(fd, "create_invoice")) {
+    const invoiceNo = await nextInvoiceNo(c);
     const { data: inv } = await c.from("fk_invoices").insert({
-      funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, total, status: "unpaid",
+      funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, invoice_no: invoiceNo, source_id: invoiceNo, total, status: "unpaid",
       billed_on: s(fd, "billed_on") ?? s(fd, "estimate_on") ?? new Date().toISOString().slice(0, 10),
       due_on: s(fd, "due_on"),
     }).select("id").single();
@@ -478,8 +485,9 @@ export async function createInvoiceFromEstimate(fd: FormData): Promise<void> {
   const { data: e } = await c.from("fk_estimates").select("total").eq("id", estimateId).single();
   if (!e) return;
   const today = new Date().toISOString().slice(0, 10);
+  const invoiceNo = await nextInvoiceNo(c);
   const { data: inv, error } = await c.from("fk_invoices").insert({
-    funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, total: e.total ?? 0, status: "unpaid", billed_on: today,
+    funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, invoice_no: invoiceNo, source_id: invoiceNo, total: e.total ?? 0, status: "unpaid", billed_on: today,
   }).select("id").single();
   if (error || !inv) return;
   redirect(`/kanri/billing/${inv.id}`);
@@ -687,7 +695,8 @@ export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): 
     if (error) return { ok: false, error: error.message };
     await c.from("fk_invoice_details").delete().eq("invoice_id", id);
   } else {
-    const { data, error } = await c.from("fk_invoices").insert({ ...row, paid_total: 0, status: "unpaid" }).select("id").single();
+    const invoiceNo = await nextInvoiceNo(c);
+    const { data, error } = await c.from("fk_invoices").insert({ ...row, invoice_no: invoiceNo, source_id: invoiceNo, paid_total: 0, status: "unpaid" }).select("id").single();
     if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
     invoiceId = data.id;
   }
@@ -733,7 +742,8 @@ export async function createBulkInvoices(fd: FormData): Promise<void> {
     }).select("id").single();
     if (!est) continue;
     await c.from("fk_estimate_items").insert({ estimate_id: est.id, line_kind: "item", name: productName, unit_price: unit, quantity: qty, tax_rate: 0.1, amount: lineAmount, sort_order: 0 });
-    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, total, status: "unpaid", billed_on: billedOn });
+    const invNo = await nextInvoiceNo(c);
+    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, invoice_no: invNo, source_id: invNo, total, status: "unpaid", billed_on: billedOn });
     created++;
   }
   revalidatePath("/kanri/billing");
@@ -826,7 +836,8 @@ export async function importInvoices(fd: FormData): Promise<void> {
     }).select("id").single();
     if (!est) continue;
     if (computed.length) await c.from("fk_estimate_items").insert(computed.map((x) => ({ ...x, estimate_id: est.id })));
-    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, total, status: "unpaid", billed_on: grp.billedOn ?? today, due_on: grp.dueOn });
+    const invNo = await nextInvoiceNo(c);
+    await c.from("fk_invoices").insert({ funeral_home_id: KANRI_HOME_ID, estimate_id: est.id, invoice_no: invNo, source_id: invNo, total, status: "unpaid", billed_on: grp.billedOn ?? today, due_on: grp.dueOn });
     created++;
   }
   revalidatePath("/kanri/billing");
