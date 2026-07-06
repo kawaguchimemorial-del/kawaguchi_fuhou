@@ -61,8 +61,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>領収書 ${esc(to)}</title>
 <style>
   @page { size: A4 portrait; margin: 0; }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { margin: 0; font-family: "Yu Gothic","Noto Sans JP",sans-serif; color: #1a1a1a; }
+  @media print { .receipt { background: #eaf1e2 !important; } }
   .print { position: fixed; top: 6px; right: 6px; z-index: 10; } @media print { .print { display: none; } }
   .sheet { width: 210mm; height: 297mm; margin: 0 auto; }
   .half { height: 148.5mm; padding: 14mm 12mm; position: relative; }
