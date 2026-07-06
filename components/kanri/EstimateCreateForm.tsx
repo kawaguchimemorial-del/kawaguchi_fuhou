@@ -116,6 +116,25 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [pno, setPno] = useState(initial?.constructionNo ?? "");
   const [deceased, setDeceased] = useState(initial?.deceasedName ?? "");
   const [lookupMsg, setLookupMsg] = useState("");
+  // 顧客を同時に新規登録: 郵便番号→住所自動入力
+  const [ncPostcode, setNcPostcode] = useState("");
+  const [ncPref, setNcPref] = useState("");
+  const [ncCity, setNcCity] = useState("");
+  const [zipMsg, setZipMsg] = useState("");
+  async function lookupZip() {
+    const z = ncPostcode.replace(/[^0-9]/g, "");
+    if (z.length !== 7) { setZipMsg("郵便番号は7桁で入力してください"); return; }
+    setZipMsg("検索中…");
+    try {
+      const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${z}`);
+      const d = await res.json();
+      if (d.results && d.results[0]) {
+        setNcPref(d.results[0].address1 || "");
+        setNcCity((d.results[0].address2 || "") + (d.results[0].address3 || ""));
+        setZipMsg("住所を自動入力しました");
+      } else setZipMsg("該当する住所が見つかりません");
+    } catch { setZipMsg("住所検索に失敗しました"); }
+  }
 
   async function search() {
     setLoading(true);
@@ -213,9 +232,29 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         </F>
         <label className="mt-2 flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" checked={newCustomer} onChange={(e) => setNewCustomer(e.target.checked)} name="create_customer" value="true" /> 顧客を同時に新規登録</label>
         {newCustomer && (
-          <div className="mt-2 grid gap-3 sm:grid-cols-2">
-            <F label="顧客氏"><input name="new_customer_last_name" className={inp} /></F>
-            <F label="顧客名"><input name="new_customer_first_name" className={inp} /></F>
+          <div className="mt-3 space-y-3 rounded border border-gray-200 bg-gray-50/50 p-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <F label="顧客氏"><input name="new_customer_last_name" className={inp} /></F>
+              <F label="顧客名"><input name="new_customer_first_name" className={inp} /></F>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600">顧客郵便番号</label>
+              <div className="mt-1 flex gap-2">
+                <input name="new_customer_postcode" value={ncPostcode} onChange={(e) => setNcPostcode(e.target.value)} onBlur={lookupZip} placeholder="ハイフン無し（例:3330833）" className={inp} />
+                <button type="button" onClick={lookupZip} className="whitespace-nowrap rounded border border-[#2c8c6f] px-3 py-2 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">住所検索</button>
+              </div>
+              {zipMsg && <p className="mt-1 text-xs text-[#2c8c6f]">{zipMsg}</p>}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <F label="都道府県"><input name="new_customer_prefecture" value={ncPref} onChange={(e) => setNcPref(e.target.value)} className={inp} /></F>
+              <div className="sm:col-span-2"><F label="市区町村"><input name="new_customer_city" value={ncCity} onChange={(e) => setNcCity(e.target.value)} className={inp} /></F></div>
+            </div>
+            <F label="番地・建物名など"><input name="new_customer_street" className={inp} /></F>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <F label="自宅番号"><input name="new_customer_tel" className={inp} placeholder="ハイフン無し" /></F>
+              <F label="携帯番号"><input name="new_customer_mobile" className={inp} placeholder="ハイフン無し" /></F>
+              <F label="メールアドレス"><input name="new_customer_email" type="email" className={inp} /></F>
+            </div>
           </div>
         )}
         <div className="mt-3"><F label="対象者"><input name="deceased_name" value={deceased} onChange={(e) => setDeceased(e.target.value)} className={inp} placeholder="対象者（故人）氏名" /></F></div>

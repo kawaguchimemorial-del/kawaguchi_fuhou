@@ -585,7 +585,15 @@ async function resolveCustomerId(c: ReturnType<typeof admin>, fd: FormData): Pro
   if (!customerId && bool(fd, "create_customer")) {
     const last = s(fd, "new_customer_last_name");
     if (last) {
-      const { data } = await c.from("fk_customers").insert({ funeral_home_id: KANRI_HOME_ID, last_name: last, first_name: s(fd, "new_customer_first_name") }).select("id").single();
+      const customerNo = `C${new Date().toISOString().slice(0, 10).replace(/-/g, "")}${String(Math.floor(Math.random() * 9000) + 1000)}`;
+      const { data } = await c.from("fk_customers").insert({
+        funeral_home_id: KANRI_HOME_ID, customer_no: customerNo,
+        last_name: last, first_name: s(fd, "new_customer_first_name"),
+        postcode: s(fd, "new_customer_postcode"), prefecture_code: s(fd, "new_customer_prefecture"),
+        address_city: s(fd, "new_customer_city"), address_street: s(fd, "new_customer_street"),
+        telephone_number: s(fd, "new_customer_tel"), mobile_number: s(fd, "new_customer_mobile"),
+        email: s(fd, "new_customer_email"),
+      }).select("id").single();
       customerId = data?.id ?? null;
     }
   }
