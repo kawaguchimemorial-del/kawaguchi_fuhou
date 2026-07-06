@@ -93,20 +93,18 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   // 編集時: 既存明細を復元（セット行=セット名一致は除外、値引は値引行へ、他はオプション行へ）
   const initItems = initial?.items ?? [];
   const initSetName = initial?.productSetId ? productSets.find((s) => s.id === initial.productSetId)?.name : undefined;
-  // 見積の新規作成時: 骨壺(収骨容器一式)・本尊セットをデフォルトで入力済みにする
-  const defaultOpts: OptRow[] = (!initial && !asInvoice)
-    ? [["骨壺", "収骨容器"], ["本尊セット"]].map((kws) => {
-        const p = products.find((x) => kws.some((kw) => x.name.includes(kw)) && !x.hidden);
-        return p ? newOpt(p) : null;
-      }).filter((x): x is OptRow => x !== null)
-    : [];
   const [opts, setOpts] = useState<OptRow[]>(
-    initItems.length
-      ? initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
-      : defaultOpts
+    initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
   );
   const [optPickKey, setOptPickKey] = useState<number | null>(null); // カード単位の商品選択対象
-  const [osonaeQty, setOsonaeQty] = useState<Record<string, number>>({});
+  // 見積の新規作成時: その他オプション(追加安置日数/追加ドライアイス/収骨容器一式/本尊セット一式)をデフォルト数量1に
+  const defaultOsonaeQty: Record<string, number> = {};
+  if (!initial && !asInvoice) {
+    for (const m of osonae) {
+      if (["追加安置日数", "追加ドライアイス", "収骨容器", "本尊セット"].some((kw) => m.name.includes(kw))) defaultOsonaeQty[m.id] = 1;
+    }
+  }
+  const [osonaeQty, setOsonaeQty] = useState<Record<string, number>>(defaultOsonaeQty);
   const [discRows, setDiscRows] = useState<DiscRow[]>(initItems.filter((it) => it.lineKind === "discount").map((it) => ({ key: seq++, name: it.name, amount: Math.abs(it.unitPrice * it.quantity) })));
   const [advance, setAdvance] = useState(initial?.advance ? String(initial.advance) : "");
   // 参照モーダル・読込
