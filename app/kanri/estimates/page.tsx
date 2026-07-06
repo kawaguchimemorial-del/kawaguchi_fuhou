@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listEstimates, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
-import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate } from "@/lib/kanri/actions";
+import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
 
 export const metadata = { title: "見積もり" };
 export const dynamic = "force-dynamic";
@@ -92,6 +92,7 @@ export default async function EstimatesPage({ searchParams }: SP) {
                         <a href={`/kanri/estimates/${e.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded bg-[#e6f6f4] px-2 py-1 text-[11px] text-[#1aa39a]">見積書</a>
                         <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded bg-[#eef4ff] px-2 py-1 text-[11px] text-[#4f7cff]">請求書</button></form>
                         <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded bg-[#fff4ec] px-2 py-1 text-[11px] text-[#e8613c]">発注書</button></form>
+                        <form action={deleteEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
                       </div>
                     </td>
                   </tr>

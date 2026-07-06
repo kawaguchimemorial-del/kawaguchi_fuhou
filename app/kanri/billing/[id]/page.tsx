@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getInvoice } from "@/lib/kanri/invoices";
 import { listPaymentSlips } from "@/lib/kanri/payments";
 import { deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
-import { deletePaymentSlip } from "@/lib/kanri/actions";
+import { deletePaymentSlip, deleteInvoice } from "@/lib/kanri/actions";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -31,6 +31,7 @@ export default async function PaymentSlipManage({ params }: Params) {
           <Link href={`/kanri/billing/${iv.id}/edit`} className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">編集</Link>
           <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書PDF</a>
           <Link href={`/kanri/billing/${iv.id}/slip/new`} className="rounded bg-white px-3 py-1.5 font-medium text-[#2c8c6f]">伝票発行</Link>
+          <form action={deleteInvoice}><input type="hidden" name="id" value={iv.id} /><button className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">削除</button></form>
         </div>
       </div>
 

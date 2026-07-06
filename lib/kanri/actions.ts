@@ -434,7 +434,16 @@ export async function deleteEstimate(fd: FormData): Promise<void> {
   const id = s(fd, "id");
   if (!id) return;
   await admin().from("fk_estimates").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/kanri/estimates");
   redirect("/kanri/estimates");
+}
+
+export async function deleteInvoice(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  if (!id) return;
+  await admin().from("fk_invoices").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/kanri/billing");
+  redirect("/kanri/billing");
 }
 
 // ===== 訃報案内連携: 見積の故人・喪主・日程から訃報案内(memorials)を作成 =====

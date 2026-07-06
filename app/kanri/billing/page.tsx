@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listInvoices } from "@/lib/kanri/invoices";
+import { deleteInvoice } from "@/lib/kanri/actions";
 
 export const metadata = { title: "請求書" };
 export const dynamic = "force-dynamic";
@@ -90,6 +91,7 @@ export default async function BillingPage({ searchParams }: SP) {
                         <Link href={`/kanri/billing/${iv.id}/edit`} className="rounded border border-[#2c8c6f] px-2 py-1 text-[11px] text-[#2c8c6f]">編集</Link>
                         <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">請求書</a>
                         <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収書</a>
+                        <form action={deleteInvoice}><input type="hidden" name="id" value={iv.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
                       </div>
                     </td>
                   </tr>

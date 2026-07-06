@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/kanri/PageHeader";
 import { notFound } from "next/navigation";
 import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
-import { createMemorialFromEstimate, createInvoiceFromEstimate, createPurchaseOrdersFromEstimate } from "@/lib/kanri/actions";
+import { createMemorialFromEstimate, createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -25,6 +25,7 @@ export default async function EstimateDetail({ params }: Params) {
           <Link href="/kanri/estimates" className="rounded border px-3 py-1.5">一覧へ</Link>
           <Link href={`/kanri/estimates/${id}/edit`} className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">編集</Link>
           <a href={`/kanri/estimates/${id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">見積書PDF</a>
+          <form action={deleteEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-red-400 px-3 py-1.5 text-red-500">削除</button></form>
           <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">請求書を作成</button></form>
           <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">発注書を作成</button></form>
           {e.memorialId ? (
