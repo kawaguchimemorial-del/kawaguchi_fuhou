@@ -82,21 +82,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .prov { margin-left: 40px; }
   .invno { margin-left: auto; font-weight: 700; font-size: 15px; }
   .recv { font-size: 17px; margin: 4px 0 10px; }
-  .mid { display: flex; gap: 18px; margin-top: 8px; }
+  .mid { display: flex; align-items: flex-start; gap: 18px; margin-top: 8px; }
   .breakdown { width: 38%; }
   .breakdown .ttl { text-align: center; letter-spacing: 1em; padding-left: 1em; border-bottom: 2px solid currentColor; padding-bottom: 2px; }
   .breakdown table { width: 100%; border-collapse: collapse; margin-top: 4px; }
   .breakdown td { padding: 4px 6px; font-size: 15px; }
   .breakdown tr { border-bottom: 2px solid currentColor; }
-  .stamp-box { width: 70px; border: 1px solid #555; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; line-height: 1.5; letter-spacing: .3em; }
+  .stamp-box { width: 76px; height: 76px; flex: 0 0 76px; border: 1px solid #555; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; line-height: 1.5; letter-spacing: .3em; }
   .company { flex: 1; position: relative; padding-left: 10px; font-size: 14px; line-height: 1.7; }
   .company .cat { font-weight: 700; }
   .company .hall { font-weight: 700; }
   .company .cname { position: relative; display: inline-block; white-space: nowrap; font-size: 23px; font-weight: 800; letter-spacing: .04em; margin: 2px 0; }
   .company .cname .hanko { position: absolute; right: -6px; top: 50%; transform: translateY(-50%); opacity: .92; }
-  .tantou { width: 90px; border: 1px solid #555; }
+  .tantou { width: 90px; flex: 0 0 90px; border: 1px solid #555; }
   .tantou .h { text-align: center; letter-spacing: .6em; padding-left: .6em; border-bottom: 1px solid #555; font-size: 14px; padding: 3px 0; }
-  .tantou .b { height: 58px; }
+  .tantou .b { height: 66px; }
   .copy .amount-box { margin-top: 20px; }
   .copy-hanko { position: absolute; right: 20mm; bottom: 12mm; }
 </style>
