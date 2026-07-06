@@ -482,7 +482,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         </div>
         <div className="mt-2"><F label="発行会社"><input name="issuer_company" defaultValue={initial?.issuerCompany ?? "株式会社 川口典礼"} className={inp} /></F></div>
         <div className="mt-3"><F label="計上組織"><input name="charged_org" defaultValue={initial?.chargedOrg ?? ""} className={inp} /></F></div>
-        <div className="mt-3"><F label="計上担当者"><input name="charged_user" defaultValue={initial?.chargedUser ?? "松澤 覚"} className={inp} /></F></div>
+        <div className="mt-3"><F label="計上担当者"><input name="charged_user" list="staff-list" defaultValue={initial?.chargedUser ?? "松澤覚"} className={inp} /></F></div>
         <div className="mt-3">
           <F label="担当者（葬儀担当）">
             <input name="staff_name" list="staff-list" defaultValue={initial?.staffName ?? ""} className={inp} />
