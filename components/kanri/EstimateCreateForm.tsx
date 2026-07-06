@@ -34,7 +34,38 @@ interface Props {
   purposes?: MasterItem[];         // 摘要設定マスタ
   templates?: MasterItem[];        // 見積書/請求書テンプレート
 }
-interface OptRow { key: number; productId: string; name: string; unitPrice: number; quantity: number }
+// 実スマート葬儀のオプションカード準拠の行データ
+interface OptRow {
+  key: number; productId: string; productName?: string;
+  name: string; tagName: string;
+  unitPrice: number;            // 単価(税抜)
+  priceInclTax: string;         // 税込単価(入力時はこちらを税込金額として利用)
+  cost: number;                 // 下代
+  taxRate: number;              // 消費税率
+  discount: number;             // 割引(税抜)
+  quantity: number;
+  deposit: boolean; depositOn: string;
+  refundable: boolean; hiddenPaper: boolean;
+  tradedOn: string; returnedQty: number; remarks: string;
+  divideTitle: string;          // 区切りタイトル(カードの下に挿入)
+}
+function newOpt(p?: Product): OptRow {
+  return { key: seq++, productId: p?.id ?? "", productName: p?.name, name: p?.name ?? "", tagName: "",
+    unitPrice: p?.unitPrice ?? 0, priceInclTax: "", cost: p?.costPrice ?? 0, taxRate: p?.taxRate ?? 0.1,
+    discount: 0, quantity: 1, deposit: false, depositOn: "", refundable: !!p?.refundable, hiddenPaper: false,
+    tradedOn: "", returnedQty: 0, remarks: "", divideTitle: "" };
+}
+// 税込金額: 税込単価入力があればそれを優先、無ければ(単価*数量-割引)*(1+税率)
+function optInclTotal(r: OptRow): number {
+  const inc = Number(r.priceInclTax);
+  if (r.priceInclTax !== "" && !isNaN(inc)) return Math.round(inc * r.quantity);
+  return Math.round((r.unitPrice * r.quantity - r.discount) * (1 + r.taxRate));
+}
+function optExUnit(r: OptRow): number {
+  const inc = Number(r.priceInclTax);
+  if (r.priceInclTax !== "" && !isNaN(inc)) return Math.round(inc / (1 + r.taxRate));
+  return r.unitPrice;
+}
 interface DiscRow { key: number; name: string; amount: number }
 interface Hit { id: string; name: string; phone: string; address: string; birth: string }
 
@@ -66,14 +97,15 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const defaultOpts: OptRow[] = (!initial && !asInvoice)
     ? [["骨壺", "収骨容器"], ["本尊セット"]].map((kws) => {
         const p = products.find((x) => kws.some((kw) => x.name.includes(kw)) && !x.hidden);
-        return p ? { key: seq++, productId: p.id, name: p.name, unitPrice: p.unitPrice, quantity: 1 } : null;
+        return p ? newOpt(p) : null;
       }).filter((x): x is OptRow => x !== null)
     : [];
   const [opts, setOpts] = useState<OptRow[]>(
     initItems.length
-      ? initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ key: seq++, productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
+      ? initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
       : defaultOpts
   );
+  const [optPickKey, setOptPickKey] = useState<number | null>(null); // カード単位の商品選択対象
   const [osonaeQty, setOsonaeQty] = useState<Record<string, number>>({});
   const [discRows, setDiscRows] = useState<DiscRow[]>(initItems.filter((it) => it.lineKind === "discount").map((it) => ({ key: seq++, name: it.name, amount: Math.abs(it.unitPrice * it.quantity) })));
   const [advance, setAdvance] = useState(initial?.advance ? String(initial.advance) : "");
@@ -106,28 +138,33 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     } catch { setLookupMsg("読込みに失敗しました"); }
   }
   function addOpt(p?: Product) {
-    setOpts((rs) => [...rs, { key: seq++, productId: p?.id ?? "", name: p?.name ?? "", unitPrice: p?.unitPrice ?? 0, quantity: 1 }]);
+    setOpts((rs) => [...rs, newOpt(p)]);
   }
-  function pickOptProduct(key: number, pid: string) {
-    const p = products.find((x) => x.id === pid);
-    setOpts((rs) => rs.map((r) => r.key === key ? { ...r, productId: pid, name: p?.name ?? r.name, unitPrice: p?.unitPrice ?? r.unitPrice } : r));
+  function updOpt(key: number, patch: Partial<OptRow>) {
+    setOpts((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
   const totals = useMemo(() => {
-    let ex = 0;
-    if (chosenSet) ex += chosenSet.price;
-    for (const r of opts) ex += r.unitPrice * r.quantity;
-    for (const m of osonae) ex += (m.price ?? 0) * (osonaeQty[m.id] ?? 0);
-    let disc = 0; for (const d of discRows) disc += Math.abs(d.amount);
-    const tax = Math.round((ex - disc) * 0.1);
-    return { ex, disc, tax, total: ex - disc + tax };
+    // 税込合計 = セット税込 + 各オプションの税込金額 + お供え税込 - 値引(税込換算)
+    let inc = 0;
+    if (chosenSet) inc += chosenSet.taxIncludedPrice || Math.round(chosenSet.price * (1 + chosenSet.tax));
+    for (const r of opts) inc += optInclTotal(r);
+    for (const m of osonae) inc += Math.round((m.price ?? 0) * (osonaeQty[m.id] ?? 0) * 1.1);
+    let disc = 0; for (const d of discRows) disc += Math.round(Math.abs(d.amount) * 1.1);
+    return { total: inc - disc };
   }, [chosenSet, opts, osonae, osonaeQty, discRows]);
 
   const itemsJson = JSON.stringify([
     ...(chosenSet ? [{ lineKind: "item", name: chosenSet.name, unitPrice: chosenSet.price, quantity: 1, taxRate: chosenSet.tax, isSet: true }] : []),
     // セット内訳（金額0・isSetItem、非表示チェックはhiddenで保持 → 印刷で除外）
     ...(chosenSet ? setItems.map((it) => ({ lineKind: "item", name: it.name, unitPrice: 0, quantity: it.quantity, taxRate: 0, isSetItem: true, hidden: it.hidden })) : []),
-    ...opts.filter((r) => r.name).map((r) => ({ lineKind: "item", productId: r.productId || null, name: r.name, unitPrice: r.unitPrice, quantity: r.quantity, taxRate: 0.1 })),
+    ...opts.filter((r) => r.name).map((r) => ({
+      lineKind: "item", productId: r.productId || null, name: r.name,
+      unitPrice: optExUnit(r), quantity: r.quantity, taxRate: r.taxRate,
+      tagName: r.tagName || null, cost: r.cost, discount: r.discount,
+      deposit: r.deposit, refundable: r.refundable, hidden: r.hiddenPaper,
+      tradedOn: r.tradedOn || null, returnedQty: r.returnedQty, remarks: r.remarks || null, divideTitle: r.divideTitle || null,
+    })),
     ...osonae.filter((m) => (osonaeQty[m.id] ?? 0) > 0).map((m) => ({ lineKind: "item", name: m.name, unitPrice: m.price ?? 0, quantity: osonaeQty[m.id], taxRate: 0.1, isOsonae: true })),
     ...discRows.filter((d) => d.name).map((d) => ({ lineKind: "discount", name: d.name, unitPrice: Math.abs(d.amount), quantity: 1, taxRate: 0.1 })),
   ]);
@@ -252,16 +289,98 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       {/* オプション */}
       <Card title="オプション">
         {opts.length > 0 && (
-          <div className="mb-2 space-y-2">
+          <div className="mb-3 space-y-4">
             {opts.map((r) => (
-              <div key={r.key} className="flex items-center gap-2">
-                <select value={r.productId} onChange={(e) => pickOptProduct(r.key, e.target.value)} className={inp + " flex-1"}>
-                  <option value="">商品を選択</option>
-                  {products.map((p) => <option key={p.id} value={p.id}>{p.name}（{p.unitPrice.toLocaleString()}円）</option>)}
-                </select>
-                <input type="number" value={r.unitPrice} onChange={(e) => setOpts((rs) => rs.map((x) => x.key === r.key ? { ...x, unitPrice: Number(e.target.value) || 0 } : x))} className="w-28 rounded border border-gray-300 px-2 py-2 text-sm text-right" />
-                <input type="number" value={r.quantity} onChange={(e) => setOpts((rs) => rs.map((x) => x.key === r.key ? { ...x, quantity: Number(e.target.value) || 1 } : x))} className="w-16 rounded border border-gray-300 px-2 py-2 text-sm text-center" />
-                <button type="button" onClick={() => setOpts((rs) => rs.filter((x) => x.key !== r.key))} className="rounded bg-red-500 px-2 py-1.5 text-xs text-white">削除</button>
+              <div key={r.key}>
+                {/* オプションカード（実UI準拠） */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  {/* ヘッダー: 商品選択 / 選択した商品 / 複製・削除 */}
+                  <div className="mb-3 flex items-center gap-3">
+                    <button type="button" onClick={() => setOptPickKey(r.key)} className="rounded border border-sky-400 px-3 py-1 text-xs text-sky-500">商品選択</button>
+                    <span className="text-xs text-gray-500">選択した商品：{r.productName ?? "未選択"}</span>
+                    <div className="ml-auto flex gap-2">
+                      <button type="button" onClick={() => setOpts((rs) => { const src = rs.find((x) => x.key === r.key)!; return [...rs, { ...src, key: seq++ }]; })} className="rounded bg-sky-400 px-3 py-1 text-xs text-white">複製</button>
+                      <button type="button" onClick={() => setOpts((rs) => rs.filter((x) => x.key !== r.key))} className="rounded bg-red-500 px-3 py-1 text-xs text-white">削除</button>
+                    </div>
+                  </div>
+                  {/* 項目名 / 札名 */}
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div>
+                      <label className="block text-sm text-gray-600">項目名 <span className="rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span></label>
+                      <input value={r.name} onChange={(e) => updOpt(r.key, { name: e.target.value })} className={inp + " mt-1"} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">札名</label>
+                      <input value={r.tagName} onChange={(e) => updOpt(r.key, { tagName: e.target.value })} className={inp + " mt-1"} />
+                    </div>
+                  </div>
+                  {/* 単価 / 税込単価 / 下代 / 消費税率 / 割引(税抜) / 数量 */}
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                    <div>
+                      <label className="block text-sm text-gray-600">単価</label>
+                      <input type="number" value={r.unitPrice} onChange={(e) => updOpt(r.key, { unitPrice: Number(e.target.value) || 0 })} className={inp + " mt-1 text-right"} />
+                      <p className="mt-0.5 text-[10px] text-gray-400">税抜か税込のどちらかは必須入力です</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">税込単価</label>
+                      <input type="number" value={r.priceInclTax} onChange={(e) => updOpt(r.key, { priceInclTax: e.target.value })} className={inp + " mt-1 text-right"} />
+                      <p className="mt-0.5 text-[10px] text-gray-400">入力すると、この金額がそのまま税込金額として利用されます。</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">下代 <span className="rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span></label>
+                      <input type="number" value={r.cost} onChange={(e) => updOpt(r.key, { cost: Number(e.target.value) || 0 })} className={inp + " mt-1 text-right"} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">消費税率 <span className="rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span></label>
+                      <select value={String(r.taxRate)} onChange={(e) => updOpt(r.key, { taxRate: Number(e.target.value) })} className={inp + " mt-1"}>
+                        <option value="0.1">10%</option><option value="0.08">8%</option><option value="0">非課税</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">割引（税抜）</label>
+                      <input type="number" value={r.discount || ""} onChange={(e) => updOpt(r.key, { discount: Number(e.target.value) || 0 })} className={inp + " mt-1 text-right"} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">数量 <span className="rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span></label>
+                      <input type="number" value={r.quantity} onChange={(e) => updOpt(r.key, { quantity: Number(e.target.value) || 1 })} className={inp + " mt-1 text-center"} />
+                    </div>
+                  </div>
+                  {/* 税込金額（自動計算・印刷にも反映） */}
+                  <div className="mt-2 text-right text-sm">
+                    <span className="text-gray-500">税込金額：</span>
+                    <span className="text-base font-bold text-[#2c8c6f]">{optInclTotal(r).toLocaleString()}円</span>
+                  </div>
+                  {/* 預り金/立替金/請求書に非表示/取引日/返品数/補足説明 */}
+                  <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-2 border-t pt-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1"><input type="checkbox" checked={r.deposit} onChange={(e) => updOpt(r.key, { deposit: e.target.checked })} /> 預り金</label>
+                      <div><label className="block text-xs text-gray-500">預り金の計上日</label><input type="date" value={r.depositOn} onChange={(e) => updOpt(r.key, { depositOn: e.target.value })} className="rounded border px-2 py-1 text-xs" /></div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1"><input type="checkbox" checked={r.refundable} onChange={(e) => updOpt(r.key, { refundable: e.target.checked })} /> 立替金</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" checked={r.hiddenPaper} onChange={(e) => updOpt(r.key, { hiddenPaper: e.target.checked })} /> 請求書に非表示</label>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500">取引日</label>
+                      <input type="date" value={r.tradedOn} onChange={(e) => updOpt(r.key, { tradedOn: e.target.value })} className="rounded border px-2 py-1 text-xs" />
+                      <p className="text-[10px] text-gray-400">空の場合は請求日となります</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500">返品数</label>
+                      <input type="number" value={r.returnedQty || ""} onChange={(e) => updOpt(r.key, { returnedQty: Number(e.target.value) || 0 })} className="w-24 rounded border px-2 py-1 text-xs" />
+                    </div>
+                    <div className="min-w-[240px] flex-1">
+                      <label className="block text-xs text-gray-500">補足説明</label>
+                      <input value={r.remarks} onChange={(e) => updOpt(r.key, { remarks: e.target.value })} className={inp + " mt-0.5"} />
+                    </div>
+                  </div>
+                </div>
+                {/* 区切りタイトル */}
+                <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3">
+                  <label className="block text-sm text-gray-600">区切りタイトル</label>
+                  <input value={r.divideTitle} onChange={(e) => updOpt(r.key, { divideTitle: e.target.value })} className={inp + " mt-1"} />
+                  <p className="mt-0.5 text-[10px] text-gray-400">入力すると、請求書に区切りを差し込みます。</p>
+                </div>
               </div>
             ))}
           </div>
@@ -271,6 +390,27 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
           <button type="button" onClick={() => { setProdOpen(true); setChecked(new Set()); }} className="rounded border border-sky-400 px-3 py-1.5 text-xs text-sky-500">☰ 商品を連続して追加</button>
         </div>
       </Card>
+
+      {/* カード単位の商品選択モーダル */}
+      {optPickKey !== null && (
+        <Modal title="商品選択" onClose={() => setOptPickKey(null)}>
+          <div className="max-h-96 overflow-y-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 border-b bg-white text-xs text-gray-500"><tr>{["", "商品名", "種別", "価格(税抜)"].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
+              <tbody className="divide-y">
+                {products.filter((p) => !p.hidden).map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2"><button type="button" onClick={() => { updOpt(optPickKey, { productId: p.id, productName: p.name, name: p.name, unitPrice: p.unitPrice, cost: p.costPrice ?? 0, taxRate: p.taxRate }); setOptPickKey(null); }} className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">選択</button></td>
+                    <td className="px-3 py-2">{p.name}</td>
+                    <td className="px-3 py-2 text-gray-500">{p.productKind ?? ""}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-right">{p.unitPrice.toLocaleString()}円</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Modal>
+      )}
 
       {/* その他オプション、お供えにかかる費用 */}
       <Card title="その他オプション、お供えにかかる費用">
@@ -311,12 +451,12 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
 
       {/* 葬儀・法要等 */}
       <Card title="葬儀・法要等">
-        <button type="button" onClick={() => { if (memorialServices.length === 0) return; const m = memorialServices[0]; setOpts((rs) => [...rs, { key: seq++, productId: "", name: m.name, unitPrice: m.price ?? 0, quantity: 1 }]); }} className="rounded bg-sky-400 px-3 py-1.5 text-xs text-white">葬儀・法要等 追加</button>
+        <button type="button" onClick={() => { if (memorialServices.length === 0) return; const m = memorialServices[0]; setOpts((rs) => [...rs, { ...newOpt(), name: m.name, unitPrice: m.price ?? 0 }]); }} className="rounded bg-sky-400 px-3 py-1.5 text-xs text-white">葬儀・法要等 追加</button>
         {memorialServices.length === 0 && <p className="mt-1 text-xs text-gray-400">法要マスタが未登録です（設定 &gt; 法要設定）。登録するとここから追加できます。</p>}
         {memorialServices.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {memorialServices.map((m) => (
-              <button key={m.id} type="button" onClick={() => setOpts((rs) => [...rs, { key: seq++, productId: "", name: m.name, unitPrice: m.price ?? 0, quantity: 1 }])} className="rounded border border-[#2c8c6f] px-2.5 py-1 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">{m.name}</button>
+              <button key={m.id} type="button" onClick={() => setOpts((rs) => [...rs, { ...newOpt(), name: m.name, unitPrice: m.price ?? 0 }])} className="rounded border border-[#2c8c6f] px-2.5 py-1 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">{m.name}</button>
             ))}
           </div>
         )}

@@ -20,10 +20,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 明細: 請求書明細(実データ)があればそれを優先。無ければ見積明細。
   // セット内訳(isSetItem)は「表示しない」チェック(hiddenPaper)を除き、数値なしでセット直下にグループ表示する。
   const fromDetails = details.length > 0;
-  type Row = { name: string; unitPrice: number; quantity: number; taxRate: number; amount: number; incTax: number; isSetItem?: boolean };
+  type Row = { name: string; unitPrice: number; quantity: number; taxRate: number; amount: number; incTax: number; isSetItem?: boolean; divideTitle?: string };
+  // 「請求書に非表示」はセット内訳・オプションを問わず印刷から除外
   const allRows: Row[] = fromDetails
-    ? details.filter((d) => !(d.isSetItem && d.hiddenPaper)).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax, isSetItem: d.isSetItem }))
-    : (e?.items ?? []).filter((it) => !(it.isSetItem && it.hiddenPaper)).map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)), isSetItem: it.isSetItem, lineKind: it.lineKind })) as (Row & { lineKind?: string })[];
+    ? details.filter((d) => !d.hiddenPaper).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax, isSetItem: d.isSetItem, divideTitle: d.divideTitle }))
+    : (e?.items ?? []).filter((it) => !it.hiddenPaper).map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)), isSetItem: it.isSetItem, lineKind: it.lineKind })) as (Row & { lineKind?: string })[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = allRows.filter((r: any) => (fromDetails ? r.amount >= 0 : r.lineKind !== "discount") || r.isSetItem);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,6 +54,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     itemRows += `<tr>
     <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
     <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(it.incTax)}</td></tr>`;
+    // 区切りタイトル: 行の後に差し込む
+    if (it.divideTitle) itemRows += `<tr class="sep"><td colspan="6">${esc(it.divideTitle)}</td></tr>`;
   }
   if (inSetGroup) itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`;
   const discRows = discounts.map((it) => `<tr>

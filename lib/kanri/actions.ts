@@ -554,7 +554,14 @@ export async function deletePaymentSlip(fd: FormData): Promise<void> {
 }
 
 // ===== 見積/請求 作成（実スマート葬儀フォーム準拠: 顧客直結・宛名/請求先・セット商品） =====
-type FullItem = { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; taxRate: number; isSetItem?: boolean; hidden?: boolean };
+type FullItem = {
+  lineKind: "item" | "discount"; productId?: string | null; name: string;
+  unitPrice: number; quantity: number; taxRate: number;
+  isSetItem?: boolean; hidden?: boolean;
+  tagName?: string | null; cost?: number; discount?: number;
+  deposit?: boolean; refundable?: boolean;
+  tradedOn?: string | null; returnedQty?: number; remarks?: string | null; divideTitle?: string | null;
+};
 
 async function resolveCustomerId(c: ReturnType<typeof admin>, fd: FormData): Promise<string | null> {
   let customerId = s(fd, "customer_id");
@@ -587,11 +594,20 @@ function computeItems(fd: FormData) {
   const computed = items.map((it, i) => {
     const qty = Number(it.quantity) || 0;
     const price = Number(it.unitPrice) || 0;
-    const amount = it.lineKind === "discount" ? -Math.abs(price * qty) : price * qty;
+    const disc = Number(it.discount) || 0;
+    // 割引(税抜)は行金額から控除
+    const amount = it.lineKind === "discount" ? -Math.abs(price * qty) : Math.max(0, price * qty - disc);
     const rate = Number(it.taxRate) || 0;
     if (it.lineKind === "discount") discountTotal += Math.abs(amount); else subtotal += amount;
     taxTotal += amount * rate;
-    return { product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i, is_set_item: !!it.isSetItem, hidden_paper: !!it.hidden };
+    return {
+      product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i,
+      is_set_item: !!it.isSetItem, hidden_paper: !!it.hidden,
+      tag_name: it.tagName ?? null, cost: Number(it.cost) || 0, discount: disc,
+      deposit: !!it.deposit, refundable: !!it.refundable,
+      traded_on: it.tradedOn ?? null, returned_quantity: Number(it.returnedQty) || 0,
+      remarks: it.remarks ?? null, divide_title: it.divideTitle ?? null,
+    };
   });
   taxTotal = Math.round(taxTotal);
   return { computed, subtotal, discountTotal, taxTotal, total: subtotal - discountTotal + taxTotal };
@@ -678,6 +694,10 @@ export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): 
       invoice_id: invoiceId, title: x.name, price: x.unit_price, tax: x.tax_rate, quantity: x.quantity,
       amount: x.amount, tax_amount: Math.round(x.amount * x.tax_rate), amount_including_tax: x.amount + Math.round(x.amount * x.tax_rate),
       sort_order: i, is_set_item: x.is_set_item, hidden_paper: x.hidden_paper,
+      tag_name: x.tag_name, cost: x.cost, discount: x.discount,
+      deposit: x.deposit, refundable: x.refundable,
+      traded_on: x.traded_on, returned_quantity: x.returned_quantity,
+      remarks: x.remarks, divide_title: x.divide_title,
     })));
   }
   redirect(`/kanri/billing/${invoiceId}`);

@@ -15,8 +15,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const co = await getCompanyInfo();
   const companyName = co.company_name || "株式会社 川口典礼";
   const companyAddr = [co.prefecture, co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
-  // セット内訳(isSetItem)は「表示しない」を除外し、数値なしでセット直下にグループ表示
-  const items = (e.items ?? []).filter((it) => it.lineKind === "item" && !(it.isSetItem && it.hiddenPaper));
+  // 「請求書に非表示」はセット内訳・オプションを問わず印刷から除外。セット内訳は数値なしでグループ表示。
+  const items = (e.items ?? []).filter((it) => it.lineKind === "item" && !it.hiddenPaper);
   const discounts = (e.items ?? []).filter((it) => it.lineKind === "discount");
   const on = fmtd(e.estimateOn) || fmtd(e.createdAt);
   const withTax = (amt: number, rate: number) => Math.round(amt * (1 + rate));
