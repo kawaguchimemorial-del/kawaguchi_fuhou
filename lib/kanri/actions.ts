@@ -625,8 +625,10 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
   const now = new Date();
   const id = s(fd, "id");
   const estimateNo = s(fd, "construction_no") || `E${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  const isPre = bool(fd, "is_pre_consultation");
   const row = {
-    funeral_home_id: KANRI_HOME_ID, customer_id: customerId, kind: "funeral", status: "confirmed",
+    funeral_home_id: KANRI_HOME_ID, customer_id: customerId, kind: isPre ? "pre" : "funeral", status: "confirmed",
+    is_pre_consultation: isPre,
     estimate_no: estimateNo, title, memo: s(fd, "memo"),
     estimate_on: s(fd, "estimate_on"), estimate_limit_on: s(fd, "estimate_limit_on"),
     deceased_last_name: deceased ? (dsp > 0 ? deceased.slice(0, dsp) : deceased) : null,

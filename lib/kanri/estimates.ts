@@ -44,6 +44,7 @@ export interface Estimate {
   addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
   productSetId?: string; brand?: string; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 最終更新者(葬儀担当者)
+  isPreConsultation?: boolean; // 事前相談
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,6 +68,7 @@ function mapEstimate(r: any): Estimate {
     productSetId: r.product_set_id ?? undefined, brand: r.brand ?? undefined,
     issuerCompany: r.issuer_company ?? undefined, chargedOrg: r.charged_org ?? undefined, chargedUser: r.charged_user ?? undefined,
     staffName: r.staff_name ?? undefined,
+    isPreConsultation: !!r.is_pre_consultation,
   };
 }
 

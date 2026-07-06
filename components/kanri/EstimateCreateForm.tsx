@@ -22,6 +22,7 @@ export interface FormInitial {
   items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number }[];
   advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 担当者(最終更新者)
+  preConsultation?: boolean; // 事前相談
 }
 interface Props {
   asInvoice?: boolean;
@@ -179,6 +180,17 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       <input type="hidden" name="product_set_id" value={chosenSet?.id ?? ""} />
       <input type="hidden" name="product_set_price" value={chosenSet?.price ?? 0} />
       <input type="hidden" name="advance_payment" value={advance || "0"} />
+
+      {/* 事前相談（見積のみ・一番上） */}
+      {!asInvoice && (
+        <Card>
+          <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+            <input type="checkbox" name="is_pre_consultation" defaultChecked={initial?.preConsultation} className="h-4 w-4" />
+            事前相談
+          </label>
+          <p className="mt-1 text-xs text-gray-400">事前相談の場合、喪主情報・故人情報が未確定のままでも登録できます。</p>
+        </Card>
+      )}
 
       {/* 施行番号 */}
       <Card>
