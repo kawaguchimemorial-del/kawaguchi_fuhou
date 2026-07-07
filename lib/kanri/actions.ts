@@ -658,6 +658,8 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     estimate_on: s(fd, "estimate_on"), estimate_limit_on: s(fd, "estimate_limit_on"),
     deceased_last_name: deceased ? (dsp > 0 ? deceased.slice(0, dsp) : deceased) : null,
     deceased_first_name: dsp > 0 ? deceased.slice(dsp + 1) : null,
+    deceased_gender: s(fd, "deceased_gender"), deceased_birth_date: s(fd, "deceased_birth_date"),
+    deceased_death_date: s(fd, "deceased_death_date"), deceased_age: num(fd, "deceased_age"),
     crematorium_name: s(fd, "crematorium_name"), brand: s(fd, "brand"),
     product_set_id: s(fd, "product_set_id"), product_set_price: num(fd, "product_set_price") ?? 0,
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),

@@ -13,6 +13,7 @@ export interface FormInitial {
   constructionNo?: string;
   customerId?: string; customerName?: string;
   deceasedName?: string;
+  deceasedGender?: string; deceasedBirthDate?: string; deceasedDeathDate?: string; deceasedAge?: number;
   addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
   addresseeLastNameKana?: string; addresseeFirstNameKana?: string;
   addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
@@ -115,6 +116,23 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [titleVal, setTitleVal] = useState(initial?.title ?? "");
   const [pno, setPno] = useState(initial?.constructionNo ?? "");
   const [deceased, setDeceased] = useState(initial?.deceasedName ?? "");
+  // 対象者(故人)属性
+  const [dGender, setDGender] = useState(initial?.deceasedGender ?? "");
+  const [dBirth, setDBirth] = useState(initial?.deceasedBirthDate ?? "");
+  const [dDeath, setDDeath] = useState(initial?.deceasedDeathDate ?? "");
+  // 年齢: 没年月日 - 生年月日 で自動計算(いずれか未入力なら手入力値を保持)
+  const calcAge = (birth: string, death: string): number | null => {
+    if (!birth || !death) return null;
+    const b = new Date(birth), d = new Date(death);
+    if (isNaN(b.getTime()) || isNaN(d.getTime())) return null;
+    let age = d.getFullYear() - b.getFullYear();
+    const m = d.getMonth() - b.getMonth();
+    if (m < 0 || (m === 0 && d.getDate() < b.getDate())) age--;
+    return age >= 0 ? age : null;
+  };
+  const [dAge, setDAge] = useState(initial?.deceasedAge != null ? String(initial.deceasedAge) : "");
+  const autoAge = calcAge(dBirth, dDeath);
+  const ageValue = autoAge != null ? String(autoAge) : dAge;
   const [lookupMsg, setLookupMsg] = useState("");
   // 顧客を同時に新規登録: 郵便番号→住所自動入力
   const [ncPostcode, setNcPostcode] = useState("");
@@ -257,7 +275,23 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
             </div>
           </div>
         )}
-        <div className="mt-3"><F label="対象者"><input name="deceased_name" value={deceased} onChange={(e) => setDeceased(e.target.value)} className={inp} placeholder="対象者（故人）氏名" /></F></div>
+        <div className="mt-3"><F label="対象者名"><input name="deceased_name" value={deceased} onChange={(e) => setDeceased(e.target.value)} className={inp} placeholder="対象者（故人）氏名" /></F></div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-4">
+          <F label="性別">
+            <select name="deceased_gender" value={dGender} onChange={(e) => setDGender(e.target.value)} className={inp}>
+              <option value="">選択</option><option value="male">男性</option><option value="female">女性</option><option value="other">その他</option>
+            </select>
+          </F>
+          <F label="生年月日"><input type="date" name="deceased_birth_date" value={dBirth} onChange={(e) => setDBirth(e.target.value)} className={inp} /></F>
+          <F label="没年月日"><input type="date" name="deceased_death_date" value={dDeath} onChange={(e) => setDDeath(e.target.value)} className={inp} /></F>
+          <F label="年齢（享年）">
+            <div className="flex items-center gap-1">
+              <input type="number" name="deceased_age" value={ageValue} onChange={(e) => setDAge(e.target.value)} readOnly={autoAge != null} className={`${inp} ${autoAge != null ? "bg-gray-50 text-gray-600" : ""}`} placeholder="歳" />
+              <span className="whitespace-nowrap text-sm text-gray-500">歳</span>
+            </div>
+            {autoAge != null && <p className="mt-0.5 text-[11px] text-gray-400">生年月日・没年月日から自動計算</p>}
+          </F>
+        </div>
       </Card>
 
       {/* 宛名情報 / 請求先情報 */}

@@ -20,6 +20,8 @@ export default async function EditEstimate({ params }: Params) {
     id: e.id, constructionNo: e.estimateNo,
     customerId: e.customerId ?? undefined, customerName: e.customerName,
     deceasedName: deceasedFullName(e),
+    deceasedGender: e.deceased.gender, deceasedBirthDate: e.deceased.birthDate,
+    deceasedDeathDate: e.deceased.deathDate, deceasedAge: e.deceased.age,
     addresseeKind: e.addresseeKind, addresseeLastName: e.addresseeLastName, addresseeFirstName: e.addresseeFirstName,
     addresseeHonorific: e.addresseeHonorific, addresseeLastNameKana: e.addresseeLastNameKana, addresseeFirstNameKana: e.addresseeFirstNameKana,
     addresseePostcode: e.addresseePostcode, addresseePrefecture: e.addresseePrefecture,
