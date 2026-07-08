@@ -114,8 +114,14 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [optPickKey, setOptPickKey] = useState<number | null>(null); // カード単位の商品選択対象
   // 商品選択モーダルの絞り込み（種別を選んで商品名で検索）
   const [pickKind, setPickKind] = useState("");
+  const [pickSub, setPickSub] = useState("");
   const [pickName, setPickName] = useState("");
   const productKinds = useMemo(() => Array.from(new Set(products.map((p) => p.productKind).filter(Boolean))) as string[], [products]);
+  // 子カテゴリ候補: 選択中の種別に属する商品の子カテゴリ（種別未選択なら全子カテゴリ）
+  const productSubKinds = useMemo(
+    () => Array.from(new Set(products.filter((p) => !pickKind || p.productKind === pickKind).map((p) => p.productSubKind).filter(Boolean))) as string[],
+    [products, pickKind]
+  );
   // 見積の新規作成時: その他オプション(追加安置日数/追加ドライアイス/収骨容器一式/本尊セット一式)をデフォルト数量1に
   const defaultOsonaeQty: Record<string, number> = {};
   if (!initial && !asInvoice) {
@@ -470,7 +476,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
                 <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                   {/* ヘッダー: 商品選択 / 選択した商品 / 複製・削除 */}
                   <div className="mb-3 flex items-center gap-3">
-                    <button type="button" onClick={() => { setPickKind(""); setPickName(""); setOptPickKey(r.key); }} className="rounded border border-sky-400 px-3 py-1 text-xs text-sky-500">商品選択</button>
+                    <button type="button" onClick={() => { setPickKind(""); setPickSub(""); setPickName(""); setOptPickKey(r.key); }} className="rounded border border-sky-400 px-3 py-1 text-xs text-sky-500">商品選択</button>
                     <span className="text-xs text-gray-500">選択した商品：{r.productName ?? "未選択"}</span>
                     <div className="ml-auto flex gap-2">
                       <button type="button" onClick={() => setOpts((rs) => { const src = rs.find((x) => x.key === r.key)!; return [...rs, { ...src, key: seq++ }]; })} className="rounded bg-sky-400 px-3 py-1 text-xs text-white">複製</button>
@@ -572,9 +578,16 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
           <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg bg-gray-50 p-3">
             <div>
               <label className="mb-1 block text-xs text-gray-500">種別</label>
-              <select value={pickKind} onChange={(e) => setPickKind(e.target.value)} className={inp + " min-w-[10rem]"}>
+              <select value={pickKind} onChange={(e) => { setPickKind(e.target.value); setPickSub(""); }} className={inp + " min-w-[10rem]"}>
                 <option value="">すべて</option>
                 {productKinds.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">子カテゴリ</label>
+              <select value={pickSub} onChange={(e) => setPickSub(e.target.value)} className={inp + " min-w-[10rem]"} disabled={productSubKinds.length === 0}>
+                <option value="">すべて</option>
+                {productSubKinds.map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
             <div className="flex-1">
@@ -584,16 +597,18 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
           </div>
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 border-b bg-white text-xs text-gray-500"><tr>{["", "商品名", "種別", "価格(税抜)"].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
+              <thead className="sticky top-0 border-b bg-white text-xs text-gray-500"><tr>{["", "商品名", "種別", "子カテゴリ", "価格(税抜)"].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
               <tbody className="divide-y">
                 {products.filter((p) => !p.hidden)
                   .filter((p) => !pickKind || p.productKind === pickKind)
+                  .filter((p) => !pickSub || p.productSubKind === pickSub)
                   .filter((p) => !pickName.trim() || p.name.includes(pickName.trim()))
                   .map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2"><button type="button" onClick={() => { updOpt(optPickKey, { productId: p.id, productName: p.name, name: p.name, unitPrice: p.unitPrice, cost: p.costPrice ?? 0, taxRate: p.taxRate }); setOptPickKey(null); }} className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">選択</button></td>
                     <td className="px-3 py-2">{p.name}</td>
                     <td className="px-3 py-2 text-gray-500">{p.productKind ?? ""}</td>
+                    <td className="px-3 py-2 text-gray-500">{p.productSubKind ?? ""}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right">{p.unitPrice.toLocaleString()}円</td>
                   </tr>
                 ))}
