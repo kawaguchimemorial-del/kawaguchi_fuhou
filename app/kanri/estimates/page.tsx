@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listEstimates, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
 import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
+import { ConfirmSubmit } from "./ConfirmSubmit";
 
 export const metadata = { title: "見積もり" };
 export const dynamic = "force-dynamic";
@@ -71,7 +72,47 @@ export default async function EstimatesPage({ searchParams }: SP) {
       {/* 一覧（実画面準拠: 顧客リンク付き） */}
       <div className="rounded-lg bg-white shadow-sm">
         <div className="border-b px-4 py-3"><p className="text-sm font-bold">一覧　<span className="font-normal text-gray-500">ヒット件数: {totalCount} 件（{(page - 1) * PAGE_SIZE + 1}〜{Math.min(page * PAGE_SIZE, totalCount)}件目を表示）</span></p></div>
-        <div className="overflow-x-auto">
+        {/* スマホ用カードリスト（lg未満） */}
+        <ul className="divide-y lg:hidden">
+          {paged.length === 0 ? <li className="px-4 py-10 text-center text-sm text-gray-400">見積がありません。</li> :
+            paged.map((e) => (
+              <li key={e.id} className="p-4 text-base">
+                <div className="flex items-start justify-between gap-3">
+                  <Link href={`/kanri/estimates/${e.id}`} className="min-w-0 flex-1 font-bold leading-snug text-[#1aa39a] break-words">{e.title || "（無題）"}</Link>
+                  <span className="shrink-0 font-bold tabular-nums">{e.total.toLocaleString()}円</span>
+                </div>
+                <div className="mt-1 text-sm text-gray-600">
+                  {e.customerId ? <Link href={`/kanri/customers/${e.customerId}`} className="text-[#1aa39a] underline">{e.customerName ?? mournerFullName(e) ?? "—"}</Link> : (e.customerName ?? mournerFullName(e) ?? "—")}
+                  <span className="text-gray-400"> / </span>{deceasedFullName(e) || "対象者未設定"}
+                </div>
+                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-gray-400">
+                  <div><dt className="inline">見積日 </dt><dd className="inline">{fmt(e.estimateOn) || "—"}</dd></div>
+                  <div><dt className="inline">施行番号 </dt><dd className="inline">{e.estimateNo || "—"}</dd></div>
+                  <div><dt className="inline">ID </dt><dd className="inline font-mono">{e.sourceId ?? e.estimateNo ?? e.id.slice(0, 8)}</dd></div>
+                  <div><dt className="inline">担当 </dt><dd className="inline">{e.staffName || "—"}</dd></div>
+                </dl>
+                <div className="mt-3 flex items-center gap-2">
+                  <Link href={`/kanri/estimates/${e.id}`} className="grid min-h-[44px] flex-1 place-items-center rounded-lg bg-gray-100 text-base font-medium text-gray-700">詳細</Link>
+                  <a href={`/kanri/estimates/${e.id}/print`} target="_blank" rel="noopener noreferrer" className="grid min-h-[44px] flex-1 place-items-center rounded-lg bg-[#e6f6f4] text-base font-medium text-[#1aa39a]">見積書</a>
+                  <details className="relative shrink-0">
+                    <summary className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-lg border text-xl text-gray-500 [&::-webkit-details-marker]:hidden">⋯</summary>
+                    <div className="mt-2 overflow-hidden rounded-xl border bg-white shadow-sm">
+                      <ConfirmSubmit action={createInvoiceFromEstimate} id={e.id} confirm="この見積から請求書を作成します。よろしいですか？" className="flex min-h-[44px] w-full items-center px-4 text-base text-[#4f7cff]">請求書を作成</ConfirmSubmit>
+                      <ConfirmSubmit action={createPurchaseOrdersFromEstimate} id={e.id} confirm="この見積から発注書を作成します。よろしいですか？" className="flex min-h-[44px] w-full items-center px-4 text-base text-[#e8613c]">発注書を作成</ConfirmSubmit>
+                      <div className="px-4 pt-2 pb-1 text-xs text-gray-400">訃報案内</div>
+                      <Link href={`/admin/ceremonies/new?type=obituary&from_estimate=${e.id}`} className="flex min-h-[44px] items-center px-4 text-base text-[#9b2fae]">訃報を作成</Link>
+                      <Link href={`/admin/ceremonies/new?type=obituary_venue&from_estimate=${e.id}`} className="flex min-h-[44px] items-center px-4 text-base text-[#9b2fae]">訃報＋オンライン式場</Link>
+                      <div className="mt-1 border-t pt-1">
+                        <ConfirmSubmit action={deleteEstimate} id={e.id} confirm="この見積を削除します。取り消せません。よろしいですか？" className="flex min-h-[44px] w-full items-center px-4 text-base text-red-600">この見積を削除</ConfirmSubmit>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </li>
+            ))}
+        </ul>
+        {/* PC用テーブル（lg以上・現行温存） */}
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[1050px] text-left text-sm">
             <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{cols.map((h) => <th key={h} className="px-3 py-3 font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
             <tbody className="divide-y">
