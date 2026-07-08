@@ -1,5 +1,6 @@
 import { CeremonyWizard } from "@/components/admin/CeremonyWizard";
 import { getEstimate } from "@/lib/kanri/estimates";
+import { getCustomer } from "@/lib/kanri/data";
 
 type Search = { searchParams: Promise<{ type?: string; test?: string; from_estimate?: string }> };
 
@@ -27,12 +28,15 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
       const funeral = jstParts(e.funeralAt);
       // 通夜があれば通夜式、無ければ告別式を初期の式に
       const primary = wake.date ? { type: "通夜式", ...wake } : funeral.date ? { type: "告別式", ...funeral } : null;
+      // 喪主情報が無い場合は顧客情報で補完
+      const hasMourner = !!(e.addresseeLastName || e.mourner.lastName);
+      const cust = !hasMourner && e.customerId ? await getCustomer(e.customerId) : null;
       initialState = {
-        // 喪主（見積の宛名=喪主を参照）
-        mSei: e.addresseeLastName ?? e.mourner.lastName ?? "",
-        mMei: e.addresseeFirstName ?? e.mourner.firstName ?? "",
-        mSeiKana: e.addresseeLastNameKana ?? "",
-        mMeiKana: e.addresseeFirstNameKana ?? "",
+        // 喪主（見積の宛名=喪主 → 喪主 → 顧客情報 の順で参照）
+        mSei: e.addresseeLastName || e.mourner.lastName || cust?.lastName || "",
+        mMei: e.addresseeFirstName || e.mourner.firstName || cust?.firstName || "",
+        mSeiKana: e.addresseeLastNameKana || cust?.lastNameKana || "",
+        mMeiKana: e.addresseeFirstNameKana || cust?.firstNameKana || "",
         // 故人（見積の対象者を参照）
         dSei: e.deceased.lastName ?? "",
         dMei: e.deceased.firstName ?? "",
