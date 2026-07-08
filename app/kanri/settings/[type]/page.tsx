@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { masterDef, masterFields, masterLabel, listMasterItems, fieldValue } from "@/lib/kanri/masters";
-import { addMasterItem, deleteMasterItem } from "@/lib/kanri/actions";
+import { addMasterItem, updateMasterItem, deleteMasterItem } from "@/lib/kanri/actions";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ type: string }> };
@@ -42,9 +42,29 @@ export default async function MasterTypePage({ params }: Params) {
             ) : (
               items.map((it) => (
                 <tr key={it.id}>
-                  {fields.map((f) => <td key={f.key} className="px-3 py-2">{f.kind === "number" && fieldValue(it, f) ? Number(fieldValue(it, f)).toLocaleString() + "円" : (fieldValue(it, f) || "—")}</td>)}
-                  <td className="px-3 py-2 text-right">
-                    <form action={deleteMasterItem}><input type="hidden" name="id" value={it.id} /><input type="hidden" name="master_type" value={type} /><button className="text-xs text-red-500 hover:underline">削除</button></form>
+                  {fields.map((f) => (
+                    <td key={f.key} className="px-3 py-2">
+                      <input
+                        form={`edit-${it.id}`}
+                        name={`f_${f.key}`}
+                        type={f.kind === "number" ? "number" : "text"}
+                        defaultValue={fieldValue(it, f) ?? ""}
+                        required={f.col === "name"}
+                        className="w-full min-w-[7rem] rounded border border-gray-200 px-2 py-1.5 focus:border-[#1aa39a] focus:outline-none"
+                      />
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <form id={`edit-${it.id}`} action={updateMasterItem} className="inline">
+                      <input type="hidden" name="id" value={it.id} />
+                      <input type="hidden" name="master_type" value={type} />
+                      <button className="rounded bg-[#1aa39a] px-3 py-1 text-xs text-white hover:opacity-90">更新</button>
+                    </form>
+                    <form action={deleteMasterItem} className="ml-2 inline">
+                      <input type="hidden" name="id" value={it.id} />
+                      <input type="hidden" name="master_type" value={type} />
+                      <button className="text-xs text-red-500 hover:underline">削除</button>
+                    </form>
                   </td>
                 </tr>
               ))

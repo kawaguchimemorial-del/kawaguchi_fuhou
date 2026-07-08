@@ -100,6 +100,29 @@ export async function saveCompanyInfo(_prev: KanriResult | null, fd: FormData): 
   return { ok: true, id: "company" };
 }
 
+export async function updateMasterItem(fd: FormData): Promise<void> {
+  const id = s(fd, "id");
+  const type = s(fd, "master_type");
+  if (!id || !type) return;
+  const fields = masterFields(type);
+  const row: Record<string, unknown> = {};
+  const extra: Record<string, string | null> = {};
+  for (const f of fields) {
+    const v = s(fd, `f_${f.key}`);
+    if (f.col === "name") row.name = v;
+    else if (f.col === "kana") row.kana = v;
+    else if (f.col === "price") row.price = v ? Number(v.replace(/,/g, "")) : null;
+    else extra[f.key] = v;
+  }
+  if (row.name === null) return; // 名称は空にできない
+  // 既存extraにマージ（fields外のキーを保持）
+  const c = admin();
+  const { data: cur } = await c.from("fk_master_items").select("extra").eq("id", id).maybeSingle();
+  row.extra = { ...(cur?.extra ?? {}), ...extra };
+  await c.from("fk_master_items").update(row).eq("id", id);
+  revalidatePath(`/kanri/settings/${type}`);
+}
+
 export async function deleteMasterItem(fd: FormData): Promise<void> {
   const id = s(fd, "id"); const type = s(fd, "master_type");
   if (!id) return;
