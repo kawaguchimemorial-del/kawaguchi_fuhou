@@ -46,7 +46,7 @@ export default async function DepositsPage({ searchParams }: SP) {
                     <td className="px-3 py-2 font-mono text-xs text-[#1aa39a]">{iv.id.slice(0, 8)}</td>
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
-                        <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border px-2 py-1 text-[11px] text-gray-600">確認</a>
+                        <Link href={`/kanri/billing/${iv.id}/slip/new`} className="rounded border border-[#f2683f] bg-[#fff4f0] px-2 py-1 text-[11px] text-[#f2683f]">伝票発行</Link>
                         <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">入金管理</Link>
                       </div>
                     </td>
