@@ -805,3 +805,12 @@
   - 操作: 前面は非破壊の[詳細][見積書]を44px実ボタン2分割、残り(請求書/発注書/訃報2件/削除)は右端の⋯details(min-h-44・訃報の入れ子detailsは廃しフラット2リンク)に集約。
   - 破壊/即実行(請求書/発注書/削除)は前面禁止・ケバブ内隔離。削除は border-t 分離+赤+「この見積を削除」。ConfirmSubmit(use client)でwindow.confirm確認ゲート(サーバーアクションはprops温存)。
 - 検証: 375pxでカード200件/テーブル非表示/横スクロール無(375)/ケバブ5項目、1280pxでテーブル表示/カード非表示 をPlaywrightで確認。tscエラー無し。
+
+## 2026-07-09 見積書/請求書の印刷プレビューに「メール送信」ボタン(顧客メール登録時のみ)を追加
+- 印刷ルート(estimates|billing/[id]/print)のツールバーを刷新: 自動印刷(window.print onload)を廃止しプレビュー表示に。[印刷]の横に[メール送信]を追加。顧客(fk_customers.email)未登録時はボタンをdisabled(「メール送信（未登録）」)。
+- 送信方式: クライアントでPDF生成(html2canvas＋jsPDF、UMDを/public/vendorに同梱・data-html2canvas-ignoreでツールバー除外)→ ./send-mail へPOST → サーバーがResend REST(fetch)で顧客メールへPDF添付送信。chromium不要。
+- APIルート新設: estimates/[id]/send-mail・billing/[id]/send-mail。顧客メールはサーバー側で再取得(クライアント値は信用しない)。件名/本文は会社情報から生成。未登録は400、未設定(RESEND_API_KEY/MAIL_FROM無)は明確なエラー文言。
+- lib/kanri/mail.ts(server-only): sendMailWithPdf(Resend REST・添付base64)。
+- 依存: 既存のjspdf/html2canvasを流用(UMD同梱)。新規npm追加なし。
+- 検証: メール登録ありでボタン有効/未登録でdisabled、send-mailが未設定・未登録で適切なエラーJSONを返すことを確認。tscエラー無し。
+- ※本番送信には Vercel環境変数 RESEND_API_KEY と MAIL_FROM(Resendでドメイン認証済み送信元)の設定が必要。

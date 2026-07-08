@@ -1,6 +1,7 @@
 import { getInvoice } from "@/lib/kanri/invoices";
 import { mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
+import { getCustomer } from "@/lib/kanri/data";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const res = await getInvoice(id);
   if (!res) return new Response("not found", { status: 404 });
   const { invoice: iv, estimate: e, details } = res;
+  const cust = iv.customerId ? await getCustomer(iv.customerId) : null;
+  const hasEmail = !!cust?.email;
   const co = await getCompanyInfo();
   const companyName = co.company_name || "株式会社 川口典礼";
   const companyAddr = [co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
@@ -68,7 +71,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>請求書 ${esc(mournerName)}</title>
 <style>
   @page{size:A4;margin:12mm;} body{font-family:"Noto Sans JP","Yu Gothic",sans-serif;color:#222;font-size:12px;}
-  .print{position:fixed;top:6px;left:6px;} @media print{.print{display:none;}}
+  .toolbar{position:fixed;top:6px;left:6px;display:flex;gap:8px;z-index:50;} @media print{.toolbar{display:none;}}
+  .toolbar button{padding:8px 16px;font-size:14px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;}
+  .toolbar button.mail{background:#2c8c6f;color:#fff;border-color:#2c8c6f;}
+  .toolbar button:disabled{opacity:.5;cursor:not-allowed;}
   .head{display:flex;justify-content:space-between;}
   h1{text-align:center;font-size:22px;letter-spacing:.3em;margin:6px 0 18px;}
   .addr{font-size:11px;color:#555;} .to{font-size:18px;margin-top:4px;}
@@ -83,9 +89,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .bank{border:1px solid #333;padding:8px 10px;margin-top:6px;}
   .bank .ttl{font-weight:bold;margin-bottom:4px;}
   .bank .cols{display:flex;gap:32px;font-size:12px;}
-</style><script>window.onload=function(){setTimeout(function(){window.print();},300);};</script></head>
+</style></head>
 <body>
-  <button class="print" onclick="window.print()">印刷</button>
+  <div class="toolbar" data-html2canvas-ignore="true">
+    <button onclick="window.print()">印刷</button>
+    <button class="mail" id="mailBtn" onclick="sendMail()" ${hasEmail ? "" : "disabled title=\"顧客にメールアドレスが登録されていません\""}>${hasEmail ? "メール送信" : "メール送信（未登録）"}</button>
+  </div>
   <div class="head">
     <div style="width:60%">
       <div class="addr">${esc(mournerAddr)}</div>
@@ -136,6 +145,28 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     <thead><tr><th>内訳</th><th>税込金額</th><th>消費税額</th></tr></thead>
     <tbody><tr><td class="c">10%対象計</td><td class="r">${yen(grandIncTax)}</td><td class="r">${yen(grandTax)}</td></tr></tbody>
   </table>` : ""}
+  <script src="/vendor/html2canvas.min.js"></script>
+  <script src="/vendor/jspdf.umd.min.js"></script>
+  <script>
+  async function sendMail(){
+    var btn=document.getElementById('mailBtn'); if(!btn||btn.disabled) return;
+    var old=btn.textContent; btn.disabled=true; btn.textContent='作成中…';
+    try{
+      var canvas=await html2canvas(document.body,{scale:2,backgroundColor:'#ffffff',windowWidth:document.body.scrollWidth});
+      var img=canvas.toDataURL('image/jpeg',0.92);
+      var jsPDF=window.jspdf.jsPDF, pdf=new jsPDF('p','mm','a4');
+      var pw=210, ph=297, iw=pw, ih=canvas.height*pw/canvas.width;
+      if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,iw,ih); }
+      else { var page=0, rem=ih; while(rem>0){ if(page>0) pdf.addPage(); pdf.addImage(img,'JPEG',0,-(ph*page),iw,ih); rem-=ph; page++; } }
+      var dataUrl=pdf.output('datauristring');
+      btn.textContent='送信中…';
+      var res=await fetch('./send-mail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdfBase64:dataUrl})});
+      var d=await res.json().catch(function(){return{ok:false,error:'応答が不正です'};});
+      if(d.ok){ alert('メールを送信しました: '+(d.to||'')); } else { alert('送信できませんでした\\n'+(d.error||'')); }
+    }catch(err){ alert('エラー: '+err); }
+    finally{ btn.disabled=false; btn.textContent=old; }
+  }
+  </script>
 </body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
