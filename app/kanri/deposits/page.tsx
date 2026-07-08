@@ -11,7 +11,7 @@ export default async function DepositsPage({ searchParams }: SP) {
   const { unpaid, q } = await searchParams;
   let rows = await listInvoices();
   if (unpaid) rows = rows.filter((i) => i.total - i.paidTotal > 0);
-  if (q) { const k = q.trim(); rows = rows.filter((i) => [i.deceasedName, i.mournerName].filter(Boolean).some((v) => String(v).includes(k))); }
+  if (q) { const k = q.trim(); rows = rows.filter((i) => [i.deceasedName, i.mournerName, i.invoiceTargetName, i.customerName].filter(Boolean).some((v) => String(v).includes(k))); }
 
   return (
     <div>
@@ -38,7 +38,7 @@ export default async function DepositsPage({ searchParams }: SP) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{["請求書ID", "操作", "顧客(故人)", "請求先名(喪主)", "請求日", "請求額", "入金額", "残高", "支払方法"].map((h) => <th key={h} className="px-3 py-3 font-medium">{h}</th>)}</tr></thead>
+            <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{["請求書ID", "操作", "顧客(故人)", "請求先名", "請求日", "請求額", "入金額", "残高", "支払方法"].map((h) => <th key={h} className="px-3 py-3 font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y">
               {rows.length === 0 ? <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">請求書がありません。</td></tr> :
                 rows.map((iv) => (
@@ -51,7 +51,12 @@ export default async function DepositsPage({ searchParams }: SP) {
                       </div>
                     </td>
                     <td className="px-3 py-2">{iv.deceasedName ?? "—"}</td>
-                    <td className="px-3 py-2">{iv.mournerName ?? "—"}</td>
+                    <td className="px-3 py-2">{
+                      // 実際に入力された請求先名を優先。区分に応じて 顧客名/喪主名 にフォールバック。
+                      iv.invoiceTargetName
+                      || (iv.invoiceTargetKind === "顧客" ? iv.customerName : iv.invoiceTargetKind === "喪主" ? iv.mournerName : undefined)
+                      || iv.mournerName || iv.customerName || "—"
+                    }</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{fmt(iv.billedOn)}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right">{iv.total.toLocaleString()}円</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right">{iv.paidTotal.toLocaleString()}円</td>
