@@ -14,6 +14,7 @@ export interface FormInitial {
   customerId?: string; customerName?: string;
   deceasedName?: string;
   deceasedGender?: string; deceasedBirthDate?: string; deceasedDeathDate?: string; deceasedAge?: number; deceasedRelation?: string;
+  wakeAt?: string; funeralAt?: string;
   addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
   addresseeLastNameKana?: string; addresseeFirstNameKana?: string;
   addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
@@ -76,6 +77,15 @@ let seq = 1;
 // 担当者候補（計上担当者・葬儀担当で共通）
 const STAFF_OPTIONS = ["松澤覚", "石川健太", "松浦 颯大", "吉田寿子", "川口典礼"];
 
+// ISO文字列 → datetime-local(YYYY-MM-DDTHH:mm)
+function toLocal(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 export function EstimateCreateForm({ asInvoice, initial, products, productSets, osonae, discounts, memorialServices = [], purposes = [], templates = [] }: Props) {
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(asInvoice ? saveInvoiceFull : saveEstimateFull, null);
   const [customer, setCustomer] = useState<{ id: string; name: string } | null>(initial?.customerId ? { id: initial.customerId, name: initial.customerName ?? "" } : null);
@@ -124,6 +134,9 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [dBirth, setDBirth] = useState(initial?.deceasedBirthDate ?? "");
   const [dDeath, setDDeath] = useState(initial?.deceasedDeathDate ?? "");
   const [dRelation, setDRelation] = useState(initial?.deceasedRelation ?? "");
+  // 通夜日時・告別式日時
+  const [wakeAt, setWakeAt] = useState(toLocal(initial?.wakeAt));
+  const [funeralAt, setFuneralAt] = useState(toLocal(initial?.funeralAt));
   // 事前相談・担当者(バリデーション用に制御化)
   const [isPre, setIsPre] = useState(initial?.preConsultation ?? false);
   const [chargedUser, setChargedUser] = useState(initial?.chargedUser ?? "");
@@ -246,6 +259,8 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       if (!dGender) m.push("性別");
       if (!dBirth) m.push("生年月日");
       if (!dDeath) m.push("没年月日");
+      if (!wakeAt) m.push("通夜日時");
+      if (!funeralAt) m.push("告別式日時");
     }
     return m;
   }
@@ -401,6 +416,12 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
             <F label="見積有効期限"><input type="date" name="estimate_limit_on" defaultValue={initial?.date2 ?? ""} className={inp} /></F>
           </>)}
         </div>
+        {!asInvoice && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <F label="通夜日時" required={!isPre}><input type="datetime-local" name="wake_at" value={wakeAt} onChange={(e) => setWakeAt(e.target.value)} className={inp} /></F>
+            <F label="告別式日時" required={!isPre}><input type="datetime-local" name="funeral_at" value={funeralAt} onChange={(e) => setFuneralAt(e.target.value)} className={inp} /></F>
+          </div>
+        )}
         <div className="mt-3"><F label="火葬場"><input name="crematorium_name" defaultValue={initial?.crematorium ?? ""} className={inp} /></F></div>
         <div className="mt-3"><F label="ブランド"><select name="brand" defaultValue={initial?.brand ?? ""} className={inp}><option value=""></option><option>川口典礼</option></select></F></div>
         <div className="mt-3"><F label="在庫管理会場"><input name="stock_venue" className={inp} /></F></div>
@@ -640,7 +661,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       </Card>
 
       <div className="flex gap-3">
-        <button disabled={pending || (asInvoice && !customer && !newCustomer)} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
+        <button disabled={pending || (asInvoice && !customer && !newCustomer) || (!asInvoice && !isPre && (!wakeAt || !funeralAt))} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
         <Link href={asInvoice ? "/kanri/billing" : "/kanri/estimates"} className="rounded border bg-white px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
 

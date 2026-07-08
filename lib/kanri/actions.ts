@@ -660,6 +660,8 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     if (!s(fd, "deceased_gender")) missing.push("性別");
     if (!s(fd, "deceased_birth_date")) missing.push("生年月日");
     if (!s(fd, "deceased_death_date")) missing.push("没年月日");
+    if (!s(fd, "wake_at")) missing.push("通夜日時");
+    if (!s(fd, "funeral_at")) missing.push("告別式日時");
   }
   if (missing.length) return { ok: false, error: `次の項目が未入力です：${missing.join("、")}` };
   const row = {
@@ -672,6 +674,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     deceased_gender: s(fd, "deceased_gender"), deceased_birth_date: s(fd, "deceased_birth_date"),
     deceased_death_date: s(fd, "deceased_death_date"), deceased_age: num(fd, "deceased_age"),
     mourner_relation: s(fd, "mourner_relation"),
+    wake_at: dt(fd, "wake_at"), funeral_at: dt(fd, "funeral_at"),
     crematorium_name: s(fd, "crematorium_name"), brand: s(fd, "brand"),
     product_set_id: s(fd, "product_set_id"), product_set_price: num(fd, "product_set_price") ?? 0,
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),
