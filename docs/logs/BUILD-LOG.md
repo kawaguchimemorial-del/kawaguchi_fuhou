@@ -686,3 +686,9 @@
 - 計上担当者(charged_user)をデフォルト松澤覚の入力欄→空欄の選択式(select)に変更。担当者(葬儀担当)も選択式に統一。候補は共通のSTAFF_OPTIONS(松澤覚/石川健太/松浦颯大/吉田寿子/川口典礼)。
 - 対象者名の下に「関係（続柄）」欄を追加(顧客(喪主)から見た対象者との続柄・datalist候補つき)。既存のmourner_relation列に保存(DDL不要)。編集時はe.mourner.relationから復元。
 - 検証: Playwrightで①計上担当者デフォルト空欄②関係欄存在③本見積もりで未入力7項目リスト表示④事前相談ONで必須3項目に減少 を確認。正常系(事前相談ON・顧客選択・件名・担当者)で詳細へ遷移し、mourner_relation=父/charged_user/staff_nameの保存をREST確認後テストデータ削除。tscエラー無し。
+
+## 2026-07-08 Supabaseマイグレーション適用経路を確立(Session pooler)
+- Direct接続(db.<ref>.supabase.co:5432)はIPv6専用で当PCから不達だったため、Session pooler(aws-1-ap-northeast-2.pooler.supabase.com:5432, IPv4/DDL可)を採用。
+- .env.local に SUPABASE_POOLER_URL を追記(gitignore済み・非コミット)。
+- scripts/apply-migrations.mjs を新設: SUPABASE_POOLER_URL優先でsupabase/migrations/*.sqlを番号順適用(番号プレフィックス指定で個別適用も可)。SQLは冪等前提。
+- 疎通確認: select 1 成功、0023を冪等再適用して動作確認。以降のDDLはこのスクリプトで自動適用可能。
