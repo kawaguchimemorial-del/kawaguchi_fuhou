@@ -651,6 +651,17 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
   const id = s(fd, "id");
   const estimateNo = s(fd, "construction_no") || `E${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
   const isPre = bool(fd, "is_pre_consultation");
+  // 必須チェック（フロントと同条件。事前相談の有無で必須項目が変わる）
+  const missing: string[] = [];
+  if (!s(fd, "charged_user")) missing.push("計上担当者");
+  if (!s(fd, "staff_name")) missing.push("担当者（葬儀担当）");
+  if (!isPre) {
+    if (!s(fd, "deceased_name")) missing.push("対象者名");
+    if (!s(fd, "deceased_gender")) missing.push("性別");
+    if (!s(fd, "deceased_birth_date")) missing.push("生年月日");
+    if (!s(fd, "deceased_death_date")) missing.push("没年月日");
+  }
+  if (missing.length) return { ok: false, error: `次の項目が未入力です：${missing.join("、")}` };
   const row = {
     funeral_home_id: KANRI_HOME_ID, customer_id: customerId, kind: isPre ? "pre" : "funeral", status: "confirmed",
     is_pre_consultation: isPre,
@@ -660,6 +671,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     deceased_first_name: dsp > 0 ? deceased.slice(dsp + 1) : null,
     deceased_gender: s(fd, "deceased_gender"), deceased_birth_date: s(fd, "deceased_birth_date"),
     deceased_death_date: s(fd, "deceased_death_date"), deceased_age: num(fd, "deceased_age"),
+    mourner_relation: s(fd, "mourner_relation"),
     crematorium_name: s(fd, "crematorium_name"), brand: s(fd, "brand"),
     product_set_id: s(fd, "product_set_id"), product_set_price: num(fd, "product_set_price") ?? 0,
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),

@@ -676,3 +676,13 @@
 - 保存(saveEstimateFull)に deceased_gender/deceased_birth_date/deceased_death_date/deceased_age を追加(fk_estimatesの既存列に反映)。空dateはs()でnull化。
 - 見積編集(/estimates/[id]/edit)は e.deceased の gender/birthDate/deathDate/age を初期値復元。
 - 検証: 年齢計算ロジックをnodeで確認(1950-03-15→2026-07-08=76、1950-08-15→=75)。tscエラー無し。
+
+## 2026-07-08 見積作成の必須項目バリデーション＋計上担当者を選択式に＋対象者「関係」欄追加
+- 登録前バリデーション(EstimateCreateForm・見積のみ): 登録ボタン押下時に未入力項目をリスト表示し、入力するまで登録不可(onSubmitでpreventDefault)。
+  - 事前相談チェックON: 顧客(選択or新規登録)/件名/計上担当者/担当者(葬儀担当) が必須。
+  - 事前相談OFF(本見積もり): 上記に加え、対象者名/性別/生年月日/没年月日 が必須。顧客を同時に新規登録時は 顧客氏/名/郵便番号/都道府県/市区町村/番地/自宅or携帯電話 も必須。
+  - 案内文「次の項目が未入力のため登録できません。入力してから登録してください。」＋箇条書き。フォーム先頭へスクロール。
+  - サーバ側(saveEstimateFull)にも同条件の防御チェックを追加(計上担当者/担当者/対象者系)。
+- 計上担当者(charged_user)をデフォルト松澤覚の入力欄→空欄の選択式(select)に変更。担当者(葬儀担当)も選択式に統一。候補は共通のSTAFF_OPTIONS(松澤覚/石川健太/松浦颯大/吉田寿子/川口典礼)。
+- 対象者名の下に「関係（続柄）」欄を追加(顧客(喪主)から見た対象者との続柄・datalist候補つき)。既存のmourner_relation列に保存(DDL不要)。編集時はe.mourner.relationから復元。
+- 検証: Playwrightで①計上担当者デフォルト空欄②関係欄存在③本見積もりで未入力7項目リスト表示④事前相談ONで必須3項目に減少 を確認。正常系(事前相談ON・顧客選択・件名・担当者)で詳細へ遷移し、mourner_relation=父/charged_user/staff_nameの保存をREST確認後テストデータ削除。tscエラー無し。

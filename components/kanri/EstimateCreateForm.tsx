@@ -13,7 +13,7 @@ export interface FormInitial {
   constructionNo?: string;
   customerId?: string; customerName?: string;
   deceasedName?: string;
-  deceasedGender?: string; deceasedBirthDate?: string; deceasedDeathDate?: string; deceasedAge?: number;
+  deceasedGender?: string; deceasedBirthDate?: string; deceasedDeathDate?: string; deceasedAge?: number; deceasedRelation?: string;
   addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
   addresseeLastNameKana?: string; addresseeFirstNameKana?: string;
   addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
@@ -73,6 +73,9 @@ interface Hit { id: string; name: string; phone: string; address: string; birth:
 
 let seq = 1;
 
+// 担当者候補（計上担当者・葬儀担当で共通）
+const STAFF_OPTIONS = ["松澤覚", "石川健太", "松浦 颯大", "吉田寿子", "川口典礼"];
+
 export function EstimateCreateForm({ asInvoice, initial, products, productSets, osonae, discounts, memorialServices = [], purposes = [], templates = [] }: Props) {
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(asInvoice ? saveInvoiceFull : saveEstimateFull, null);
   const [customer, setCustomer] = useState<{ id: string; name: string } | null>(initial?.customerId ? { id: initial.customerId, name: initial.customerName ?? "" } : null);
@@ -120,6 +123,18 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [dGender, setDGender] = useState(initial?.deceasedGender ?? "");
   const [dBirth, setDBirth] = useState(initial?.deceasedBirthDate ?? "");
   const [dDeath, setDDeath] = useState(initial?.deceasedDeathDate ?? "");
+  const [dRelation, setDRelation] = useState(initial?.deceasedRelation ?? "");
+  // 事前相談・担当者(バリデーション用に制御化)
+  const [isPre, setIsPre] = useState(initial?.preConsultation ?? false);
+  const [chargedUser, setChargedUser] = useState(initial?.chargedUser ?? "");
+  const [staffName, setStaffName] = useState(initial?.staffName ?? "");
+  // 顧客を同時に新規登録の入力(バリデーション用に制御化)
+  const [ncLast, setNcLast] = useState("");
+  const [ncFirst, setNcFirst] = useState("");
+  const [ncStreet, setNcStreet] = useState("");
+  const [ncTel, setNcTel] = useState("");
+  const [ncMobile, setNcMobile] = useState("");
+  const [valErrors, setValErrors] = useState<string[]>([]);
   // 年齢: 没年月日 - 生年月日 で自動計算(いずれか未入力なら手入力値を保持)
   const calcAge = (birth: string, death: string): number | null => {
     if (!birth || !death) return null;
@@ -208,9 +223,53 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#2c8c6f] focus:outline-none";
   const label = asInvoice ? "請求先情報" : "宛名情報";
 
+  // 登録前バリデーション（見積のみ）。事前相談チェックの有無で必須項目が変わる。
+  function validate(): string[] {
+    const m: string[] = [];
+    const hasCustomer = !!customer || newCustomer;
+    if (!hasCustomer) m.push("顧客（選択または「顧客を同時に新規登録」）");
+    if (!titleVal.trim()) m.push("件名");
+    if (!chargedUser.trim()) m.push("計上担当者");
+    if (!staffName.trim()) m.push("担当者（葬儀担当）");
+    if (!isPre) {
+      // 本見積もり: 顧客情報・対象者情報も必須
+      if (newCustomer) {
+        if (!ncLast.trim()) m.push("顧客氏");
+        if (!ncFirst.trim()) m.push("顧客名");
+        if (!ncPostcode.trim()) m.push("郵便番号");
+        if (!ncPref.trim()) m.push("都道府県");
+        if (!ncCity.trim()) m.push("市区町村");
+        if (!ncStreet.trim()) m.push("番地");
+        if (!ncTel.trim() && !ncMobile.trim()) m.push("自宅電話番号または携帯電話番号");
+      }
+      if (!deceased.trim()) m.push("対象者名");
+      if (!dGender) m.push("性別");
+      if (!dBirth) m.push("生年月日");
+      if (!dDeath) m.push("没年月日");
+    }
+    return m;
+  }
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (asInvoice) return; // 請求書は従来どおり
+    const m = validate();
+    if (m.length) {
+      e.preventDefault();
+      setValErrors(m);
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      setValErrors([]);
+    }
+  }
+
   return (
-    <form action={action} className="space-y-4 pb-20">
+    <form action={action} onSubmit={onSubmit} className="space-y-4 pb-20">
       {state && state.ok === false && <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">{state.error}</p>}
+      {valErrors.length > 0 && (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="font-bold">次の項目が未入力のため登録できません。入力してから登録してください。</p>
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-5">{valErrors.map((m) => <li key={m}>{m}</li>)}</ul>
+        </div>
+      )}
       {initial?.id && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="items" value={itemsJson} />
       <input type="hidden" name="customer_id" value={customer?.id ?? ""} />
@@ -222,7 +281,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       {!asInvoice && (
         <Card>
           <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-            <input type="checkbox" name="is_pre_consultation" defaultChecked={initial?.preConsultation} className="h-4 w-4" />
+            <input type="checkbox" name="is_pre_consultation" checked={isPre} onChange={(e) => setIsPre(e.target.checked)} className="h-4 w-4" />
             事前相談
           </label>
           <p className="mt-1 text-xs text-gray-400">事前相談の場合、喪主情報・故人情報が未確定のままでも登録できます。</p>
@@ -252,8 +311,8 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         {newCustomer && (
           <div className="mt-3 space-y-3 rounded border border-gray-200 bg-gray-50/50 p-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <F label="顧客氏"><input name="new_customer_last_name" className={inp} /></F>
-              <F label="顧客名"><input name="new_customer_first_name" className={inp} /></F>
+              <F label="顧客氏"><input name="new_customer_last_name" value={ncLast} onChange={(e) => setNcLast(e.target.value)} className={inp} /></F>
+              <F label="顧客名"><input name="new_customer_first_name" value={ncFirst} onChange={(e) => setNcFirst(e.target.value)} className={inp} /></F>
             </div>
             <div>
               <label className="block text-sm text-gray-600">顧客郵便番号</label>
@@ -267,10 +326,10 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
               <F label="都道府県"><input name="new_customer_prefecture" value={ncPref} onChange={(e) => setNcPref(e.target.value)} className={inp} /></F>
               <div className="sm:col-span-2"><F label="市区町村"><input name="new_customer_city" value={ncCity} onChange={(e) => setNcCity(e.target.value)} className={inp} /></F></div>
             </div>
-            <F label="番地・建物名など"><input name="new_customer_street" className={inp} /></F>
+            <F label="番地・建物名など"><input name="new_customer_street" value={ncStreet} onChange={(e) => setNcStreet(e.target.value)} className={inp} /></F>
             <div className="grid gap-3 sm:grid-cols-3">
-              <F label="自宅番号"><input name="new_customer_tel" className={inp} placeholder="ハイフン無し" /></F>
-              <F label="携帯番号"><input name="new_customer_mobile" className={inp} placeholder="ハイフン無し" /></F>
+              <F label="自宅番号"><input name="new_customer_tel" value={ncTel} onChange={(e) => setNcTel(e.target.value)} className={inp} placeholder="ハイフン無し" /></F>
+              <F label="携帯番号"><input name="new_customer_mobile" value={ncMobile} onChange={(e) => setNcMobile(e.target.value)} className={inp} placeholder="ハイフン無し" /></F>
               <F label="メールアドレス"><input name="new_customer_email" type="email" className={inp} /></F>
             </div>
           </div>
@@ -290,6 +349,13 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
               <span className="whitespace-nowrap text-sm text-gray-500">歳</span>
             </div>
             {autoAge != null && <p className="mt-0.5 text-[11px] text-gray-400">生年月日・没年月日から自動計算</p>}
+          </F>
+        </div>
+        <div className="mt-3 sm:max-w-xs">
+          <F label="関係（続柄）">
+            <input name="mourner_relation" list="relation-list" value={dRelation} onChange={(e) => setDRelation(e.target.value)} className={inp} placeholder="例：父・母・夫・妻・子 など" />
+            <datalist id="relation-list"><option>父</option><option>母</option><option>夫</option><option>妻</option><option>子</option><option>祖父</option><option>祖母</option><option>兄</option><option>弟</option><option>姉</option><option>妹</option><option>本人</option><option>その他</option></datalist>
+            <p className="mt-0.5 text-[11px] text-gray-400">顧客（喪主）から見た対象者との関係</p>
           </F>
         </div>
       </Card>
@@ -555,17 +621,26 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         </div>
         <div className="mt-2"><F label="発行会社"><input name="issuer_company" defaultValue={initial?.issuerCompany ?? "株式会社 川口典礼"} className={inp} /></F></div>
         <div className="mt-3"><F label="計上組織"><input name="charged_org" defaultValue={initial?.chargedOrg ?? ""} className={inp} /></F></div>
-        <div className="mt-3"><F label="計上担当者"><input name="charged_user" list="staff-list" defaultValue={initial?.chargedUser ?? "松澤覚"} className={inp} /></F></div>
         <div className="mt-3">
-          <F label="担当者（葬儀担当）">
-            <input name="staff_name" list="staff-list" defaultValue={initial?.staffName ?? ""} className={inp} />
-            <datalist id="staff-list"><option>松澤覚</option><option>石川健太</option><option>松浦 颯大</option><option>吉田寿子</option><option>川口典礼</option></datalist>
+          <F label="計上担当者" required>
+            <select name="charged_user" value={chargedUser} onChange={(e) => setChargedUser(e.target.value)} className={inp}>
+              <option value="">選択してください</option>
+              {STAFF_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </F>
+        </div>
+        <div className="mt-3">
+          <F label="担当者（葬儀担当）" required>
+            <select name="staff_name" value={staffName} onChange={(e) => setStaffName(e.target.value)} className={inp}>
+              <option value="">選択してください</option>
+              {STAFF_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
           </F>
         </div>
       </Card>
 
       <div className="flex gap-3">
-        <button disabled={pending || !customer && !newCustomer} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
+        <button disabled={pending || (asInvoice && !customer && !newCustomer)} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
         <Link href={asInvoice ? "/kanri/billing" : "/kanri/estimates"} className="rounded border bg-white px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
 
