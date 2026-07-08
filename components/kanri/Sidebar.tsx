@@ -2,10 +2,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, Lightbulb, LogOut, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, Lightbulb, LogOut, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { CRM_NAV, type NavNode } from "@/lib/kanri/nav";
 
-const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings };
+const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, FileText };
 
 function hasActive(node: NavNode, path: string): boolean {
   if (node.href && (path === node.href || path.startsWith(node.href + "/"))) return true;

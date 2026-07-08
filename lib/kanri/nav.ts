@@ -22,6 +22,7 @@ export const CRM_NAV: NavNode[] = [
     { label: "当番表", href: "/kanri/schedule/rota" },
   ] },
   { label: "AI遺影写真", icon: "ImageIcon", href: "/kanri/ai-portrait" },
+  { label: "司会台本・会葬礼状", icon: "FileText", href: "/funeral-script" },
   { label: "分析", icon: "LineChart", children: [
     { label: "売上実績", href: "/kanri/analytics" },
     { label: "売上分析", href: "/kanri/analytics/sales" },

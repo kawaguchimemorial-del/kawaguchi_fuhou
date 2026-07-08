@@ -761,3 +761,10 @@
   - product_sub_kind改名 → fk_products.product_sub_kind(旧→新)を更新(親種別で限定し同名衝突を回避)。商品一覧もrevalidate。
 - 実データ整合: 旧「料理（華鳳凰）」で残っていた商品77件・子カテゴリ親9件を現行名「料理（華鳳）」へ揃え直し(Session pooler)。
 - 検証: Playwright+DBで、種別「料理（華鳳）」を改名すると商品77件と子カテゴリ親9件が追従、子カテゴリ「懐石料理」を改名すると商品9件が追従することを確認(いずれも復元済み)。tscエラー無し。
+
+## 2026-07-08 司会台本・会葬礼状生成システムを別プロジェクトから移植
+- 移植元: F:\kawaguchi-altar-simulator\kawaguchi-altar-simulator\ (本番 kawaguchi-altar-simulator.vercel.app/funeral-script)。同一スタック(Next.js16/React19/Tailwind4)。
+- 移植物(DB不使用・OpenAIのみの自己完結機能): app/funeral-script/page.tsx、app/api/funeral-script/{generate-narration,generate-original-letter}/route.ts、components/funeral-script/*(7)、lib/funeral-script/*(14)、lib/pdf.ts、lib/simulatorUtils.ts。
+- 依存追加: jspdf/html2canvas(PDF・動的import)。env追加: OPENAI_API_KEY / OPENAI_TEXT_MODEL(既定gpt-5.5)を.env.localへ(gitignore・本番Vercelにも要設定)。AIはOpenAI Responses APIをfetchで直接(SDKなし)。
+- 導線: 管理サイドバー(CRM_NAV)に「司会台本・会葬礼状」→/funeral-script を追加(Sidebarに FileText アイコン追加)。ページ内の「祭壇シミュレーターへ(/)」リンクは「管理画面へ(/kanri)」に変更。
+- 検証: /funeral-script が200・フォーム33項目/AI生成/PDF/保存読込/会葬礼状パネル表示、両APIが400バリデーション応答(マウント確認)、サイドバーにリンク表示をPlaywrightで確認。tscエラー無し。※本番反映にはVercel環境変数 OPENAI_API_KEY/OPENAI_TEXT_MODEL の設定が必要。
