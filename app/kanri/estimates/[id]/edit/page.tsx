@@ -23,7 +23,7 @@ export default async function EditEstimate({ params }: Params) {
     deceasedGender: e.deceased.gender, deceasedBirthDate: e.deceased.birthDate,
     deceasedDeathDate: e.deceased.deathDate, deceasedAge: e.deceased.age,
     deceasedRelation: e.mourner.relation,
-    wakeAt: e.wakeAt, funeralAt: e.funeralAt,
+    wakeAt: e.wakeAt, funeralAt: e.funeralAt, venueName: e.venueName,
     addresseeKind: e.addresseeKind, addresseeLastName: e.addresseeLastName, addresseeFirstName: e.addresseeFirstName,
     addresseeHonorific: e.addresseeHonorific, addresseeLastNameKana: e.addresseeLastNameKana, addresseeFirstNameKana: e.addresseeFirstNameKana,
     addresseePostcode: e.addresseePostcode, addresseePrefecture: e.addresseePrefecture,

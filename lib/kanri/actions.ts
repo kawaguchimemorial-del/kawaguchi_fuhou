@@ -721,6 +721,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     deceased_death_date: s(fd, "deceased_death_date"), deceased_age: num(fd, "deceased_age"),
     mourner_relation: s(fd, "mourner_relation"),
     wake_at: dt(fd, "wake_at"), funeral_at: dt(fd, "funeral_at"),
+    venue_name: s(fd, "venue_name"),
     crematorium_name: s(fd, "crematorium_name"), brand: s(fd, "brand"),
     product_set_id: s(fd, "product_set_id"), product_set_price: num(fd, "product_set_price") ?? 0,
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),

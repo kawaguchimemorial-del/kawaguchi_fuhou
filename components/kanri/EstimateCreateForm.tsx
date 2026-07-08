@@ -14,7 +14,7 @@ export interface FormInitial {
   customerId?: string; customerName?: string;
   deceasedName?: string;
   deceasedGender?: string; deceasedBirthDate?: string; deceasedDeathDate?: string; deceasedAge?: number; deceasedRelation?: string;
-  wakeAt?: string; funeralAt?: string;
+  wakeAt?: string; funeralAt?: string; venueName?: string;
   addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
   addresseeLastNameKana?: string; addresseeFirstNameKana?: string;
   addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
@@ -244,6 +244,9 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   ]);
 
   const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#2c8c6f] focus:outline-none";
+  // スマホ縦入力用: 44pxタップ域・16pxでiOSズーム防止・数値スピナー除去
+  const nInp = "h-11 w-full rounded-lg border border-gray-300 px-3 text-base tabular-nums appearance-none focus:border-[#2c8c6f] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  const nLbl = "text-sm font-medium text-gray-700";
   const label = asInvoice ? "請求先情報" : "宛名情報";
 
   // 登録前バリデーション（見積のみ）。事前相談チェックの有無で必須項目が変わる。
@@ -434,7 +437,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         )}
         <div className="mt-3"><F label="火葬場"><input name="crematorium_name" defaultValue={initial?.crematorium ?? ""} className={inp} /></F></div>
         <div className="mt-3"><F label="ブランド"><select name="brand" defaultValue={initial?.brand ?? ""} className={inp}><option value=""></option><option>川口典礼</option></select></F></div>
-        <div className="mt-3"><F label="在庫管理会場"><input name="stock_venue" className={inp} /></F></div>
+        <div className="mt-3"><F label="葬儀会場"><input name="venue_name" defaultValue={initial?.venueName ?? ""} className={inp} /></F></div>
       </Card>
 
       {/* セット商品 */}
@@ -475,8 +478,8 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
                 {/* オプションカード（実UI準拠） */}
                 <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                   {/* ヘッダー: 商品選択 / 選択した商品 / 複製・削除 */}
-                  <div className="mb-3 flex items-center gap-3">
-                    <button type="button" onClick={() => { setPickKind(""); setPickSub(""); setPickName(""); setOptPickKey(r.key); }} className="rounded border border-sky-400 px-3 py-1 text-xs text-sky-500">商品選択</button>
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => { setPickKind(""); setPickSub(""); setPickName(""); setOptPickKey(r.key); }} className="rounded border border-sky-400 px-3 py-1.5 text-xs text-sky-500">商品選択</button>
                     <span className="text-xs text-gray-500">選択した商品：{r.productName ?? "未選択"}</span>
                     <div className="ml-auto flex gap-2">
                       <button type="button" onClick={() => setOpts((rs) => { const src = rs.find((x) => x.key === r.key)!; return [...rs, { ...src, key: seq++ }]; })} className="rounded bg-sky-400 px-3 py-1 text-xs text-white">複製</button>
@@ -494,66 +497,63 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
                       <input value={r.tagName} onChange={(e) => updOpt(r.key, { tagName: e.target.value })} className={inp + " mt-1"} />
                     </div>
                   </div>
-                  {/* 単価 / 税込単価 / 下代 / 消費税率 / 割引(税抜) / 数量 */}
-                  <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                    <div>
-                      <label className="block text-sm text-gray-600">単価</label>
-                      <input type="number" value={r.unitPrice} onChange={(e) => updOpt(r.key, { unitPrice: Number(e.target.value) || 0 })} className={inp + " mt-1 text-right"} />
-                      <p className="mt-0.5 text-[10px] text-gray-400">税抜か税込のどちらかは必須入力です</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600">税込単価</label>
-                      <input type="number" value={r.priceInclTax} onChange={(e) => updOpt(r.key, { priceInclTax: e.target.value })} className={inp + " mt-1 text-right"} />
-                      <p className="mt-0.5 text-[10px] text-gray-400">入力すると、この金額がそのまま税込金額として利用されます。</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600">下代 <span className="rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span></label>
-                      <input type="number" value={r.cost} onChange={(e) => updOpt(r.key, { cost: Number(e.target.value) || 0 })} className={inp + " mt-1 text-right"} />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600">消費税率 <span className="rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span></label>
-                      <select value={String(r.taxRate)} onChange={(e) => updOpt(r.key, { taxRate: Number(e.target.value) })} className={inp + " mt-1"}>
+                  {/* 数量・下代・税率など6項目（スマホ縦は2列・PCは6列に復帰。入力頻度順） */}
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
+                    <label className="flex flex-col gap-1">
+                      <span className={nLbl}>下代 <span className="text-xs text-red-500">必須</span></span>
+                      <input inputMode="decimal" type="text" value={r.cost} onChange={(e) => updOpt(r.key, { cost: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className={nLbl}>数量 <span className="text-xs text-red-500">必須</span></span>
+                      <input inputMode="numeric" type="text" value={r.quantity} onChange={(e) => updOpt(r.key, { quantity: Number(e.target.value) || 1 })} className={nInp + " text-center"} />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className={nLbl}>消費税率 <span className="text-xs text-red-500">必須</span></span>
+                      <select value={String(r.taxRate)} onChange={(e) => updOpt(r.key, { taxRate: Number(e.target.value) })} className={nInp}>
                         <option value="0.1">10%</option><option value="0.08">8%</option><option value="0">非課税</option>
                       </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600">割引（税抜）</label>
-                      <input type="number" value={r.discount || ""} onChange={(e) => updOpt(r.key, { discount: Number(e.target.value) || 0 })} className={inp + " mt-1 text-right"} />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600">数量 <span className="rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span></label>
-                      <input type="number" value={r.quantity} onChange={(e) => updOpt(r.key, { quantity: Number(e.target.value) || 1 })} className={inp + " mt-1 text-center"} />
-                    </div>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className={nLbl}>単価</span>
+                      <input inputMode="decimal" type="text" value={r.unitPrice} onChange={(e) => updOpt(r.key, { unitPrice: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
+                      <span className="text-xs leading-tight text-gray-500">税抜か税込どちらか必須</span>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className={nLbl}>税込単価</span>
+                      <input inputMode="decimal" type="text" value={r.priceInclTax} onChange={(e) => updOpt(r.key, { priceInclTax: e.target.value })} className={nInp + " text-right"} />
+                      <span className="text-xs leading-tight text-gray-500">入力するとこの額が税込金額に</span>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className={nLbl}>割引（税抜）</span>
+                      <input inputMode="decimal" type="text" value={r.discount || ""} onChange={(e) => updOpt(r.key, { discount: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
+                    </label>
                   </div>
                   {/* 税込金額（自動計算・印刷にも反映） */}
                   <div className="mt-2 text-right text-sm">
                     <span className="text-gray-500">税込金額：</span>
                     <span className="text-base font-bold text-[#2c8c6f]">{optInclTotal(r).toLocaleString()}円</span>
                   </div>
-                  {/* 預り金/立替金/請求書に非表示/取引日/返品数/補足説明 */}
-                  <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-2 border-t pt-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-1"><input type="checkbox" checked={r.deposit} onChange={(e) => updOpt(r.key, { deposit: e.target.checked })} /> 預り金</label>
-                      <div><label className="block text-xs text-gray-500">預り金の計上日</label><input type="date" value={r.depositOn} onChange={(e) => updOpt(r.key, { depositOn: e.target.value })} className="rounded border px-2 py-1 text-xs" /></div>
+                  {/* 詳細（普段は使わない補助項目）: 既定で折りたたみ、縦1列に */}
+                  <details className="group mt-3 border-t pt-3 text-sm">
+                    <summary className="flex h-11 cursor-pointer list-none select-none items-center gap-2 text-gray-700">
+                      <span>詳細設定（預り金・立替金・取引日・返品数ほか）</span>
+                      {(r.deposit || r.refundable || r.hiddenPaper || r.depositOn || r.tradedOn || r.returnedQty > 0 || r.remarks) && <span className="h-2 w-2 rounded-full bg-teal-500 group-open:hidden" />}
+                      <span className="ml-auto text-gray-400 transition-transform group-open:rotate-180">▾</span>
+                    </summary>
+                    <div className="mt-3 flex flex-col gap-4">
+                      <label className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-5 w-5" checked={r.deposit} onChange={(e) => updOpt(r.key, { deposit: e.target.checked })} /> 預り金</label>
+                      {r.deposit && (
+                        <label className="flex flex-col gap-1 pl-7"><span className="text-sm text-gray-700">預り金の計上日</span><input type="date" value={r.depositOn} onChange={(e) => updOpt(r.key, { depositOn: e.target.value })} className="h-11 w-full rounded-lg border border-gray-300 px-3 text-base" /></label>
+                      )}
+                      <fieldset className="flex flex-col gap-2 rounded-md border border-gray-200 p-2">
+                        <label className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-5 w-5" checked={r.refundable} onChange={(e) => updOpt(r.key, { refundable: e.target.checked })} /> 立替金</label>
+                        <label className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-5 w-5" checked={r.hiddenPaper} onChange={(e) => updOpt(r.key, { hiddenPaper: e.target.checked })} /> 請求書に非表示</label>
+                      </fieldset>
+                      <label className="flex flex-col gap-1"><span className="text-sm text-gray-700">取引日</span><input type="date" value={r.tradedOn} onChange={(e) => updOpt(r.key, { tradedOn: e.target.value })} className="h-11 w-full rounded-lg border border-gray-300 px-3 text-base" /><span className="text-xs text-gray-500">空欄は請求日となります</span></label>
+                      <label className="flex flex-col gap-1"><span className="text-sm text-gray-700">返品数</span><input inputMode="numeric" type="text" value={r.returnedQty || ""} onChange={(e) => updOpt(r.key, { returnedQty: Number(e.target.value) || 0 })} className="h-11 w-20 rounded-lg border border-gray-300 px-3 text-center text-base tabular-nums" /></label>
+                      <label className="flex flex-col gap-1"><span className="text-sm text-gray-700">補足説明</span><textarea rows={2} value={r.remarks} onChange={(e) => updOpt(r.key, { remarks: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
                     </div>
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1"><input type="checkbox" checked={r.refundable} onChange={(e) => updOpt(r.key, { refundable: e.target.checked })} /> 立替金</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" checked={r.hiddenPaper} onChange={(e) => updOpt(r.key, { hiddenPaper: e.target.checked })} /> 請求書に非表示</label>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500">取引日</label>
-                      <input type="date" value={r.tradedOn} onChange={(e) => updOpt(r.key, { tradedOn: e.target.value })} className="rounded border px-2 py-1 text-xs" />
-                      <p className="text-[10px] text-gray-400">空の場合は請求日となります</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500">返品数</label>
-                      <input type="number" value={r.returnedQty || ""} onChange={(e) => updOpt(r.key, { returnedQty: Number(e.target.value) || 0 })} className="w-24 rounded border px-2 py-1 text-xs" />
-                    </div>
-                    <div className="min-w-[240px] flex-1">
-                      <label className="block text-xs text-gray-500">補足説明</label>
-                      <input value={r.remarks} onChange={(e) => updOpt(r.key, { remarks: e.target.value })} className={inp + " mt-0.5"} />
-                    </div>
-                  </div>
+                  </details>
                 </div>
                 {/* 区切りタイトル */}
                 <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3">
@@ -623,10 +623,16 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         {osonae.length === 0 ? <p className="text-sm text-gray-400">マスタが未登録です（設定 &gt; その他オプション、お供えにかかる費用）。</p> : (
           <div className="divide-y">
             {osonae.map((m) => (
-              <div key={m.id} className="grid grid-cols-[1fr_110px_1fr] items-center gap-4 py-2.5 text-sm">
-                <span>{m.name}</span>
-                <span className="text-right text-gray-600">{(m.price ?? 0).toLocaleString()}円</span>
-                <input type="number" min={0} value={osonaeQty[m.id] ?? 0} onChange={(e) => setOsonaeQty((s) => ({ ...s, [m.id]: Number(e.target.value) || 0 }))} className="rounded border border-[#8fd0c8] px-3 py-1.5 text-sm" />
+              <div key={m.id} className="flex flex-col gap-1.5 py-2.5 text-sm sm:grid sm:grid-cols-[1fr_110px_auto] sm:items-center sm:gap-4">
+                <span className="font-medium leading-snug text-gray-800">{m.name}</span>
+                <div className="flex items-center justify-between gap-3 sm:contents">
+                  <span className="tabular-nums text-gray-600 sm:text-right">{(m.price ?? 0).toLocaleString()}円</span>
+                  <div className="flex shrink-0 items-center">
+                    <button type="button" aria-label="数量を減らす" onClick={() => setOsonaeQty((s) => ({ ...s, [m.id]: Math.max(0, (s[m.id] ?? 0) - 1) }))} className="h-11 w-11 rounded-l-lg border border-[#8fd0c8] text-lg text-gray-600">−</button>
+                    <input inputMode="numeric" type="text" value={osonaeQty[m.id] ?? 0} onChange={(e) => setOsonaeQty((s) => ({ ...s, [m.id]: Number(e.target.value) || 0 }))} className="h-11 w-12 border-y border-[#8fd0c8] text-center text-base tabular-nums focus:outline-none" />
+                    <button type="button" aria-label="数量を増やす" onClick={() => setOsonaeQty((s) => ({ ...s, [m.id]: (s[m.id] ?? 0) + 1 }))} className="h-11 w-11 rounded-r-lg border border-[#8fd0c8] text-lg text-gray-600">＋</button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
