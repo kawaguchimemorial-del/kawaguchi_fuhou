@@ -92,6 +92,13 @@ export default async function EstimatesPage({ searchParams }: SP) {
                         <a href={`/kanri/estimates/${e.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded bg-[#e6f6f4] px-2 py-1 text-[11px] text-[#1aa39a]">見積書</a>
                         <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded bg-[#eef4ff] px-2 py-1 text-[11px] text-[#4f7cff]">請求書</button></form>
                         <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded bg-[#fff4ec] px-2 py-1 text-[11px] text-[#e8613c]">発注書</button></form>
+                        <details className="relative inline-block">
+                          <summary className="cursor-pointer list-none rounded bg-[#f3e8ff] px-2 py-1 text-[11px] text-[#9b2fae] [&::-webkit-details-marker]:hidden">訃報案内 ▾</summary>
+                          <div className="absolute left-0 z-20 mt-1 w-64 rounded border bg-white py-1 shadow-lg">
+                            <Link href={`/admin/ceremonies/new?type=obituary&from_estimate=${e.id}`} className="block px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50">訃報を作成する</Link>
+                            <Link href={`/admin/ceremonies/new?type=obituary_venue&from_estimate=${e.id}`} className="block px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50">訃報＋オンライン式場を作成する</Link>
+                          </div>
+                        </details>
                         <form action={deleteEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
                       </div>
                     </td>

@@ -768,3 +768,11 @@
 - 依存追加: jspdf/html2canvas(PDF・動的import)。env追加: OPENAI_API_KEY / OPENAI_TEXT_MODEL(既定gpt-5.5)を.env.localへ(gitignore・本番Vercelにも要設定)。AIはOpenAI Responses APIをfetchで直接(SDKなし)。
 - 導線: 管理サイドバー(CRM_NAV)に「司会台本・会葬礼状」→/funeral-script を追加(Sidebarに FileText アイコン追加)。ページ内の「祭壇シミュレーターへ(/)」リンクは「管理画面へ(/kanri)」に変更。
 - 検証: /funeral-script が200・フォーム33項目/AI生成/PDF/保存読込/会葬礼状パネル表示、両APIが400バリデーション応答(マウント確認)、サイドバーにリンク表示をPlaywrightで確認。tscエラー無し。※本番反映にはVercel環境変数 OPENAI_API_KEY/OPENAI_TEXT_MODEL の設定が必要。
+
+## 2026-07-08 見積一覧の操作に「訃報案内」ボタン→見積データで訃報作成を初期入力
+- 見積もり一覧(/kanri/estimates)の操作列に「訃報案内 ▾」ドロップダウン(details)を追加。/admin の新規葬儀作成と同様に「訃報を作成する」「訃報＋オンライン式場を作成する」の2択を表示。
+- 各リンクは /admin/ceremonies/new?type=obituary(または obituary_venue)&from_estimate=<見積ID> へ遷移。
+- 新規葬儀作成ページ(admin/ceremonies/new): from_estimate があれば getEstimate で見積を取得し、CeremonyWizard の initialState を組み立てて初期入力:
+  - 喪主= 見積の宛名(mSei/mMei/カナ)、故人= 見積の対象者(dSei/dMei/カナ・没年月日・享年)、続柄= mourner_relation。
+  - 式日= 見積の通夜日時(あれば通夜式)/無ければ告別式日時を eventType/eventDate/startTime に反映(JST変換 sv-SEフォーマット)。会場名/住所も見積にあれば反映。
+- 検証: テスト見積(喪主川口花子/故人川口太郎/没2026-07-05/享年88/続柄父/通夜2026-07-10 18:00)を作成し、訃報案内→訃報を作成する で ステップ1(喪主/故人)全項目・ステップ2(式)式日2026-07-10・開始18:00・訃報喪主名 の自動入力をPlaywrightで確認後、テストデータ削除。tscエラー無し。
