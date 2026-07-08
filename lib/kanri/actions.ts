@@ -117,9 +117,32 @@ export async function updateMasterItem(fd: FormData): Promise<void> {
   if (row.name === null) return; // 名称は空にできない
   // 既存extraにマージ（fields外のキーを保持）
   const c = admin();
-  const { data: cur } = await c.from("fk_master_items").select("extra").eq("id", id).maybeSingle();
+  const { data: cur } = await c.from("fk_master_items").select("name,extra").eq("id", id).maybeSingle();
+  const oldName = cur?.name as string | undefined;
   row.extra = { ...(cur?.extra ?? {}), ...extra };
   await c.from("fk_master_items").update(row).eq("id", id);
+
+  // 名称変更を、その名称で登録された商品/子カテゴリへ連動反映（非正規化のため手動カスケード）
+  const newName = row.name as string;
+  if (oldName && newName && oldName !== newName) {
+    if (type === "product_kind") {
+      // 商品の種別名
+      await c.from("fk_products").update({ product_kind: newName }).eq("funeral_home_id", KANRI_HOME_ID).eq("product_kind", oldName);
+      // 子カテゴリマスタの親参照（extra.parent）
+      const { data: subs } = await c.from("fk_master_items").select("id,extra").eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", "product_sub_kind").is("deleted_at", null);
+      for (const sub of (subs ?? []) as { id: string; extra: Record<string, string> | null }[]) {
+        if (sub.extra?.parent === oldName) await c.from("fk_master_items").update({ extra: { ...sub.extra, parent: newName } }).eq("id", sub.id);
+      }
+      revalidatePath("/kanri/settings/product_sub_kind");
+    } else if (type === "product_sub_kind") {
+      // 商品の子カテゴリ名（同名の他親と衝突しないよう親種別で限定）
+      const parent = (row.extra as Record<string, string>)?.parent;
+      let q = c.from("fk_products").update({ product_sub_kind: newName }).eq("funeral_home_id", KANRI_HOME_ID).eq("product_sub_kind", oldName);
+      if (parent) q = q.eq("product_kind", parent);
+      await q;
+    }
+    revalidatePath("/kanri/products");
+  }
   revalidatePath(`/kanri/settings/${type}`);
 }
 
