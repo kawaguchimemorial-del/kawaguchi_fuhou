@@ -40,11 +40,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const addrWithPref = [co.prefecture, companyAddr].filter(Boolean).join("");
   const to = iv.invoiceTargetName || iv.mournerName || iv.customerName || (e ? mournerFullName(e) : "");
   const amount = iv.paidTotal > 0 ? iv.paidTotal : iv.total;
-  // 税抜/消費税の内訳（明細があれば税率別集計、無ければ10%で逆算）
+  // 税抜/消費税の内訳。
+  // ※ DBの tax_amount は移植データが不正(8%換算や0)のため信用しない。
+  //   各明細の 税込金額(amount_including_tax) と 税抜金額(amount)、無ければ税率(tax)から実額を算出する。
   let exTax = 0, tax = 0;
   if (details.length) {
-    for (const d of details) { exTax += d.amount; tax += d.taxAmount; }
-    // 入金額が請求総額と異なる場合は比率で按分
+    for (const d of details) {
+      const ex = d.amount ?? 0;
+      const lineTax = (d.amountIncludingTax && d.amountIncludingTax > ex)
+        ? d.amountIncludingTax - ex               // 税込金額との差＝実際の消費税額
+        : Math.round(ex * (d.tax ?? 0.1));         // 税込が無ければ税率で計算
+      exTax += ex; tax += lineTax;
+    }
+    // 入金額が請求総額と異なる場合は比率で按分（内訳が表示額に必ず一致するようにする）
     const total = iv.total || (exTax + tax);
     if (amount !== total && total > 0) { const r = amount / total; exTax = Math.round(exTax * r); tax = amount - exTax; }
   } else {
