@@ -5,9 +5,12 @@ import { saveProduct, type KanriResult } from "@/lib/kanri/actions";
 import type { Product } from "@/lib/kanri/products";
 
 // 実スマート葬儀 /users/products/new のフォーム項目に準拠
-export function ProductForm({ product, kinds, suppliers }: { product?: Product; kinds: string[]; suppliers?: string[] }) {
+export function ProductForm({ product, kinds, suppliers, subKinds }: { product?: Product; kinds: string[]; suppliers?: string[]; subKinds?: { name: string; parent?: string }[] }) {
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(saveProduct, null);
   const [exPrice, setExPrice] = useState<string>(String(product?.unitPrice ?? ""));
+  // 商品種別を制御化し、子カテゴリ候補を親種別で絞り込む
+  const [kind, setKind] = useState<string>(product?.productKind ?? "");
+  const subOptions = (subKinds ?? []).filter((s) => !kind || !s.parent || s.parent === kind).map((s) => s.name);
   const [taxRate, setTaxRate] = useState<number>(product?.taxRate ?? 0.1);
   const incPrice = exPrice !== "" && !isNaN(Number(exPrice)) ? Math.round(Number(exPrice) * (1 + taxRate)) : "";
   const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#2c8c6f] focus:outline-none";
@@ -25,8 +28,12 @@ export function ProductForm({ product, kinds, suppliers }: { product?: Product; 
           </select>
         </F>
         <F label="商品種別">
-          <input name="product_kind" list="kinds" defaultValue={product?.productKind ?? ""} className={inp} />
+          <input name="product_kind" list="kinds" value={kind} onChange={(e) => setKind(e.target.value)} className={inp} />
           <datalist id="kinds">{kinds.map((k) => <option key={k} value={k} />)}</datalist>
+        </F>
+        <F label="子カテゴリ">
+          <input name="product_sub_kind" list="sub-kinds" defaultValue={product?.productSubKind ?? ""} className={inp} placeholder={kind ? `${kind} の子カテゴリ` : "先に商品種別を選択"} />
+          <datalist id="sub-kinds">{subOptions.map((k) => <option key={k} value={k} />)}</datalist>
         </F>
         <F label="商品コード"><input name="product_code" defaultValue={product?.productCode ?? ""} className={inp} /></F>
         <F label="商品名" required><input name="name" required defaultValue={product?.name ?? ""} className={inp} /></F>

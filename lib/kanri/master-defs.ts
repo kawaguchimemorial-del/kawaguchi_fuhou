@@ -1,5 +1,5 @@
 // マスタ定義（クライアント/サーバー共用。DB非依存・server-onlyにしない）
-export interface FieldDef { key: string; label: string; kind?: "text" | "number"; col?: "name" | "kana" | "price" }
+export interface FieldDef { key: string; label: string; kind?: "text" | "number"; col?: "name" | "kana" | "price"; selectFrom?: "product_kind" }
 export interface MasterDef { type: string; label: string; category: string; fields?: FieldDef[] }
 export interface MasterItem { id: string; name: string; kana?: string; price?: number; extra: Record<string, string>; sortOrder: number; isActive: boolean }
 
@@ -32,6 +32,7 @@ export const MASTER_TYPES: MasterDef[] = [
   { type: "funeral_target_manager", label: "対象者担当", category: "顧客設定" },
   { type: "talk_manual", label: "トークマニュアル", category: "顧客設定", fields: [{ key: "name", label: "表示箇所", col: "name" }, { key: "body", label: "内容" }] },
   { type: "product_kind", label: "商品種別", category: "商品設定" },
+  { type: "product_sub_kind", label: "商品子カテゴリ", category: "商品設定", fields: [{ key: "name", label: "子カテゴリ名", col: "name" }, { key: "parent", label: "親の商品種別", selectFrom: "product_kind" }] },
   { type: "discounted_product", label: "値引商品", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "price", label: "値引額", col: "price", kind: "number" }] },
   { type: "product_set", label: "商品セット", category: "商品設定", fields: [{ key: "code", label: "セット商品コード" }, { key: "name", label: "セット名", col: "name" }, { key: "price", label: "セット価格(税抜)", col: "price", kind: "number" }] },
   { type: "rough_product", label: "まとめ商品(ざっくり商品)", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "unit", label: "単位" }] },

@@ -12,6 +12,7 @@ function db(): { from: (t: string) => any } | null {
 export interface Product {
   id: string;
   productKind?: string;
+  productSubKind?: string;
   name: string;
   kana?: string;
   unitPrice: number;
@@ -42,7 +43,7 @@ export interface Product {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function map(r: any): Product {
-  return { id: r.id, productKind: r.product_kind ?? undefined, name: r.name, kana: r.kana ?? undefined,
+  return { id: r.id, productKind: r.product_kind ?? undefined, productSubKind: r.product_sub_kind ?? undefined, name: r.name, kana: r.kana ?? undefined,
     unitPrice: r.unit_price ?? 0, costPrice: r.cost_price ?? undefined, taxRate: Number(r.tax_rate ?? 0.1),
     unit: r.unit ?? undefined, supplier: r.supplier ?? undefined, note: r.note ?? undefined,
     productCode: r.product_code ?? undefined, modelCode: r.model_code ?? undefined,

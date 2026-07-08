@@ -18,14 +18,15 @@ export default async function ProductsPage() {
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-600">
-            <tr>{["種別","商品名","単価(税抜)","税率","単位","発注先",""].map((h)=><th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr>
+            <tr>{["種別","子カテゴリ","商品名","単価(税抜)","税率","単位","発注先",""].map((h)=><th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y">
             {products.length===0 ? (
-              <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-400">商品が登録されていません。</td></tr>
+              <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">商品が登録されていません。</td></tr>
             ) : products.map((p)=>(
               <tr key={p.id} className="hover:bg-gray-50">
                 <td className="px-3 py-2 text-gray-500">{p.productKind ?? "—"}</td>
+                <td className="px-3 py-2 text-gray-500">{p.productSubKind ?? "—"}</td>
                 <td className="px-3 py-2"><Link href={`/kanri/products/${p.id}/edit`} className="text-[#1aa39a] underline">{p.name}</Link></td>
                 <td className="px-3 py-2">{p.unitPrice.toLocaleString()}円</td>
                 <td className="px-3 py-2">{Math.round(p.taxRate*100)}%</td>

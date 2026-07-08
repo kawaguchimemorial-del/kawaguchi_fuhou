@@ -137,7 +137,7 @@ export async function saveProduct(_prev: KanriResult | null, fd: FormData): Prom
   const id = s(fd, "id");
   const row = {
     funeral_home_id: KANRI_HOME_ID,
-    product_kind: s(fd, "product_kind"), name, kana: s(fd, "kana"),
+    product_kind: s(fd, "product_kind"), product_sub_kind: s(fd, "product_sub_kind"), name, kana: s(fd, "kana"),
     unit_price: num(fd, "unit_price") ?? 0, cost_price: num(fd, "cost_price"),
     tax_rate: num(fd, "tax_rate") ?? 0.1, unit: s(fd, "unit"), supplier: s(fd, "supplier"), note: s(fd, "note"),
     // 実スマート葬儀の商品フィールド

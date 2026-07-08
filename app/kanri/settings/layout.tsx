@@ -7,6 +7,7 @@ const TABS = [
   { label: "参列者からのメッセージ", href: "/kanri/settings/messages" },
   { label: "会場", href: "/kanri/settings/venue" },
   { label: "商品種別", href: "/kanri/settings/product_kind" },
+  { label: "商品子カテゴリ", href: "/kanri/settings/product_sub_kind" },
   { label: "商品", href: "/kanri/products" },
   { label: "値引商品", href: "/kanri/settings/discounted_product" },
   { label: "まとめ商品", href: "/kanri/settings/rough_product" },

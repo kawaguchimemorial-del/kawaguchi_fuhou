@@ -12,6 +12,9 @@ export default async function MasterTypePage({ params }: Params) {
   if (!def) notFound();
   const fields = masterFields(type);
   const items = await listMasterItems(type);
+  // selectFrom フィールド用の選択肢（例: 親の商品種別）
+  const needKinds = fields.some((f) => f.selectFrom === "product_kind");
+  const kindOptions = needKinds ? (await listMasterItems("product_kind")).map((m) => m.name) : [];
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -25,7 +28,14 @@ export default async function MasterTypePage({ params }: Params) {
         {fields.map((f) => (
           <div key={f.key}>
             <label className="block text-xs text-gray-500">{f.label}{f.col === "name" && <span className="ml-1 text-red-500">必須</span>}</label>
-            <input name={`f_${f.key}`} type={f.kind === "number" ? "number" : "text"} required={f.col === "name"} className="mt-1 w-44 rounded border px-3 py-2" />
+            {f.selectFrom === "product_kind" ? (
+              <select name={`f_${f.key}`} defaultValue="" className="mt-1 w-44 rounded border px-3 py-2">
+                <option value="">選択してください</option>
+                {kindOptions.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            ) : (
+              <input name={`f_${f.key}`} type={f.kind === "number" ? "number" : "text"} required={f.col === "name"} className="mt-1 w-44 rounded border px-3 py-2" />
+            )}
           </div>
         ))}
         <button className="rounded bg-[#1aa39a] px-4 py-2 text-white">追加</button>
@@ -44,14 +54,21 @@ export default async function MasterTypePage({ params }: Params) {
                 <tr key={it.id}>
                   {fields.map((f) => (
                     <td key={f.key} className="px-3 py-2">
-                      <input
-                        form={`edit-${it.id}`}
-                        name={`f_${f.key}`}
-                        type={f.kind === "number" ? "number" : "text"}
-                        defaultValue={fieldValue(it, f) ?? ""}
-                        required={f.col === "name"}
-                        className="w-full min-w-[7rem] rounded border border-gray-200 px-2 py-1.5 focus:border-[#1aa39a] focus:outline-none"
-                      />
+                      {f.selectFrom === "product_kind" ? (
+                        <select form={`edit-${it.id}`} name={`f_${f.key}`} defaultValue={fieldValue(it, f) ?? ""} className="w-full min-w-[7rem] rounded border border-gray-200 px-2 py-1.5 focus:border-[#1aa39a] focus:outline-none">
+                          <option value="">選択してください</option>
+                          {kindOptions.map((k) => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          form={`edit-${it.id}`}
+                          name={`f_${f.key}`}
+                          type={f.kind === "number" ? "number" : "text"}
+                          defaultValue={fieldValue(it, f) ?? ""}
+                          required={f.col === "name"}
+                          className="w-full min-w-[7rem] rounded border border-gray-200 px-2 py-1.5 focus:border-[#1aa39a] focus:outline-none"
+                        />
+                      )}
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right whitespace-nowrap">
