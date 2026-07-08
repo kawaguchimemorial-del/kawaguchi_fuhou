@@ -112,6 +112,10 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
   );
   const [optPickKey, setOptPickKey] = useState<number | null>(null); // カード単位の商品選択対象
+  // 商品選択モーダルの絞り込み（種別を選んで商品名で検索）
+  const [pickKind, setPickKind] = useState("");
+  const [pickName, setPickName] = useState("");
+  const productKinds = useMemo(() => Array.from(new Set(products.map((p) => p.productKind).filter(Boolean))) as string[], [products]);
   // 見積の新規作成時: その他オプション(追加安置日数/追加ドライアイス/収骨容器一式/本尊セット一式)をデフォルト数量1に
   const defaultOsonaeQty: Record<string, number> = {};
   if (!initial && !asInvoice) {
@@ -466,7 +470,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
                 <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                   {/* ヘッダー: 商品選択 / 選択した商品 / 複製・削除 */}
                   <div className="mb-3 flex items-center gap-3">
-                    <button type="button" onClick={() => setOptPickKey(r.key)} className="rounded border border-sky-400 px-3 py-1 text-xs text-sky-500">商品選択</button>
+                    <button type="button" onClick={() => { setPickKind(""); setPickName(""); setOptPickKey(r.key); }} className="rounded border border-sky-400 px-3 py-1 text-xs text-sky-500">商品選択</button>
                     <span className="text-xs text-gray-500">選択した商品：{r.productName ?? "未選択"}</span>
                     <div className="ml-auto flex gap-2">
                       <button type="button" onClick={() => setOpts((rs) => { const src = rs.find((x) => x.key === r.key)!; return [...rs, { ...src, key: seq++ }]; })} className="rounded bg-sky-400 px-3 py-1 text-xs text-white">複製</button>
@@ -564,11 +568,28 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       {/* カード単位の商品選択モーダル */}
       {optPickKey !== null && (
         <Modal title="商品選択" onClose={() => setOptPickKey(null)}>
+          {/* 絞り込み: 種別を選んで商品名で検索 */}
+          <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg bg-gray-50 p-3">
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">種別</label>
+              <select value={pickKind} onChange={(e) => setPickKind(e.target.value)} className={inp + " min-w-[10rem]"}>
+                <option value="">すべて</option>
+                {productKinds.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-xs text-gray-500">商品名</label>
+              <input value={pickName} onChange={(e) => setPickName(e.target.value)} placeholder="商品名で検索" className={inp} />
+            </div>
+          </div>
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 border-b bg-white text-xs text-gray-500"><tr>{["", "商品名", "種別", "価格(税抜)"].map((h, i) => <th key={i} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
               <tbody className="divide-y">
-                {products.filter((p) => !p.hidden).map((p) => (
+                {products.filter((p) => !p.hidden)
+                  .filter((p) => !pickKind || p.productKind === pickKind)
+                  .filter((p) => !pickName.trim() || p.name.includes(pickName.trim()))
+                  .map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2"><button type="button" onClick={() => { updOpt(optPickKey, { productId: p.id, productName: p.name, name: p.name, unitPrice: p.unitPrice, cost: p.costPrice ?? 0, taxRate: p.taxRate }); setOptPickKey(null); }} className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">選択</button></td>
                     <td className="px-3 py-2">{p.name}</td>
