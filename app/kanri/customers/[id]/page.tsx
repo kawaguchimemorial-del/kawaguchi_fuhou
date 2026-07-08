@@ -86,8 +86,6 @@ export default async function CustomerDetail({ params, searchParams }: Params) {
 
           {/* 会員管理 */}
           <Panel title="会員管理" cols={["入会日", "会員種別", "ステータス", "入会者"]} />
-          {/* 葬家（新規作成は見積・施行フローへ） */}
-          <Panel title="葬家" cols={["氏名", "続柄", "施行番号", "葬儀日"]} newHref={`/kanri/estimates/new?customer_id=${id}`} />
         </div>
       )}
 
