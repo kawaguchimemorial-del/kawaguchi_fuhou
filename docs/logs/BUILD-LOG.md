@@ -940,3 +940,8 @@
 - 副次バグ: customer_id/estimate_idが実在しないとFK違反で500。save routeで保存前に実在チェックし、無いIDはnull化して台本自体は必ず保存(app/api/funeral-script/save/route.ts)。
 - 再編集(開く→保存)で紐付けが外れる問題: GET /api/funeral-script/[id] が customerId/estimateId も返し、ツール側で復元(lib/kanri/funeral-scripts.ts, [id]/route.ts, page.tsx)。
 - 本番でFK不整合payloadが500→200(null化)になることを確認予定。tsc・next build 成功。
+
+## 2026-07-10 台本一覧の文字化け掃除＋同一顧客対象者の上書き保存
+- 一覧の文字化け4件は診断用curl保存(Windowsシェルで日本語が文字化けした"診断B"/"診断 太郎")。ID指定で論理削除(残0件)。
+- 上書き保存: save routeに「施行紐付けが無い場合、同一顧客(または顧客なし)＋同一対象者名(空白正規化)の既存台本を更新」を追加。同じ人の台本を何度生成・保存しても重複せず上書き。施行ありは従来どおり1施行1台本で上書き。
+- tsc・next build 成功。

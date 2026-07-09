@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: true, id: body.scriptId, updated: true });
   }
 
-  // 2) 冪等: 同一施行(見積)の既存台本があれば更新(1施行1台本・二度押し防止)。施行無しは常に新規。
+  // 2) 冪等: 同一施行(見積)の既存台本があれば更新(1施行1台本・二度押し防止)。
   if (estimateId) {
     const { data: ex } = await c
       .from("fk_funeral_scripts")
@@ -105,6 +105,27 @@ export async function POST(req: Request) {
       const { error } = await c.from("fk_funeral_scripts").update(row).eq("id", ex[0].id);
       if (error) return Response.json({ ok: false, error: `更新に失敗しました：${error.message}` }, { status: 500 });
       return Response.json({ ok: true, id: ex[0].id, updated: true });
+    }
+  } else {
+    // 3) 施行紐付けが無い場合: 同一顧客(または顧客なし)＋同一対象者名の既存台本を上書き。
+    //    （同じ人の台本を何度も生成・保存しても重複しないようにする）
+    const norm = (s: string) => (s || "").replace(/[\s　]/g, "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = c
+      .from("fk_funeral_scripts")
+      .select("id,deceased_name")
+      .eq("funeral_home_id", KANRI_HOME_ID)
+      .is("deleted_at", null)
+      .is("estimate_id", null);
+    q = customerId ? q.eq("customer_id", customerId) : q.is("customer_id", null);
+    const { data: cand } = await q.order("created_at", { ascending: false }).limit(500);
+    const target = norm(deceasedName);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hit = ((cand ?? []) as any[]).find((r) => norm(r.deceased_name) === target);
+    if (hit) {
+      const { error } = await c.from("fk_funeral_scripts").update(row).eq("id", hit.id);
+      if (error) return Response.json({ ok: false, error: `更新に失敗しました：${error.message}` }, { status: 500 });
+      return Response.json({ ok: true, id: hit.id, updated: true });
     }
   }
 
