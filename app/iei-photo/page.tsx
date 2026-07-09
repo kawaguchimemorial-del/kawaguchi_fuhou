@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import IeiPhotoStatus from "@/components/iei-photo/IeiPhotoStatus";
 import IeiPhotoQualityCheck from "@/components/iei-photo/IeiPhotoQualityCheck";
 import IeiPhotoAiQualityCheck from "@/components/iei-photo/IeiPhotoAiQualityCheck";
@@ -1222,9 +1223,19 @@ export default function IeiPhotoPage() {
       <div className="flex min-w-0 flex-1 basis-0 flex-col overflow-x-hidden w-[calc(100vw-3.5rem)] sm:w-auto">
         {/* 上部バー */}
         <header className="flex items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
-          <h1 className="truncate text-lg font-bold text-slate-800 sm:text-xl">
-            メモリアルフォトサポート
-          </h1>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link
+              href="/kanri/ai-portrait"
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-stone-100"
+            >
+              <span aria-hidden>←</span>
+              <span className="hidden sm:inline">管理画面に戻る</span>
+              <span className="sm:hidden">戻る</span>
+            </Link>
+            <h1 className="truncate text-lg font-bold text-slate-800 sm:text-xl">
+              メモリアルフォトサポート
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"

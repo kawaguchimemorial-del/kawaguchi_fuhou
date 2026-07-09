@@ -836,3 +836,7 @@
 - これで /iei-photo で作成→保存すると /kanri/ai-portrait の一覧に自動表示。
 - 検証: 保存APIにテスト画像POST→ok(アップロード＋登録＋公開URL)、一覧に画像表示を確認後テストデータ(DB行＋Storage)削除。ボタン表示・tscエラー無しを確認。
   ※curlでの日本語名は文字化けしたがシェルのエンコード起因。ブラウザのprompt→fetchはUTF-8で正常。
+
+## 2026-07-09 AI遺影ツール(/iei-photo)の上部に「管理画面に戻る」導線を追加
+- 指摘対応: /iei-photo に管理画面へ戻る手段が無かった。ヘッダー左端(タイトルの前)に「← 管理画面に戻る」(モバイルは「戻る」)リンクを追加し /kanri/ai-portrait へ遷移。Linkをimport。
+- 検証: リンク表示・文言・href(/kanri/ai-portrait)をPlaywrightで確認。tscエラー無し。
