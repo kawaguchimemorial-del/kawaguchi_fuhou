@@ -927,3 +927,9 @@
 - 品質改修の本番検証: メインナレーションが一場面から入り口癖・遺影・余韻まで織り込み。会葬礼状も羅列でなく手紙調で生成されることを確認。
 - スマホ導線: KanriSidebarはmd未満で非表示のため、スマホからCRM各機能(司会台本・会葬礼状/AI遺影 等)へ行けなかった。components/kanri/MobileNav.tsx(ハンバーガー＋ドロワー、CRM_NAV再利用＋よく使う2導線のクイックリンク)を追加し、app/kanri/layout.tsxのトップバー左に配置(md:hidden)。Sidebar.tsxのSectionをexport化して共有。
 - tsc・next build 成功。
+
+## 2026-07-10 入金管理/請求書一覧の領収証まわり修正
+- 請求書一覧(billing/page.tsx): 「領収書」ボタンを「領収証」に改称。入金伝票未発行(paidTotal=0)の行は領収証を出さず「入金伝票発行」(slip/newへ)を表示。入金あり(paidTotal>0)のみ領収証。
+- 請求書詳細(billing/[id]/page.tsx): 列見出し・ボタンを「領収書」→「領収証」。
+- 領収証PDF(billing/[id]/receipt/route.ts): 日付を請求書発行日(billedOn)ではなく入金日(入金伝票の最新paidOn)に変更(無ければbilledOn→当日にフォールバック)。文書タイトル・見出しも「領収証」に統一。
+- tsc・next build 成功。

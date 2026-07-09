@@ -20,7 +20,7 @@ export default async function PaymentSlipManage({ params }: Params) {
   const funeralOn = e ? fmt(e.funeralAt) : "";
   const totalPaid = slips.reduce((a, sl) => a + sl.payments.reduce((b, p) => b + p.amount, 0), 0);
 
-  const cols = ["入金先", "伝票区分", "施行番号", "喪主", "葬儀日", "売上区分", "伝票番号", "発行日", "入金日", "入金額", "入金方法", "入金種別", "操作", "領収書"];
+  const cols = ["入金先", "伝票区分", "施行番号", "喪主", "葬儀日", "売上区分", "伝票番号", "発行日", "入金日", "入金額", "入金方法", "入金種別", "操作", "領収証"];
 
   return (
     <div>
@@ -68,7 +68,7 @@ export default async function PaymentSlipManage({ params }: Params) {
                         </form>
                       )}
                     </td>
-                    <td className="px-3 py-2">{i === 0 && <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収書</a>}</td>
+                    <td className="px-3 py-2">{i === 0 && <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収証</a>}</td>
                   </tr>
                 )))
               )}

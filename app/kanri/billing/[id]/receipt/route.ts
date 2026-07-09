@@ -1,4 +1,5 @@
 import { getInvoice } from "@/lib/kanri/invoices";
+import { listPaymentSlips } from "@/lib/kanri/payments";
 import { mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
 
@@ -59,14 +60,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     exTax = Math.round(amount / 1.1); tax = amount - exTax;
   }
   const proviso = iv.title || (iv.deceasedName ? `${iv.deceasedName}家　葬儀内金` : "葬儀代");
-  const issued = fmt(iv.billedOn) || fmt(new Date().toISOString());
+  // 領収書の日付は「入金日」を用いる（請求書の発行日ではない）。
+  // 入金伝票の全入金のうち最新の入金日を採用。無ければ請求発行日→当日にフォールバック。
+  const slips = await listPaymentSlips(id);
+  const paidDates = slips
+    .flatMap((sl) => sl.payments.map((p) => p.paidOn))
+    .filter((d): d is string => !!d)
+    .sort();
+  const paymentDate = paidDates.length ? paidDates[paidDates.length - 1] : undefined;
+  const issued = fmt(paymentDate) || fmt(iv.billedOn) || fmt(new Date().toISOString());
   const no = iv.invoiceNo ?? iv.id.slice(0, 6);
   const invNo = co.invoice_no || "";
   const hankoRed = hankoSvg("#c0392b");
 
   const money = (n: number) => `¥${n.toLocaleString()}－`;
 
-  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>領収書 ${esc(to)}</title>
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>領収証 ${esc(to)}</title>
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -115,10 +124,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   <button class="print" onclick="window.print()">印刷</button>
   <div class="sheet">
 
-    <!-- 上半分: 領収書 -->
+    <!-- 上半分: 領収証 -->
     <div class="half receipt">
       <div class="row1">
-        <h1>領&nbsp;収&nbsp;書</h1>
+        <h1>領&nbsp;収&nbsp;証</h1>
         <div class="to-box"><span class="nm">${esc(to)}</span> 様</div>
         <div class="no">No.&nbsp;&nbsp;${esc(no)}</div>
       </div>

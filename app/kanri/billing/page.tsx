@@ -90,7 +90,11 @@ export default async function BillingPage({ searchParams }: SP) {
                         <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-blue-400 px-2 py-1 text-[11px] text-blue-500">詳細</Link>
                         <Link href={`/kanri/billing/${iv.id}/edit`} className="rounded border border-[#2c8c6f] px-2 py-1 text-[11px] text-[#2c8c6f]">編集</Link>
                         <a href={`/kanri/billing/${iv.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">請求書</a>
-                        <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収書</a>
+                        {iv.paidTotal > 0 ? (
+                          <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収証</a>
+                        ) : (
+                          <Link href={`/kanri/billing/${iv.id}/slip/new`} className="rounded border border-[#f2683f] bg-[#fff4f0] px-2 py-1 text-[11px] text-[#f2683f]">入金伝票発行</Link>
+                        )}
                         <form action={deleteInvoice}><input type="hidden" name="id" value={iv.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
                       </div>
                     </td>
