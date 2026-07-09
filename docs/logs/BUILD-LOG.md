@@ -814,3 +814,9 @@
 - 依存: 既存のjspdf/html2canvasを流用(UMD同梱)。新規npm追加なし。
 - 検証: メール登録ありでボタン有効/未登録でdisabled、send-mailが未設定・未登録で適切なエラーJSONを返すことを確認。tscエラー無し。
 - ※本番送信には Vercel環境変数 RESEND_API_KEY と MAIL_FROM(Resendでドメイン認証済み送信元)の設定が必要。
+
+## 2026-07-09 AI遺影写真ページを「作成CTA＋作成済み一覧」に刷新(保存テーブル新設)
+- 指摘対応: /kanri/ai-portrait を、上部に「AI遺影写真を作成する」CTA(グラデーションヘッダー)、その下に実際に作成した遺影写真の一覧(グリッド・サムネイル・対象者名・作成日時・開くリンク)を表示するUIに刷新。0件時は空状態＋作成導線。
+- 保存基盤: migration 0026 で fk_ai_portraits(id/funeral_home_id/customer_id/deceased_name/image_url/thumb_url/source_image_url/note/created_by/created_at/deleted_at, RLS有効=service role運用)を新設。lib/kanri/ai-portraits.ts に listAiPortraits を追加。
+- AI生成本体(別プロジェクト)は後日、このテーブルへ結果を保存すれば一覧に反映される想定。作成画面(/create)は現状の仮ページのまま。
+- 検証: 空状態表示→テスト1件挿入で一覧にサムネイル/対象者名/件数表示を確認→削除。tscエラー無し。
