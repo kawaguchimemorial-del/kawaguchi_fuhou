@@ -28,7 +28,7 @@ export default async function AiPortraitPage() {
             </div>
           </div>
           <Link
-            href="/iei-photo"
+            href="/kanri/ai-portrait/new"
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-base font-bold text-[#2c8c6f] shadow-sm transition hover:bg-white/90"
           >
             <Plus size={20} /> AI遺影写真を作成する
@@ -46,7 +46,7 @@ export default async function AiPortraitPage() {
           <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-gray-200 py-14 text-center">
             <ImageIcon size={40} className="text-gray-300" />
             <p className="text-sm text-gray-500">まだ作成された遺影写真はありません。</p>
-            <Link href="/iei-photo" className="rounded-lg bg-[#2c8c6f] px-5 py-2.5 text-sm font-medium text-white">最初の遺影写真を作成する</Link>
+            <Link href="/kanri/ai-portrait/new" className="rounded-lg bg-[#2c8c6f] px-5 py-2.5 text-sm font-medium text-white">最初の遺影写真を作成する</Link>
           </div>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -62,8 +62,13 @@ export default async function AiPortraitPage() {
                 </div>
                 <div className="p-2">
                   <p className="truncate text-sm font-medium text-gray-800">{p.deceasedName || "（対象者未設定）"}</p>
+                  {p.customerName && <p className="truncate text-xs text-gray-500">顧客：{p.customerName}</p>}
                   <p className="text-xs text-gray-400">{fmt(p.createdAt)}</p>
-                  {p.imageUrl && <a href={p.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs text-[#1aa39a] underline">開く</a>}
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    {p.imageUrl && <a href={`${p.imageUrl}?download=遺影_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">基準写真DL</a>}
+                    {p.tefudaUrl && <a href={`${p.tefudaUrl}?download=遺影手札_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">手札DL</a>}
+                    {p.imageUrl && <a href={p.imageUrl} target="_blank" rel="noopener noreferrer" className="text-gray-500 underline">開く</a>}
+                  </div>
                 </div>
               </li>
             ))}

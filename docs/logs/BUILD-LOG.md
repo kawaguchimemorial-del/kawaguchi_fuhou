@@ -840,3 +840,11 @@
 ## 2026-07-09 AI遺影ツール(/iei-photo)の上部に「管理画面に戻る」導線を追加
 - 指摘対応: /iei-photo に管理画面へ戻る手段が無かった。ヘッダー左端(タイトルの前)に「← 管理画面に戻る」(モバイルは「戻る」)リンクを追加し /kanri/ai-portrait へ遷移。Linkをimport。
 - 検証: リンク表示・文言・href(/kanri/ai-portrait)をPlaywrightで確認。tscエラー無し。
+
+## 2026-07-09 AI遺影(Phase1): 事前登録(顧客/対象者)→紐付け保存(手札含む)→一覧に顧客名/ダウンロード
+- 事前登録ページ /kanri/ai-portrait/new: 顧客ピッカー(検索)＋対象者名を入力→/iei-photo?customer_id&customer_name&deceased へ。一覧「作成する」CTAはここへ接続。
+- /iei-photo: クエリから顧客/対象者を受け取りヘッダーに「○○様の遺影を作成中（顧客：△△）」を表示(useEffectで取得)。保存時に基準写真＋手札(tesatsu)の2枚を書き出し、customer_id/deceased_name付きで /api/iei-photo/save へ。対象者名は事前登録があればpromptを省略。
+- 保存API刷新: baseDataUrl＋tefudaDataUrl＋customerId/deceasedNameを受理。両画像をStorageへ、image_url/tefuda_urlとcustomer_idをfk_ai_portraitsに登録。
+- migration 0027: tefuda_url列。0028: customer_id→fk_customers外部キー(顧客名エンベッド用)。lib/kanri/ai-portraits: customerName結合＋findAiPortraitByDeceased(Phase2用)追加。
+- 一覧: 顧客名表示＋「基準写真DL」「手札DL」ダウンロードリンク(Supabaseの?downloadで添付DL)＋「開く」。
+- 検証: 登録→param付き遷移→バナー表示、保存API(base+tefuda+customer)成功、一覧に顧客名(岩崎 利仁)/DLリンク表示をPlaywright/curlで確認後、テストデータ全削除(残0)。tscエラー無し。

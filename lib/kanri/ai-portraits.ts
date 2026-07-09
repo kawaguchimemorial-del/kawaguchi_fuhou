@@ -4,8 +4,11 @@ import { KANRI_HOME_ID } from "./constants";
 
 export interface AiPortrait {
   id: string;
+  customerId?: string;
+  customerName?: string;
   deceasedName?: string;
   imageUrl?: string;
+  tefudaUrl?: string;
   thumbUrl?: string;
   sourceImageUrl?: string;
   note?: string;
@@ -23,12 +26,30 @@ function db(): { from: (t: string) => any } | null {
 export async function listAiPortraits(): Promise<AiPortrait[]> {
   const c = db();
   if (!c) return [];
-  const { data } = await c.from("fk_ai_portraits").select("*").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("created_at", { ascending: false }).limit(500);
+  const { data } = await c.from("fk_ai_portraits").select("*,fk_customers(last_name,first_name)").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("created_at", { ascending: false }).limit(500);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((r) => ({
-    id: r.id, deceasedName: r.deceased_name ?? undefined,
-    imageUrl: r.image_url ?? undefined, thumbUrl: r.thumb_url ?? undefined,
+  return ((data ?? []) as any[]).map(mapRow);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapRow(r: any): AiPortrait {
+  return {
+    id: r.id, customerId: r.customer_id ?? undefined,
+    customerName: r.fk_customers ? `${r.fk_customers.last_name ?? ""} ${r.fk_customers.first_name ?? ""}`.trim() : undefined,
+    deceasedName: r.deceased_name ?? undefined,
+    imageUrl: r.image_url ?? undefined, tefudaUrl: r.tefuda_url ?? undefined, thumbUrl: r.thumb_url ?? undefined,
     sourceImageUrl: r.source_image_url ?? undefined, note: r.note ?? undefined,
     createdBy: r.created_by ?? undefined, createdAt: r.created_at,
-  }));
+  };
+}
+
+// 対象者名に一致する最新のAI遺影(手札あり)を返す。祭壇への反映に使用。
+export async function findAiPortraitByDeceased(deceasedName: string): Promise<AiPortrait | null> {
+  const c = db();
+  if (!c || !deceasedName.trim()) return null;
+  const norm = deceasedName.replace(/[\s　]/g, "");
+  const { data } = await c.from("fk_ai_portraits").select("*,fk_customers(last_name,first_name)").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("created_at", { ascending: false }).limit(500);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = ((data ?? []) as any[]).map(mapRow);
+  return rows.find((p) => (p.deceasedName ?? "").replace(/[\s　]/g, "") === norm) ?? null;
 }

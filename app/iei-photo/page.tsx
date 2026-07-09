@@ -213,6 +213,16 @@ export default function IeiPhotoPage() {
     IEI_PHOTO_DEFAULT_ADJUSTMENTS,
   );
   const [autoCorrect, setAutoCorrect] = useState<boolean>(false);
+  // 事前登録(顧客/対象者)コンテキスト。/kanri/ai-portrait/new から渡される。
+  const [portraitCtx, setPortraitCtx] = useState<{ customerId?: string; customerName?: string; deceased?: string }>({});
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    setPortraitCtx({
+      customerId: sp.get("customer_id") || undefined,
+      customerName: sp.get("customer_name") || undefined,
+      deceased: sp.get("deceased") || undefined,
+    });
+  }, []);
   const [previewKind, setPreviewKind] = useState<IeiPhotoExportKind>("base");
   const [showGuides, setShowGuides] = useState<boolean>(true);
   const [background, setBackground] = useState<IeiPhotoBackgroundSettings>(
@@ -984,34 +994,41 @@ export default function IeiPhotoPage() {
       setError("保存できる基準写真がありません。写真をアップロードしてください。");
       return;
     }
-    const name = typeof window !== "undefined" ? window.prompt("対象者（故人）名を入力してください（任意）", "") : "";
-    if (name === null) return; // キャンセル
+    // 対象者名は事前登録があればそれを使い、無ければ入力を促す。
+    let name = portraitCtx.deceased ?? "";
+    if (!name) {
+      const input = typeof window !== "undefined" ? window.prompt("対象者（故人）名を入力してください（任意）", "") : "";
+      if (input === null) return; // キャンセル
+      name = input;
+    }
     setExporting(true);
     setError(null);
     try {
-      const blob = wideSource
-        ? await exportFromWideMasterByKind(wideSource, computeEffective(adjustments), "base")
-        : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
-      const dataUrl: string = await new Promise((resolve, reject) => {
+      const adj = computeEffective(adjustments);
+      const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
         const r = new FileReader();
         r.onload = () => resolve(String(r.result));
         r.onerror = () => reject(new Error("画像の変換に失敗しました。"));
         r.readAsDataURL(blob);
       });
+      // 基準写真＋手札(オンライン式場の祭壇遺影に使用)を書き出す
+      const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
+      const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu");
+      const [baseDataUrl, tefudaDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob)]);
       const res = await fetch("/api/iei-photo/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dataUrl, deceasedName: name }),
+        body: JSON.stringify({ baseDataUrl, tefudaDataUrl, deceasedName: name, customerId: portraitCtx.customerId }),
       });
       const d = await res.json().catch(() => ({ ok: false, error: "応答が不正です" }));
-      if (d.ok) setInfo("遺影を一覧に保存しました。管理画面の「AI遺影写真」で確認できます。");
+      if (d.ok) setInfo("遺影を一覧に保存しました。管理画面の「AI遺影写真」で確認・ダウンロードできます。");
       else setError(d.error || "保存に失敗しました。");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました。");
     } finally {
       setExporting(false);
     }
-  }, [adjustments, computeEffective, getWideMasterSource]);
+  }, [adjustments, computeEffective, getWideMasterSource, portraitCtx]);
 
   const handleAdvancedAi = useCallback(() => {
     void runAiImage("advanced");
@@ -1232,9 +1249,17 @@ export default function IeiPhotoPage() {
               <span className="hidden sm:inline">管理画面に戻る</span>
               <span className="sm:hidden">戻る</span>
             </Link>
-            <h1 className="truncate text-lg font-bold text-slate-800 sm:text-xl">
-              メモリアルフォトサポート
-            </h1>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold text-slate-800 sm:text-xl">
+                メモリアルフォトサポート
+              </h1>
+              {(portraitCtx.deceased || portraitCtx.customerName) && (
+                <p className="truncate text-xs text-slate-500">
+                  {portraitCtx.deceased ? `${portraitCtx.deceased} 様の遺影を作成中` : ""}
+                  {portraitCtx.customerName ? `（顧客：${portraitCtx.customerName}）` : ""}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
