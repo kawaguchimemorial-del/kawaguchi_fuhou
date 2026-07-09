@@ -26,7 +26,7 @@ import type {
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-const DEFAULT_TEXT_MODEL = "gpt-5.5";
+const DEFAULT_TEXT_MODEL = "claude-opus-4-8";
 const GENERIC_FAIL =
   "オリジナル会葬礼状のAI再生成に失敗しました。現在の本文はそのまま編集・利用できます。";
 
@@ -40,14 +40,14 @@ function errorResponse(
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return errorResponse(
-      "OPENAI_API_KEY が未設定です。サーバーの環境変数に OpenAI APIキーを設定してください。現在の礼状本文はそのまま編集・利用できます。",
+      "ANTHROPIC_API_KEY が未設定です。サーバーの環境変数に Claude APIキーを設定してください。現在の礼状本文はそのまま編集・利用できます。",
       503,
     );
   }
-  const model = process.env.OPENAI_TEXT_MODEL || DEFAULT_TEXT_MODEL;
+  const model = process.env.ANTHROPIC_MODEL || DEFAULT_TEXT_MODEL;
 
   let payload: unknown;
   try {
@@ -87,21 +87,21 @@ export async function POST(request: Request): Promise<Response> {
     );
     if (result.status === 401) {
       return errorResponse(
-        "OpenAI の認証に失敗しました。OPENAI_API_KEY を確認してください。",
+        "Claude の認証に失敗しました。ANTHROPIC_API_KEY を確認してください。",
         502,
         GENERIC_FAIL,
       );
     }
     if (result.status === 429) {
       return errorResponse(
-        "OpenAI の利用上限またはレート制限に達しました。時間をおいて再試行してください。",
+        "Claude の利用上限またはレート制限に達しました。時間をおいて再試行してください。",
         502,
         GENERIC_FAIL,
       );
     }
     if (result.status === 404 || result.status === 400) {
       return errorResponse(
-        `テキストモデルの呼び出しに失敗しました（HTTP ${result.status}）。OPENAI_TEXT_MODEL（現在: ${model}）が正しいかご確認ください。`,
+        `テキストモデルの呼び出しに失敗しました（HTTP ${result.status}）。ANTHROPIC_MODEL（現在: ${/^sk-ant/.test(model) ? "※不正な値（APIキーが設定されています）" : model}）が正しいかご確認ください。`,
         502,
         GENERIC_FAIL,
       );

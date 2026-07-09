@@ -890,3 +890,13 @@
 - /admin ヘッダー右に「葬儀管理へ」ボタン(→/kanri)を追加。
 - /kanri トップバー右に「訃報案内へ」ボタン(→/admin, Megaphoneアイコン)を追加。
 - 検証: 両ページで相互リンク表示をcurl確認。tscエラー無し。
+
+## 2026-07-09 司会台本・会葬礼状のAI生成を OpenAI gpt-5.5 → Claude Opus 4.8 に切替
+- `lib/funeral-script/ai.ts`: OpenAI Responses API 呼び出しを Anthropic Messages API(/v1/messages) に差し替え。
+  - fetch のまま(SDK追加なし)。headers=x-api-key/anthropic-version、body=model/max_tokens/system/messages。
+  - `thinking:{type:"adaptive"}` + `output_config:{effort:"medium"}` で品質と遅延のバランス。
+  - レスポンス抽出を content[] の type==="text" ブロック連結に変更(thinkingブロック除外)。
+- ルート2つの環境変数を切替: `OPENAI_API_KEY`→`ANTHROPIC_API_KEY`、`OPENAI_TEXT_MODEL`→`ANTHROPIC_MODEL`。既定モデル gpt-5.5→claude-opus-4-8。
+  - `app/api/funeral-script/generate-narration/route.ts`、`.../generate-original-letter/route.ts`
+  - エラーメッセージ文言も Claude 用に更新。
+- Vercel環境変数に ANTHROPIC_API_KEY / ANTHROPIC_MODEL を設定済み(ユーザー作業)。tsc クリーン。
