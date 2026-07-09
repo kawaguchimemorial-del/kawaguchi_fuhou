@@ -828,3 +828,11 @@
 - 導線: /kanri/ai-portrait の「AI遺影写真を作成する」CTA・空状態ボタンを /iei-photo に接続(旧 /create スタブから変更)。
 - 検証: /iei-photo が200・コンパイルエラー無・ファイル入力/写真選択UI表示、create-job APIが200、ai-portraitからCTAで遷移をPlaywrightで確認。tscエラー無し。
 - ※本番でAI生成するには Vercel環境変数 OPENAI_API_KEY(必須)/OPENAI_IMAGE_MODEL(任意)。背景除去を使う場合のみワーカー(RunPod等)とIEI_PHOTO_WORKER_URLが必要。作成結果を一覧(fk_ai_portraits)へ保存する連携は今後。
+
+## 2026-07-09 AI遺影ツールの作成結果を一覧(fk_ai_portraits)へ保存する連携を実装
+- Supabase Storage に公開バケット ai-portraits を作成(service roleで作成)。
+- API新設 app/api/iei-photo/save: dataURL(png/jpeg/webp)を検証→ai-portraitsへアップロード→公開URLをfk_ai_portraitsにinsert(deceased_name/created_by任意)。未設定・不正データはエラー返却、15MB上限。
+- iei-photoツール(page.tsx)に「遺影として保存」ボタン(PCヘッダー)＋モバイル下部バー「一覧へ」を追加。基準写真blobをdataURL化し/api/iei-photo/saveへPOST。対象者名はpromptで任意入力。
+- これで /iei-photo で作成→保存すると /kanri/ai-portrait の一覧に自動表示。
+- 検証: 保存APIにテスト画像POST→ok(アップロード＋登録＋公開URL)、一覧に画像表示を確認後テストデータ(DB行＋Storage)削除。ボタン表示・tscエラー無しを確認。
+  ※curlでの日本語名は文字化けしたがシェルのエンコード起因。ブラウザのprompt→fetchはUTF-8で正常。

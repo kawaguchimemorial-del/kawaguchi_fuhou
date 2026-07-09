@@ -975,6 +975,43 @@ export default function IeiPhotoPage() {
     }
   }, [adjustments, computeEffective, getWideMasterSource]);
 
+  /** 作成した遺影を一覧(/kanri/ai-portrait)へ保存する。基準写真をサーバーへアップロードして登録。 */
+  const handleSaveToList = useCallback(async () => {
+    const wideSource = getWideMasterSource();
+    const base = baseCanvasRef.current;
+    if (!base && !wideSource) {
+      setError("保存できる基準写真がありません。写真をアップロードしてください。");
+      return;
+    }
+    const name = typeof window !== "undefined" ? window.prompt("対象者（故人）名を入力してください（任意）", "") : "";
+    if (name === null) return; // キャンセル
+    setExporting(true);
+    setError(null);
+    try {
+      const blob = wideSource
+        ? await exportFromWideMasterByKind(wideSource, computeEffective(adjustments), "base")
+        : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("画像の変換に失敗しました。"));
+        r.readAsDataURL(blob);
+      });
+      const res = await fetch("/api/iei-photo/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl, deceasedName: name }),
+      });
+      const d = await res.json().catch(() => ({ ok: false, error: "応答が不正です" }));
+      if (d.ok) setInfo("遺影を一覧に保存しました。管理画面の「AI遺影写真」で確認できます。");
+      else setError(d.error || "保存に失敗しました。");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存に失敗しました。");
+    } finally {
+      setExporting(false);
+    }
+  }, [adjustments, computeEffective, getWideMasterSource]);
+
   const handleAdvancedAi = useCallback(() => {
     void runAiImage("advanced");
   }, [runAiImage]);
@@ -1215,6 +1252,15 @@ export default function IeiPhotoPage() {
             >
               <IconExport />
               基準写真
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSaveToList()}
+              disabled={!canExport}
+              className="hidden items-center gap-1.5 rounded-lg bg-[#2c8c6f] px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-[#256f59] disabled:opacity-40 sm:flex"
+            >
+              <IconSave />
+              遺影として保存
             </button>
           </div>
         </header>
@@ -1756,6 +1802,15 @@ export default function IeiPhotoPage() {
           >
             <IconExport />
             {exporting ? "保存中…" : "この写真を保存"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSaveToList()}
+            disabled={!canExport}
+            className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#2c8c6f] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#256f59] disabled:opacity-40"
+          >
+            <IconSave />
+            一覧へ
           </button>
           <button
             type="button"
