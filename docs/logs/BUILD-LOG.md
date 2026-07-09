@@ -820,3 +820,11 @@
 - 保存基盤: migration 0026 で fk_ai_portraits(id/funeral_home_id/customer_id/deceased_name/image_url/thumb_url/source_image_url/note/created_by/created_at/deleted_at, RLS有効=service role運用)を新設。lib/kanri/ai-portraits.ts に listAiPortraits を追加。
 - AI生成本体(別プロジェクト)は後日、このテーブルへ結果を保存すれば一覧に反映される想定。作成画面(/create)は現状の仮ページのまま。
 - 検証: 空状態表示→テスト1件挿入で一覧にサムネイル/対象者名/件数表示を確認→削除。tscエラー無し。
+
+## 2026-07-09 AI遺影作成ツール(iei-photo)を別プロジェクトから移植
+- 移植元: F:\kawaguchi-altar-simulator\kawaguchi-altar-simulator\。自己完結(内部import＋fetchのみ・外部npm依存なし)。
+- 移植物: app/iei-photo/page.tsx(1813行), app/api/iei-photo/*(create-job/analyze/ai-image/status/export 5route), components/iei-photo/*(14+studio5=19), lib/iei-photo/*(14), 参考として workers/rembg-worker(背景除去用Python・別デプロイ・任意)。
+- env: OPENAI_API_KEY(既存)＋OPENAI_IMAGE_MODEL(既定gpt-image-2)を.env.localへ。背景除去ワーカーIEI_PHOTO_WORKER_URLは任意(未設定でも生成コアは動作)。AIはOpenAI Images APIをfetchで直接(SDKなし)。
+- 導線: /kanri/ai-portrait の「AI遺影写真を作成する」CTA・空状態ボタンを /iei-photo に接続(旧 /create スタブから変更)。
+- 検証: /iei-photo が200・コンパイルエラー無・ファイル入力/写真選択UI表示、create-job APIが200、ai-portraitからCTAで遷移をPlaywrightで確認。tscエラー無し。
+- ※本番でAI生成するには Vercel環境変数 OPENAI_API_KEY(必須)/OPENAI_IMAGE_MODEL(任意)。背景除去を使う場合のみワーカー(RunPod等)とIEI_PHOTO_WORKER_URLが必要。作成結果を一覧(fk_ai_portraits)へ保存する連携は今後。

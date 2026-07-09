@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+# CPU 推論バックエンド（onnxruntime）を含める。これが無いと初回推論で
+# "No onnxruntime backend found" になる。GPU 依存は入れない（CPU worker 前提）。
+rembg[cpu]
+pillow
+# RunPod Serverless モード（runpod_handler.py）で使用。
+# FastAPI モードでは未使用だが、両モードを1つの依存定義で扱うため含める。CPU前提。
+runpod
