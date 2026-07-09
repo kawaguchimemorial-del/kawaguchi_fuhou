@@ -113,5 +113,6 @@ export function buildOriginalLetterPrompt(params: {
     "# 出力形式（厳守）",
     "- 必ず次の JSON オブジェクトのみを出力する（前後に説明文やコードフェンスを付けない）。",
     `- 形式: {"sections":[{"id":"${ORIGINAL_LETTER_ID}","body":"<本文>"}]}`,
+    "- 改行はそのまま改行として入れる（\\n という文字列を本文に書かない）。",
   ].join("\n");
 }

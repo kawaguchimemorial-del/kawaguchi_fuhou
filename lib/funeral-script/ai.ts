@@ -65,7 +65,9 @@ function parseDrafts(text: string): NarrationDraft[] | null {
     const id = (s as { id?: unknown }).id;
     const body = (s as { body?: unknown }).body;
     if (typeof id === "string" && typeof body === "string") {
-      drafts.push({ id, body });
+      // モデルが実改行でなくリテラルの "\n"/"\r\n" を書く場合があるため実改行へ正規化。
+      const normalized = body.replace(/\\r\\n|\\r|\\n/g, "\n");
+      drafts.push({ id, body: normalized });
     }
   }
   return drafts;
