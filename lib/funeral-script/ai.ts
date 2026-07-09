@@ -8,8 +8,8 @@
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
-// 思考＋本文（最丁寧×複数セクション）で時間がかかるため余裕を持たせる。
-const ANTHROPIC_FETCH_TIMEOUT_MS = 110_000;
+// 思考＋本文（高effort×複数セクション）で時間がかかるため余裕を持たせる。
+const ANTHROPIC_FETCH_TIMEOUT_MS = 150_000;
 // 思考トークン＋本文で枠を使い切らないよう十分に確保。
 const MAX_OUTPUT_TOKENS = 8000;
 
@@ -90,7 +90,7 @@ export async function generateNarrations(params: {
     max_tokens: MAX_OUTPUT_TOKENS,
     system: instructions ?? SYSTEM_INSTRUCTIONS,
     thinking: { type: "adaptive" },
-    output_config: { effort: "medium" },
+    output_config: { effort: "high" },
     messages: [{ role: "user", content: prompt }],
   };
 

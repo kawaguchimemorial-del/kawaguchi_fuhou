@@ -149,19 +149,32 @@ function sectionRoleGuide(section: FuneralScriptSection): {
 } {
   const t = section.title;
   if (t.includes("メイン")) {
-    return { kindLabel: "メインナレーション", structure: guide.mainNarrationStructure.slice() };
+    return {
+      kindLabel: "メインナレーション（芯の一挿話）",
+      structure: [
+        "役割: この方が“どういう人だったか”を、一つの挿話を軸に立ち上げる。経歴の紹介ではない。",
+        ...guide.mainNarrationStructure,
+      ],
+    };
   }
   if (t.includes("閉式")) {
     return {
       kindLabel: "閉式前ナレーション・閉式（閉式の辞を含む）",
       structure: [
+        "役割: 故人本人の紹介を繰り返さず、遺された家族がこれから何を受け取って生きていくか、へ静かに視点を移す。",
         ...guide.closingNarrationStructure,
         "結びのナレーションのあと、最後は必ず閉式の宣言で締める（下記の閉式の言葉を下敷きにする）",
       ],
     };
   }
   if (t.includes("開式")) {
-    return { kindLabel: "開式ナレーション", structure: guide.openingNarrationStructure.slice() };
+    return {
+      kindLabel: "開式ナレーション（人物像の導入）",
+      structure: [
+        "役割: この方が“どういう人だったか”が一場面で伝わる導入にする。経歴紹介にはしない。",
+        ...guide.openingNarrationStructure,
+      ],
+    };
   }
   // 将来の細分セクション（遺影写真紹介・人柄紹介 等）への汎用フォールバック
   return {
@@ -256,6 +269,10 @@ export function buildFuneralNarrationPrompt(params: {
     ...guide.portraitMentionTips,
   ];
 
+  rules.push(
+    "『かけがえのない』『安らかに』などの結び言葉は、使ってよいが同一台本内で反復しない。閉式前と結びで同じ着地語を繰り返さない。",
+  );
+
   if (hasBothDays) {
     rules.push(
       "通夜と告別式のナレーションは、同じ素材を扱っても内容・構成・言い回しを必ず変える。通夜は『お別れのはじまり・弔問への謝意』、告別式は『最後のお別れ・出立への展開と結び』と役割を分け、同じ文章の使い回しや同一エピソードの単純な再掲はしない。告別式は通夜を受けて一歩深める。",
@@ -280,8 +297,17 @@ export function buildFuneralNarrationPrompt(params: {
     `- 文体（tone）: ${toneStyleInstructions[form.tone]}`,
     `- 長さ（length）: ${lengthStyleInstructions[form.length]}`,
     "",
+    "# 生成前の内部整理（本文には出力しない）",
+    "- まず素材から『この人を一言で言えば何か』という中心像を一つ内部で決める。",
+    "- 中心像は本文に見出しやラベルとして書かず、全セクションの底に一貫して流す。",
+    "- 与えられた故人情報は“紹介する項目”ではなく“情景を描くための素材”として扱う。箇条書きの順番どおりに並べず、芯の一挿話に他を従わせる。",
+    "",
     "# 生成対象セクション（この id 以外は作らない／進行案内は作らない）",
     ...targetBlocks,
+    "",
+    "# 分量の目安（字数ノルマは課さない）",
+    "- 開式ナレーション: 3〜5文程度。メインナレーション: 素材が十分なら6〜10文、薄ければ短く。閉式前: 3〜4文程度。",
+    "- 一文は司会者が読み上げやすい長さに区切り、改行（\\n）で息継ぎを入れる。",
     "",
     "# 故人情報（この内容だけを使う。書かれていない事実・逸話・続柄・年号を創作しない）",
     hasInfo

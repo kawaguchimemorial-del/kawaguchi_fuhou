@@ -24,7 +24,7 @@ import type {
 } from "@/lib/funeral-script/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const DEFAULT_TEXT_MODEL = "claude-opus-4-8";
 const GENERIC_FAIL =

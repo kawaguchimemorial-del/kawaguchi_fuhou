@@ -30,9 +30,7 @@ function formLines(form: FuneralScriptFormData): string[] {
     line("人柄", form.personality),
     line("喪主名", form.letterSenderName || form.chiefMournerName),
     line("礼状の続柄表記", form.letterDeceasedRelationLabel),
-    line("礼状の見出し・タイトル案", form.letterTitle),
-    line("必ず伝えたいこと", form.letterMainMessage),
-    line("口癖・好きだった言葉", form.letterMemorableWords),
+    line("口癖・好きだった言葉（任意ヒント）", form.letterMemorableWords),
     line("礼状日付", form.letterDate),
     line("差出人住所", form.letterSenderAddress),
     line("喪主・家族からの修正指示", form.letterFamilyInstructions),
@@ -50,18 +48,32 @@ export function buildOriginalLetterPrompt(params: {
   const { form, currentLetter } = params;
   const info = formLines(form);
   const current = currentLetter?.body?.trim();
-  const relation = form.letterDeceasedRelationLabel?.trim() || "故";
-  const subject = form.deceasedName?.trim()
-    ? `${relation} ${form.deceasedName.trim()} 儀`
-    : "故人様";
+  const centralMessage = form.letterMainMessage?.trim();
 
   return [
     "会葬者へ渡す「オリジナル会葬礼状」の本文だけを作成してください。",
-    "本文はアプリ側で差出人・日付・住所と組み合わせて印刷会社へ渡します。本文内に日付・住所・喪主名・親族一同は入れないでください。",
+    "本文はアプリ側で差出人・日付・住所と組み合わせて印刷会社へ渡します。本文内に日付・住所・喪主名・親族一同・『本日は〜葬儀に際し』等の定型頭は入れないでください。",
     "",
     buildOriginalLetterSkillPrompt(),
     "",
-    "# 入力情報",
+    "# 書き手と視点",
+    "- 書き手は『遺族一同』。会葬者（あなた方）への御礼と、故人への追想の二層で書く。",
+    "- 二層の宛先を混在させない。御礼の相手は会葬者、追想の対象は故人、と視点を明確に保つ。",
+    "- 見出しも本文も、遺族に代わってAIが情景から立ち上げる。喪主に見出しや文面を考えさせない前提で書く。",
+    "",
+    centralMessage
+      ? [
+          "# 中心メッセージ（遺族が最も残したい一点・最優先）",
+          `- ${centralMessage}`,
+          "- これを礼状全体の芯にする。ただし文言をそのまま貼り付けず、家族の記憶にある一場面（核挿話）を通して情景として立ち上げる。",
+          "",
+        ].join("\n")
+      : [
+          "# 中心メッセージ",
+          "- 明示指定はありません。入力素材から、遺族が最も残したいであろう一点を一つに定め、それを芯に据えて書く。",
+          "",
+        ].join("\n"),
+    "# 入力情報（“紹介する項目”ではなく情景を描く素材として扱う。順番どおりに並べない）",
     info.length > 0 ? info.join("\n") : "- 入力情報は少なめです",
     "",
     "# 現在の本文",
@@ -79,12 +91,13 @@ export function buildOriginalLetterPrompt(params: {
     "- 司会者目線ではなく、喪主・親族側からの礼状として書く",
     "- 『ご家族より伺いました』『だそうです』『在りし日のお姿』などの第三者表現・ナレーション表現は使わない",
     "",
-    "# 会葬礼状の構成",
-    "- 1行目: 見出し。入力に見出し案があれば優先し、なければ取材素材から短く作る",
-    `- 2行目: 「本日は ${subject} 葬儀に際し」など、会葬・弔意への御礼を短く述べる`,
-    "- 中盤前半: 家族目線で生活の一場面を書く。故人を外から紹介せず、家族が何を受け取ったかを書く",
-    "- 中盤後半: 必ず伝えたいこと、口癖・好きだった言葉、喪主の修正指示を優先して反映する",
-    "- 終盤: 会葬者からの言葉に支えられていること、生前の厚情への感謝、書中での御礼で結ぶ",
+    "# 会葬礼状の構成（核挿話に他要素を従属させる）",
+    "- 起点: 家族の記憶にある一場面から入る。故人を外から紹介せず、家族が何を受け取ったかを描く。",
+    "- 反復した日常: その場面と地続きの、繰り返された習慣・口癖・所作を一つ二つ重ねる。",
+    "- 結び: 会葬者の弔意と生前の厚情への感謝で静かに閉じる。",
+    "- 見出し（1行目）は、上記の核挿話から遺族が最も残したい一点（中心メッセージ）を一言に凝縮してAIが作る。ラベルや説明調にしない。",
+    "- 仕事・趣味・活動・功労・学歴は、核挿話を支える範囲でのみ触れ、独立した紹介や年表にしない。",
+    "- 口癖・好きだった言葉の入力があれば、本文中に一度だけ、前後に間をとって自然に置く。無ければ触れない。反復しない。",
     "",
     "# 厳守ルール",
     "- 入力にない事実、職業、続柄、場所、病名、年齢、宗教表現を創作しない",

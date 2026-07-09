@@ -21,7 +21,7 @@ import type {
 
 export const runtime = "nodejs";
 // 推論モデル（gpt-5 系）は本文生成に時間がかかるため、関数の上限を延長する。
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const DEFAULT_TEXT_MODEL = "claude-opus-4-8";
 const MAX_BODY_CHARS = 1200;

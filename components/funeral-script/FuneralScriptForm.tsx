@@ -433,24 +433,19 @@ export default function FuneralScriptForm({
               placeholder="空欄なら喪主名を使用"
             />
             <div className="sm:col-span-2">
-              <TextField
-                label="礼状の見出し・タイトル案"
-                value={form.letterTitle}
-                onChange={(v) => onChange({ letterTitle: v })}
-                placeholder="例：ありがとう　いつも家族を見守ってくれた父へ"
-              />
-            </div>
-            <div className="sm:col-span-2">
               <TextAreaField
-                label="必ず伝えたいこと"
+                label="この方について、いちばん残したい一言（中心メッセージ）"
                 value={form.letterMainMessage}
                 onChange={(v) => onChange({ letterMainMessage: v })}
-                placeholder="例：家族のために休まず働いてくれたことへの感謝を中心にしたい"
+                placeholder="例：家族のために休まず働いてくれたことへの感謝を伝えたい"
               />
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                見出しや文章はAIが情景として書き起こします。ここは「一番伝えたい想い」だけで大丈夫です（空欄でも素材から作成します）。
+              </p>
             </div>
             <div className="sm:col-span-2">
               <TextAreaField
-                label="口癖・好きだった言葉・印象的な一言"
+                label="口癖・好きだった言葉・印象的な一言（任意）"
                 value={form.letterMemorableWords}
                 onChange={(v) => onChange({ letterMemorableWords: v })}
                 placeholder="例：大丈夫だよ / ありがとう / 家族が一番"
