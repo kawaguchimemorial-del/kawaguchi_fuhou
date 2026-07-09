@@ -865,3 +865,12 @@
 - 祭壇反映(applyAiPortrait): g("estimateId")でfor-estimate(一意)を第一に照合→無ければfor-deceased(名前)にフォールバック。findAiPortraitByEstimate/for-estimate API新設。
 - 一覧に「施行未紐付け」バッジ。
 - 検証: 同姓同名「山田 太郎」の父見積/母見積に別々のAI遺影を作成→for-estimateがestimate_idごとに正しく別画像(父_tefuda/母_tefuda)を返すことを確認。tscエラー無し。テストデータ削除。
+
+## 2026-07-09 AI遺影の保存動線を一本化(保存＝PC＋サーバー＋一覧を同時)＋一覧に葬儀日表示(6人パネル)
+- 事象/原因: 利用者が「PC保存」ボタンを押しても一覧(fk_ai_portraits)は0件のまま(端末保存とシステム保存が別ボタンで混同)。誰の遺影か分からない。
+- ユーザー指示＋6人パネル統合案で実装:
+  - 保存を一本化: /iei-photoの主ボタン「保存（PC＋一覧）」を押すと、サーバー保存(一覧登録)＋端末ダウンロードを同時実行(handleSaveToListにsaveImageToDevice追加)。端末専用ボタンは「端末にDL/基準写真DL/4サイズDL」に改名し二次化(“保存”の多義を排除)。
+  - 対象者名を必須化: フロント(promptで必須)＋保存APIで trim後空は400 reject(身元不明行の防波堤)。
+  - 冪等化: 同一施行(estimate_id)の既存遺影があればupdate(1施行1遺影・二度押し/PC+一覧同時でも重複しない)。施行無しは常に新規。
+  - 一覧に葬儀日: fk_estimates(funeral_at/wake_at)をFK経由でjoinしAiPortrait.funeralAtを導出(告別式優先・通夜フォールバックは「（通夜）」併記・無ければ未定)。カードに 画像/対象者名/顧客名/葬儀日 を表示。マイグレーション無し。
+- 検証: 対象者名なし→400、同一estimateの2回保存→update(id同一・重複なし)、一覧に葬儀日2026/07/20表示、fk_estimates埋め込みjoin動作をcurl/DBで確認後テストデータ削除。tscエラー無し。

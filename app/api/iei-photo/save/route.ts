@@ -29,6 +29,9 @@ export async function POST(req: Request) {
   // 後方互換: dataUrl 単体でも受ける
   const baseData = body.baseDataUrl || body.dataUrl;
   if (!baseData) return Response.json({ ok: false, error: "画像データがありません。" }, { status: 400 });
+  // 身元不明行の最終防波堤: 対象者名は必須
+  const deceasedName = body.deceasedName?.trim();
+  if (!deceasedName) return Response.json({ ok: false, error: "対象者（故人）名が必要です。" }, { status: 400 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = createAdminClient() as any;
@@ -40,16 +43,25 @@ export async function POST(req: Request) {
     if (!t.error) tefudaUrl = t.url; // 手札は失敗しても本体は保存する
   }
 
-  const { data, error } = await c.from("fk_ai_portraits").insert({
+  const row = {
     funeral_home_id: KANRI_HOME_ID,
     customer_id: body.customerId || null,
     estimate_id: body.estimateId || null,
-    deceased_name: body.deceasedName?.trim() || null,
+    deceased_name: deceasedName,
     image_url: base.url,
     tefuda_url: tefudaUrl || null,
     created_by: body.createdBy?.trim() || null,
-  }).select("id").single();
+  };
+  // 冪等: 同一施行(見積)の既存遺影があれば更新(1施行1遺影・二度押し防止)。施行無しは常に新規。
+  if (body.estimateId) {
+    const { data: ex } = await c.from("fk_ai_portraits").select("id").eq("funeral_home_id", KANRI_HOME_ID).eq("estimate_id", body.estimateId).is("deleted_at", null).order("created_at", { ascending: false }).limit(1);
+    if (ex && ex[0]) {
+      const { error } = await c.from("fk_ai_portraits").update(row).eq("id", ex[0].id);
+      if (error) return Response.json({ ok: false, error: `更新に失敗しました：${error.message}` }, { status: 500 });
+      return Response.json({ ok: true, id: ex[0].id, url: base.url, updated: true });
+    }
+  }
+  const { data, error } = await c.from("fk_ai_portraits").insert(row).select("id").single();
   if (error) return Response.json({ ok: false, error: `登録に失敗しました：${error.message}` }, { status: 500 });
-
   return Response.json({ ok: true, id: data.id, url: base.url });
 }

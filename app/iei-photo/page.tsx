@@ -995,12 +995,13 @@ export default function IeiPhotoPage() {
       setError("保存できる基準写真がありません。写真をアップロードしてください。");
       return;
     }
-    // 対象者名は事前登録があればそれを使い、無ければ入力を促す。
-    let name = portraitCtx.deceased ?? "";
+    // 対象者名は事前登録があればそれを使い、無ければ入力を促す（必須）。
+    let name = (portraitCtx.deceased ?? "").trim();
     if (!name) {
-      const input = typeof window !== "undefined" ? window.prompt("対象者（故人）名を入力してください（任意）", "") : "";
+      const input = typeof window !== "undefined" ? window.prompt("対象者（故人）名を入力してください（必須）", "") : "";
       if (input === null) return; // キャンセル
-      name = input;
+      name = input.trim();
+      if (!name) { setError("対象者（故人）名を入力してください。"); return; }
     }
     setExporting(true);
     setError(null);
@@ -1016,14 +1017,18 @@ export default function IeiPhotoPage() {
       const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
       const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu");
       const [baseDataUrl, tefudaDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob)]);
+      // 1) サーバー(一覧)へ保存
       const res = await fetch("/api/iei-photo/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ baseDataUrl, tefudaDataUrl, deceasedName: name, customerId: portraitCtx.customerId, estimateId: portraitCtx.estimateId }),
       });
       const d = await res.json().catch(() => ({ ok: false, error: "応答が不正です" }));
-      if (d.ok) setInfo("遺影を一覧に保存しました。管理画面の「AI遺影写真」で確認・ダウンロードできます。");
-      else setError(d.error || "保存に失敗しました。");
+      if (!d.ok) { setError(d.error || "保存に失敗しました。"); return; }
+      // 2) 同時に端末(PC)へもダウンロード
+      let downloaded = false;
+      try { await saveImageToDevice(baseBlob, filenameForKind("base")); downloaded = true; } catch { /* DL失敗でも保存は成立 */ }
+      setInfo(`${name} 様の遺影を一覧に保存しました${downloaded ? "（端末にもダウンロードしました）" : ""}。管理画面の「AI遺影写真」で確認できます。`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました。");
     } finally {
@@ -1279,7 +1284,7 @@ export default function IeiPhotoPage() {
               className="hidden items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-100 disabled:opacity-40 sm:flex"
             >
               <IconSave />
-              <span className="hidden sm:inline">4サイズ保存</span>
+              <span className="hidden sm:inline">4サイズDL</span>
             </button>
             <button
               type="button"
@@ -1288,7 +1293,7 @@ export default function IeiPhotoPage() {
               className="hidden items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-40 sm:flex"
             >
               <IconExport />
-              基準写真
+              基準写真DL
             </button>
             <button
               type="button"
@@ -1297,7 +1302,7 @@ export default function IeiPhotoPage() {
               className="hidden items-center gap-1.5 rounded-lg bg-[#2c8c6f] px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-[#256f59] disabled:opacity-40 sm:flex"
             >
               <IconSave />
-              遺影として保存
+              保存（PC＋一覧）
             </button>
           </div>
         </header>
@@ -1838,16 +1843,16 @@ export default function IeiPhotoPage() {
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-40"
           >
             <IconExport />
-            {exporting ? "保存中…" : "この写真を保存"}
+            {exporting ? "処理中…" : "端末にDL"}
           </button>
           <button
             type="button"
             onClick={() => void handleSaveToList()}
             disabled={!canExport}
-            className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#2c8c6f] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#256f59] disabled:opacity-40"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#2c8c6f] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[#256f59] disabled:opacity-40"
           >
             <IconSave />
-            一覧へ
+            保存（PC＋一覧）
           </button>
           <button
             type="button"

@@ -11,6 +11,12 @@ function fmt(iso?: string): string {
   if (isNaN(d.getTime())) return "";
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
+function fmtDate(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export default async function AiPortraitPage() {
   const portraits = await listAiPortraits();
@@ -63,8 +69,10 @@ export default async function AiPortraitPage() {
                 <div className="p-2">
                   <p className="truncate text-sm font-medium text-gray-800">{p.deceasedName || "（対象者未設定）"}</p>
                   {p.customerName && <p className="truncate text-xs text-gray-500">顧客：{p.customerName}</p>}
-                  {!p.estimateId && <p className="text-[11px] text-amber-600">施行未紐付け</p>}
-                  <p className="text-xs text-gray-400">{fmt(p.createdAt)}</p>
+                  {p.funeralAt
+                    ? <p className="truncate text-xs text-gray-500">葬儀日：{fmtDate(p.funeralAt)}{p.funeralAtIsWake ? "（通夜）" : ""}</p>
+                    : !p.estimateId && <p className="text-[11px] text-amber-600">施行未紐付け・葬儀日未定</p>}
+                  <p className="text-[11px] text-gray-400">作成 {fmt(p.createdAt)}</p>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                     {p.imageUrl && <a href={`${p.imageUrl}?download=遺影_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">基準写真DL</a>}
                     {p.tefudaUrl && <a href={`${p.tefudaUrl}?download=遺影手札_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">手札DL</a>}
