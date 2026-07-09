@@ -425,6 +425,36 @@ function PortraitUpload({ g, set, editSlug }: { g: (k: string) => string; set: (
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [applyingAi, setApplyingAi] = useState(false);
+
+  // AI遺影写真（手札）を祭壇の遺影に反映する。対象者名で一致するAI遺影を検索。
+  async function applyAiPortrait() {
+    setError(null);
+    const name = [g("dSei"), g("dMei")].filter(Boolean).join(" ").trim();
+    if (!name) { setError("先に故人名を入力してください（AI遺影は対象者名で照合します）。"); return; }
+    setApplyingAi(true);
+    try {
+      const res = await fetch(`/api/iei-photo/for-deceased?name=${encodeURIComponent(name)}`);
+      const d = await res.json();
+      if (!d.found) { setError(`「${name}」のAI遺影写真が見つかりません。先にAI遺影写真を作成してください。`); return; }
+      const url = (d.tefudaUrl || d.imageUrl) as string | null;
+      if (!url) { setError("AI遺影写真の画像URLがありません。"); return; }
+      const finalUrl = `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`;
+      set("portraitPath", finalUrl);
+      setSaved(false);
+      if (editSlug) {
+        const sv = await savePortrait(editSlug, finalUrl);
+        if (sv.ok) setSaved(true);
+        else setError("反映の保存に失敗しました: " + (sv.error ?? ""));
+      } else {
+        setSaved(true);
+      }
+    } catch (err) {
+      setError("AI遺影の反映に失敗しました。" + (err instanceof Error ? `（${err.message}）` : ""));
+    } finally {
+      setApplyingAi(false);
+    }
+  }
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
@@ -492,10 +522,21 @@ function PortraitUpload({ g, set, editSlug }: { g: (k: string) => string; set: (
           )}
         </div>
         <div className="space-y-2">
-          <label className="inline-block cursor-pointer rounded border border-[#9b2fae] px-4 py-2 text-sm text-[#9b2fae]">
-            {uploading ? "アップロード中…" : current ? "写真を変更" : "写真を選択"}
-            <input type="file" accept="image/jpeg,image/png" onChange={onChange} disabled={uploading} className="hidden" />
-          </label>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-block cursor-pointer rounded border border-[#9b2fae] px-4 py-2 text-sm text-[#9b2fae]">
+              {uploading ? "アップロード中…" : current ? "写真を変更" : "写真を選択"}
+              <input type="file" accept="image/jpeg,image/png" onChange={onChange} disabled={uploading} className="hidden" />
+            </label>
+            <button
+              type="button"
+              onClick={applyAiPortrait}
+              disabled={applyingAi || uploading}
+              className="inline-flex items-center rounded bg-[#2c8c6f] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            >
+              {applyingAi ? "反映中…" : "AI遺影写真を反映"}
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400">「AI遺影写真を反映」は、対象者名で一致するAI遺影の手札を祭壇に設定します。</p>
           {current && (
             <button
               type="button"

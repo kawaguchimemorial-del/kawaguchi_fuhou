@@ -848,3 +848,9 @@
 - migration 0027: tefuda_url列。0028: customer_id→fk_customers外部キー(顧客名エンベッド用)。lib/kanri/ai-portraits: customerName結合＋findAiPortraitByDeceased(Phase2用)追加。
 - 一覧: 顧客名表示＋「基準写真DL」「手札DL」ダウンロードリンク(Supabaseの?downloadで添付DL)＋「開く」。
 - 検証: 登録→param付き遷移→バナー表示、保存API(base+tefuda+customer)成功、一覧に顧客名(岩崎 利仁)/DLリンク表示をPlaywright/curlで確認後、テストデータ全削除(残0)。tscエラー無し。
+
+## 2026-07-09 AI遺影(Phase2): オンライン式場の祭壇設定に「AI遺影写真を反映」ボタン
+- 祭壇設定（CeremonyWizard の PortraitUpload / オンライン式場ステップ）に「AI遺影写真を反映」ボタンを追加。対象者名(dSei+dMei)で一致するAI遺影を検索し、手札(tefuda_url／無ければ基準写真)を祭壇の遺影(portraitPath)に設定。編集中(editSlug)なら savePortrait で即時保存しオンライン式場に反映。
+- API新設 /api/iei-photo/for-deceased?name=: 対象者名で一致する最新AI遺影(手札URL)を返す(空白ゆらぎ吸収)。findAiPortraitByDeceased使用。
+- 未作成時は「該当するAI遺影写真が見つかりません。先に作成してください」を表示。
+- 検証: for-deceasedが 完全一致/空白ゆらぎ一致=found、不一致=not found を返すことをcurlで確認。tscエラー無し。
