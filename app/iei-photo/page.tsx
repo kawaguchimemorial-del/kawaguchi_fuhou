@@ -272,6 +272,7 @@ export default function IeiPhotoPage() {
 
   // 読み込み済み元画像 / 基準写真（親データ）
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const savedToListRef = useRef(false); // 端末書き出し時に一覧保存を1度だけ発火するガード
   // AI結果画像 / 脱AI処理後画像（親データの優先: deAi → ai → 元画像）
   const aiEnhancedImgRef = useRef<HTMLImageElement | null>(null);
   const deAiImgRef = useRef<HTMLImageElement | null>(null);
@@ -911,6 +912,41 @@ export default function IeiPhotoPage() {
   ]);
 
   /** 出力（調整後の基準写真を親データに各サイズを派生してダウンロード）。AI不使用・ガイド非焼き込み。 */
+  // 作成した遺影を一覧(fk_ai_portraits)へ保存する共通処理。基準写真＋手札をアップロード。
+  // 端末書き出し/一覧保存のどちらからでも呼ばれ、セッション内で重複しないよう savedToListRef でガード。
+  const saveToServer = useCallback(async (opts?: { silent?: boolean }): Promise<boolean> => {
+    const wideSource = getWideMasterSource();
+    const base = baseCanvasRef.current;
+    if (!base && !wideSource) return false;
+    let name = (portraitCtx.deceased ?? "").trim();
+    if (!name) {
+      const input = typeof window !== "undefined" ? window.prompt("この遺影は「誰の」ものですか？ 対象者（故人）名を入力してください（必須）", "") : "";
+      if (input === null) return false; // キャンセル
+      name = input.trim();
+      if (!name) { setError("対象者（故人）名が未入力のため一覧に保存できませんでした。"); return false; }
+    }
+    const adj = computeEffective(adjustments);
+    const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("画像の変換に失敗しました。"));
+      r.readAsDataURL(blob);
+    });
+    const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
+    const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu");
+    const [baseDataUrl, tefudaDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob)]);
+    const res = await fetch("/api/iei-photo/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ baseDataUrl, tefudaDataUrl, deceasedName: name, customerId: portraitCtx.customerId, estimateId: portraitCtx.estimateId }),
+    });
+    const d = await res.json().catch(() => ({ ok: false, error: "応答が不正です" }));
+    if (!d.ok) { setError(d.error || "一覧への保存に失敗しました。"); return false; }
+    savedToListRef.current = true;
+    if (!opts?.silent) setInfo(`${name} 様の遺影を一覧に保存しました。管理画面の「AI遺影写真」で確認できます。`);
+    return true;
+  }, [adjustments, computeEffective, getWideMasterSource, portraitCtx]);
+
   const handleExport = useCallback(async (kind: keyof IeiPhotoExports) => {
     const wideSource = getWideMasterSource();
     const base = baseCanvasRef.current;
@@ -930,19 +966,21 @@ export default function IeiPhotoPage() {
         : await exportFromBaseByKind(base as HTMLCanvasElement, kind);
       // モバイルは共有シート（写真アプリへ保存）、PCはダウンロード。
       const result = await saveImageToDevice(blob, filenameForKind(kind));
+      // 端末書き出しと同時に、まだ一覧未保存なら一覧へも保存する（誰の遺影か必ず残す）。
+      let listed = false;
+      if (!savedToListRef.current) { try { listed = await saveToServer({ silent: true }); } catch { /* 端末保存は成立 */ } }
       setInfo(
-        result === "shared"
-          ? "共有メニューから「画像を保存」で端末に保存できます。"
-          : result === "canceled"
-            ? "保存をキャンセルしました。"
-            : "画像をダウンロードしました。",
+        result === "canceled"
+          ? "保存をキャンセルしました。"
+          : (result === "shared" ? "共有メニューから端末に保存できます。" : "画像をダウンロードしました。")
+            + (listed ? "一覧にも保存しました。" : savedToListRef.current ? "（一覧は保存済み）" : ""),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "出力に失敗しました。");
     } finally {
       setExporting(false);
     }
-  }, [adjustments, computeEffective, getWideMasterSource]);
+  }, [adjustments, computeEffective, getWideMasterSource, saveToServer]);
 
   /**
    * すべての出力サイズを1つの ZIP にまとめてダウンロードする。
@@ -973,21 +1011,25 @@ export default function IeiPhotoPage() {
           : await exportAllZipFromBase(base as HTMLCanvasElement);
         downloadBlob(zip, "iei-photos.zip");
       });
+      // 一括書き出しと同時に、まだ一覧未保存なら一覧へも保存する。
+      let listed = false;
+      if (!savedToListRef.current) { try { listed = await saveToServer({ silent: true }); } catch { /* 端末保存は成立 */ } }
       setInfo(
-        result === "shared"
+        (result === "shared"
           ? "共有メニューから4サイズをまとめて端末に保存できます。"
           : result === "canceled"
             ? "保存をキャンセルしました。"
-            : "4サイズをZIP（iei-photos.zip）でダウンロードしました。",
+            : "4サイズをZIP（iei-photos.zip）でダウンロードしました。")
+        + (listed ? "一覧にも保存しました。" : savedToListRef.current ? "（一覧は保存済み）" : ""),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "一括出力に失敗しました。");
     } finally {
       setExporting(false);
     }
-  }, [adjustments, computeEffective, getWideMasterSource]);
+  }, [adjustments, computeEffective, getWideMasterSource, saveToServer]);
 
-  /** 作成した遺影を一覧(/kanri/ai-portrait)へ保存する。基準写真をサーバーへアップロードして登録。 */
+  /** 「保存（PC＋一覧）」: 一覧に保存し、同時に基準写真を端末にもダウンロードする。 */
   const handleSaveToList = useCallback(async () => {
     const wideSource = getWideMasterSource();
     const base = baseCanvasRef.current;
@@ -995,46 +1037,23 @@ export default function IeiPhotoPage() {
       setError("保存できる基準写真がありません。写真をアップロードしてください。");
       return;
     }
-    // 対象者名は事前登録があればそれを使い、無ければ入力を促す（必須）。
-    let name = (portraitCtx.deceased ?? "").trim();
-    if (!name) {
-      const input = typeof window !== "undefined" ? window.prompt("対象者（故人）名を入力してください（必須）", "") : "";
-      if (input === null) return; // キャンセル
-      name = input.trim();
-      if (!name) { setError("対象者（故人）名を入力してください。"); return; }
-    }
     setExporting(true);
     setError(null);
     try {
+      const ok = await saveToServer({ silent: true });
+      if (!ok) return; // エラー/キャンセルは saveToServer 側で処理済み
+      // 同時に端末(PC)へもダウンロード
       const adj = computeEffective(adjustments);
-      const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = () => reject(new Error("画像の変換に失敗しました。"));
-        r.readAsDataURL(blob);
-      });
-      // 基準写真＋手札(オンライン式場の祭壇遺影に使用)を書き出す
       const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
-      const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu");
-      const [baseDataUrl, tefudaDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob)]);
-      // 1) サーバー(一覧)へ保存
-      const res = await fetch("/api/iei-photo/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baseDataUrl, tefudaDataUrl, deceasedName: name, customerId: portraitCtx.customerId, estimateId: portraitCtx.estimateId }),
-      });
-      const d = await res.json().catch(() => ({ ok: false, error: "応答が不正です" }));
-      if (!d.ok) { setError(d.error || "保存に失敗しました。"); return; }
-      // 2) 同時に端末(PC)へもダウンロード
       let downloaded = false;
       try { await saveImageToDevice(baseBlob, filenameForKind("base")); downloaded = true; } catch { /* DL失敗でも保存は成立 */ }
-      setInfo(`${name} 様の遺影を一覧に保存しました${downloaded ? "（端末にもダウンロードしました）" : ""}。管理画面の「AI遺影写真」で確認できます。`);
+      setInfo(`遺影を一覧に保存しました${downloaded ? "（端末にもダウンロードしました）" : ""}。管理画面の「AI遺影写真」で確認できます。`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました。");
     } finally {
       setExporting(false);
     }
-  }, [adjustments, computeEffective, getWideMasterSource, portraitCtx]);
+  }, [adjustments, computeEffective, getWideMasterSource, saveToServer]);
 
   const handleAdvancedAi = useCallback(() => {
     void runAiImage("advanced");

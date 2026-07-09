@@ -55,33 +55,43 @@ export default async function AiPortraitPage() {
             <Link href="/kanri/ai-portrait/new" className="rounded-lg bg-[#2c8c6f] px-5 py-2.5 text-sm font-medium text-white">最初の遺影写真を作成する</Link>
           </div>
         ) : (
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {portraits.map((p) => (
-              <li key={p.id} className="overflow-hidden rounded-lg border border-gray-200">
-                <div className="aspect-[3/4] w-full bg-gray-100">
-                  {p.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.thumbUrl || p.imageUrl} alt={p.deceasedName ? `${p.deceasedName} 様の遺影` : "遺影写真"} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-gray-300"><ImageIcon size={32} /></div>
-                  )}
-                </div>
-                <div className="p-2">
-                  <p className="truncate text-sm font-medium text-gray-800">{p.deceasedName || "（対象者未設定）"}</p>
-                  {p.customerName && <p className="truncate text-xs text-gray-500">顧客：{p.customerName}</p>}
-                  {p.funeralAt
-                    ? <p className="truncate text-xs text-gray-500">葬儀日：{fmtDate(p.funeralAt)}{p.funeralAtIsWake ? "（通夜）" : ""}</p>
-                    : !p.estimateId && <p className="text-[11px] text-amber-600">施行未紐付け・葬儀日未定</p>}
-                  <p className="text-[11px] text-gray-400">作成 {fmt(p.createdAt)}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                    {p.imageUrl && <a href={`${p.imageUrl}?download=遺影_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">基準写真DL</a>}
-                    {p.tefudaUrl && <a href={`${p.tefudaUrl}?download=遺影手札_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">手札DL</a>}
-                    {p.imageUrl && <a href={p.imageUrl} target="_blank" rel="noopener noreferrer" className="text-gray-500 underline">開く</a>}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b bg-gray-50 text-xs text-gray-500">
+                <tr>{["写真", "対象者", "顧客", "葬儀日", "作成", "ダウンロード"].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y">
+                {portraits.map((p) => (
+                  <tr key={p.id} className="align-middle hover:bg-gray-50">
+                    <td className="px-3 py-2">
+                      <div className="h-14 w-11 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100">
+                        {p.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <a href={p.imageUrl} target="_blank" rel="noopener noreferrer"><img src={p.thumbUrl || p.imageUrl} alt={p.deceasedName ? `${p.deceasedName} 様の遺影` : "遺影写真"} className="h-full w-full object-cover" /></a>
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-gray-300"><ImageIcon size={20} /></div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 font-medium text-gray-800">{p.deceasedName || "（未設定）"}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{p.customerName || "—"}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                      {p.funeralAt
+                        ? `${fmtDate(p.funeralAt)}${p.funeralAtIsWake ? "（通夜）" : ""}`
+                        : !p.estimateId ? <span className="text-amber-600">施行未紐付け</span> : "—"}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-400">{fmt(p.createdAt)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs">
+                      <div className="flex gap-3">
+                        {p.imageUrl && <a href={`${p.imageUrl}?download=遺影_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">基準</a>}
+                        {p.tefudaUrl && <a href={`${p.tefudaUrl}?download=遺影手札_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">手札</a>}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
