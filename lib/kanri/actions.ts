@@ -691,8 +691,9 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
   const customerId = await resolveCustomerId(c, fd);
   if (!customerId) return { ok: false, error: "顧客を選択してください。" };
   const { computed, subtotal, discountTotal, taxTotal, total } = computeItems(fd);
-  const deceased = (s(fd, "deceased_name") ?? "").replace(/　/g, " ");
-  const dsp = deceased.indexOf(" ");
+  // 対象者は氏・名を別フィールドで受ける（訃報案内で氏名が正しく分かれるように）
+  const deceasedLast = s(fd, "deceased_last_name");
+  const deceasedFirst = s(fd, "deceased_first_name");
   const now = new Date();
   const id = s(fd, "id");
   const estimateNo = s(fd, "construction_no") || `E${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
@@ -702,7 +703,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
   if (!s(fd, "charged_user")) missing.push("計上担当者");
   if (!s(fd, "staff_name")) missing.push("担当者（葬儀担当）");
   if (!isPre) {
-    if (!s(fd, "deceased_name")) missing.push("対象者名");
+    if (!deceasedLast) missing.push("対象者氏");
     if (!s(fd, "deceased_gender")) missing.push("性別");
     if (!s(fd, "deceased_birth_date")) missing.push("生年月日");
     if (!s(fd, "deceased_death_date")) missing.push("没年月日");
@@ -715,8 +716,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     is_pre_consultation: isPre,
     estimate_no: estimateNo, title, memo: s(fd, "memo"),
     estimate_on: s(fd, "estimate_on"), estimate_limit_on: s(fd, "estimate_limit_on"),
-    deceased_last_name: deceased ? (dsp > 0 ? deceased.slice(0, dsp) : deceased) : null,
-    deceased_first_name: dsp > 0 ? deceased.slice(dsp + 1) : null,
+    deceased_last_name: deceasedLast, deceased_first_name: deceasedFirst,
     deceased_gender: s(fd, "deceased_gender"), deceased_birth_date: s(fd, "deceased_birth_date"),
     deceased_death_date: s(fd, "deceased_death_date"), deceased_age: num(fd, "deceased_age"),
     mourner_relation: s(fd, "mourner_relation"),

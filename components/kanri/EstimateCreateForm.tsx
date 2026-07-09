@@ -13,6 +13,7 @@ export interface FormInitial {
   constructionNo?: string;
   customerId?: string; customerName?: string;
   deceasedName?: string;
+  deceasedLastName?: string; deceasedFirstName?: string;
   deceasedGender?: string; deceasedBirthDate?: string; deceasedDeathDate?: string; deceasedAge?: number; deceasedRelation?: string;
   wakeAt?: string; funeralAt?: string; venueName?: string;
   addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
@@ -138,7 +139,11 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [memoVal, setMemoVal] = useState(initial?.memo ?? "");
   const [titleVal, setTitleVal] = useState(initial?.title ?? "");
   const [pno, setPno] = useState(initial?.constructionNo ?? "");
-  const [deceased, setDeceased] = useState(initial?.deceasedName ?? "");
+  // 対象者(故人)氏名は氏・名に分離（訃報案内で氏名が正しく分かれるように）
+  const _initName = (initial?.deceasedName ?? "").replace(/　/g, " ");
+  const _initSp = _initName.indexOf(" ");
+  const [deceasedLast, setDeceasedLast] = useState(initial?.deceasedLastName ?? (_initSp > 0 ? _initName.slice(0, _initSp) : _initName));
+  const [deceasedFirst, setDeceasedFirst] = useState(initial?.deceasedFirstName ?? (_initSp > 0 ? _initName.slice(_initSp + 1) : ""));
   // 対象者(故人)属性
   const [dGender, setDGender] = useState(initial?.deceasedGender ?? "");
   const [dBirth, setDBirth] = useState(initial?.deceasedBirthDate ?? "");
@@ -205,7 +210,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       const res = await fetch(`/kanri/estimates/lookup?pno=${encodeURIComponent(pno.trim())}`);
       const d = await res.json();
       if (d && d.found) {
-        setDeceased(d.deceasedName ?? "");
+        { const dn = (d.deceasedName ?? "").replace(/　/g, " "); const sp = dn.indexOf(" "); setDeceasedLast(sp > 0 ? dn.slice(0, sp) : dn); setDeceasedFirst(sp > 0 ? dn.slice(sp + 1) : ""); }
         if (d.customerId) setCustomer({ id: d.customerId, name: d.customerName ?? "" });
         setLookupMsg("読込みました");
       } else setLookupMsg("該当する施行が見つかりません");
@@ -268,7 +273,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         if (!ncStreet.trim()) m.push("番地");
         if (!ncTel.trim() && !ncMobile.trim()) m.push("自宅電話番号または携帯電話番号");
       }
-      if (!deceased.trim()) m.push("対象者名");
+      if (!deceasedLast.trim()) m.push("対象者氏");
       if (!dGender) m.push("性別");
       if (!dBirth) m.push("生年月日");
       if (!dDeath) m.push("没年月日");
@@ -362,7 +367,10 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
             </div>
           </div>
         )}
-        <div className="mt-3"><F label="対象者名"><input name="deceased_name" value={deceased} onChange={(e) => setDeceased(e.target.value)} className={inp} placeholder="対象者（故人）氏名" /></F></div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <F label="対象者氏"><input name="deceased_last_name" value={deceasedLast} onChange={(e) => setDeceasedLast(e.target.value)} className={inp} placeholder="姓（例：川口）" /></F>
+          <F label="対象者名"><input name="deceased_first_name" value={deceasedFirst} onChange={(e) => setDeceasedFirst(e.target.value)} className={inp} placeholder="名（例：太郎）" /></F>
+        </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-4">
           <F label="性別">
             <select name="deceased_gender" value={dGender} onChange={(e) => setDGender(e.target.value)} className={inp}>
