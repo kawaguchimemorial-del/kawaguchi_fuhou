@@ -921,3 +921,9 @@
 - original-letter-skill.ts: 「改行=意味の切れ目」「一場面に従属・羅列しない」品質ルール追加。構造学習用の手本(汎用オリジナル・分解注釈付き)を追加しスキルプロンプトへ差し込み。
 - FuneralScriptForm.tsx: 「礼状の見出し・タイトル案」欄を撤去。「必ず伝えたいこと」→「いちばん残したい一言(中心メッセージ)」に改称し、見出し/文章はAIが書く旨を明記。口癖欄に(任意)。
 - tsc・next build 成功。
+
+## 2026-07-10 生成本文の改行正規化＋スマホCRMナビ(導線)追加
+- ai.ts: 生成本文に混入するリテラル "\n"/"\r\n" を実改行へ正規化(parseDrafts)。prompt.ts/letter-prompt.tsにも「\nという文字列を書かない」明示。本番でreal改行9/リテラル0を確認。
+- 品質改修の本番検証: メインナレーションが一場面から入り口癖・遺影・余韻まで織り込み。会葬礼状も羅列でなく手紙調で生成されることを確認。
+- スマホ導線: KanriSidebarはmd未満で非表示のため、スマホからCRM各機能(司会台本・会葬礼状/AI遺影 等)へ行けなかった。components/kanri/MobileNav.tsx(ハンバーガー＋ドロワー、CRM_NAV再利用＋よく使う2導線のクイックリンク)を追加し、app/kanri/layout.tsxのトップバー左に配置(md:hidden)。Sidebar.tsxのSectionをexport化して共有。
+- tsc・next build 成功。

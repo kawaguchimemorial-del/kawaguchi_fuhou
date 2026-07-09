@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Search, Phone, Bell, List, HelpCircle, Megaphone } from "lucide-react";
 import { KanriSidebar } from "@/components/kanri/Sidebar";
+import { KanriMobileNav } from "@/components/kanri/MobileNav";
 
 export const metadata = {
   title: "川口典礼 葬儀管理ソフト",
@@ -11,7 +12,8 @@ export default function KanriLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-[#eef1f4] text-gray-800">
       {/* トップバー */}
-      <header className="sticky top-0 z-20 flex items-center gap-4 border-b bg-white px-4 py-2.5">
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-white px-4 py-2.5">
+        <KanriMobileNav />
         <Link href="/kanri" className="flex shrink-0 items-center gap-2">
           <span className="text-base font-bold text-[#1aa39a]">川口典礼</span>
           <span className="hidden text-xs text-gray-400 sm:inline">葬儀管理ソフト</span>

@@ -12,7 +12,7 @@ function hasActive(node: NavNode, path: string): boolean {
   return (node.children ?? []).some((c) => hasActive(c, path));
 }
 
-function Section({ node, path, depth }: { node: NavNode; path: string; depth: number }) {
+export function Section({ node, path, depth }: { node: NavNode; path: string; depth: number }) {
   const active = hasActive(node, path);
   const [open, setOpen] = useState(active);
   const Icon = node.icon ? ICONS[node.icon] : undefined;
