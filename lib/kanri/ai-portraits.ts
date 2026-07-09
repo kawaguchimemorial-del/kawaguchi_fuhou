@@ -6,6 +6,7 @@ export interface AiPortrait {
   id: string;
   customerId?: string;
   customerName?: string;
+  estimateId?: string;
   deceasedName?: string;
   imageUrl?: string;
   tefudaUrl?: string;
@@ -34,7 +35,7 @@ export async function listAiPortraits(): Promise<AiPortrait[]> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(r: any): AiPortrait {
   return {
-    id: r.id, customerId: r.customer_id ?? undefined,
+    id: r.id, customerId: r.customer_id ?? undefined, estimateId: r.estimate_id ?? undefined,
     customerName: r.fk_customers ? `${r.fk_customers.last_name ?? ""} ${r.fk_customers.first_name ?? ""}`.trim() : undefined,
     deceasedName: r.deceased_name ?? undefined,
     imageUrl: r.image_url ?? undefined, tefudaUrl: r.tefuda_url ?? undefined, thumbUrl: r.thumb_url ?? undefined,
@@ -43,7 +44,16 @@ function mapRow(r: any): AiPortrait {
   };
 }
 
-// 対象者名に一致する最新のAI遺影(手札あり)を返す。祭壇への反映に使用。
+// 施行(見積)に紐づくAI遺影を返す。正準の一意照合(同姓同名の誤マッチが起きない)。
+export async function findAiPortraitByEstimate(estimateId: string): Promise<AiPortrait | null> {
+  const c = db();
+  if (!c || !estimateId) return null;
+  const { data } = await c.from("fk_ai_portraits").select("*,fk_customers(last_name,first_name)").eq("funeral_home_id", KANRI_HOME_ID).eq("estimate_id", estimateId).is("deleted_at", null).order("created_at", { ascending: false }).limit(1);
+  const rows = ((data ?? []) as unknown[]).map(mapRow);
+  return rows[0] ?? null;
+}
+
+// 対象者名に一致する最新のAI遺影(手札あり)を返す。施行紐付けが無い場合のフォールバック。
 export async function findAiPortraitByDeceased(deceasedName: string): Promise<AiPortrait | null> {
   const c = db();
   if (!c || !deceasedName.trim()) return null;

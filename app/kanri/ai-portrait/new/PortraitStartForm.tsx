@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 type Hit = { id: string; name: string; phone: string; address: string };
+type Est = { id: string; estimateNo: string; deceased: string; title: string; on: string };
 
 export function PortraitStartForm() {
   const router = useRouter();
@@ -13,6 +14,9 @@ export function PortraitStartForm() {
   const [hits, setHits] = useState<Hit[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  // 見積(施行)ピッカー
+  const [estimates, setEstimates] = useState<Est[]>([]);
+  const [estimate, setEstimate] = useState<Est | null>(null);
 
   async function search() {
     setLoading(true);
@@ -21,9 +25,21 @@ export function PortraitStartForm() {
       setHits(await res.json());
     } finally { setLoading(false); }
   }
+  async function selectCustomer(c: { id: string; name: string }) {
+    setCustomer(c); setOpen(false); setEstimate(null);
+    try {
+      const res = await fetch(`/kanri/estimates/for-customer?customer_id=${c.id}`);
+      setEstimates(await res.json());
+    } catch { setEstimates([]); }
+  }
+  function pickEstimate(e: Est) {
+    setEstimate(e);
+    if (e.deceased) setDeceased(e.deceased); // 表記ゆれ防止で見積の対象者名を採用
+  }
   function start() {
     const params = new URLSearchParams();
     if (customer) { params.set("customer_id", customer.id); params.set("customer_name", customer.name); }
+    if (estimate) params.set("estimate_id", estimate.id);
     if (deceased.trim()) params.set("deceased", deceased.trim());
     router.push(`/iei-photo?${params.toString()}`);
   }
@@ -45,6 +61,25 @@ export function PortraitStartForm() {
           <input readOnly value={customer?.name ?? ""} placeholder="未選択" className={inp} />
           <button type="button" onClick={() => { setOpen(true); setHits([]); setQ(""); }} className="shrink-0 rounded-lg border border-[#2bb8ae] px-4 text-sm text-[#2bb8ae]">選択</button>
         </div>
+
+        {/* 見積(施行)選択: 顧客の見積があれば施行を選ぶと父/母などを一意に区別できる */}
+        {customer && estimates.length > 0 && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700">施行（見積）<span className="ml-1 text-xs font-normal text-gray-400">同姓同名・父母別葬儀を区別するため推奨</span></label>
+            <div className="mt-1 divide-y rounded-lg border border-gray-200">
+              {estimates.map((e) => (
+                <button key={e.id} type="button" onClick={() => pickEstimate(e)} className={"flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-gray-50 " + (estimate?.id === e.id ? "bg-[#e6f6f4]" : "")}>
+                  <span className="min-w-0">
+                    <span className="font-medium text-gray-800">{e.deceased || "（対象者未設定）"}</span>
+                    <span className="ml-2 text-xs text-gray-400">{[e.estimateNo && `施行No.${e.estimateNo}`, e.title].filter(Boolean).join(" / ")}</span>
+                  </span>
+                  {estimate?.id === e.id && <span className="shrink-0 text-xs font-bold text-[#2c8c6f]">選択中</span>}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-gray-400">※ 施行を選ぶと対象者名が自動入力され、オンライン式場の祭壇に正確に反映できます。</p>
+          </div>
+        )}
 
         {/* 対象者名 */}
         <label className="mt-4 block text-sm font-medium text-gray-700">対象者（故人）名</label>
@@ -70,7 +105,7 @@ export function PortraitStartForm() {
                 <ul className="divide-y">
                   {hits.map((h) => (
                     <li key={h.id}>
-                      <button type="button" onClick={() => { setCustomer({ id: h.id, name: h.name }); setOpen(false); }} className="flex w-full flex-col items-start gap-0.5 px-2 py-3 text-left hover:bg-gray-50">
+                      <button type="button" onClick={() => selectCustomer({ id: h.id, name: h.name })} className="flex w-full flex-col items-start gap-0.5 px-2 py-3 text-left hover:bg-gray-50">
                         <span className="font-medium text-gray-800">{h.name || "（無名）"}</span>
                         <span className="text-xs text-gray-400">{[h.phone, h.address].filter(Boolean).join(" / ")}</span>
                       </button>

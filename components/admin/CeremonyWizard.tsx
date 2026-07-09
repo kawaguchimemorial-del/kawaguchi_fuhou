@@ -87,6 +87,7 @@ export function CeremonyWizard({
       mgmtNo: g("mgmtNo"), attendeeName: g("attendeeName"), showOfferings: g("showOfferings"),
       frame: g("frame"), side: g("side"), center: g("center"), top: g("top"), background: g("background"),
       portraitPath: g("portraitPath"),
+      estimateId: g("estimateId") || undefined, // 紐づく見積(施行)ID
       // アルバム／葬儀の様子は専用画面で管理。ウィザード保存で消えないよう既存値を温存。
       albumPaths: Array.isArray(s.albumPaths) ? (s.albumPaths as unknown as string[]) : undefined,
       scenePaths: Array.isArray(s.scenePaths) ? (s.scenePaths as unknown as string[]) : undefined,
@@ -427,16 +428,27 @@ function PortraitUpload({ g, set, editSlug }: { g: (k: string) => string; set: (
   const [saved, setSaved] = useState(false);
   const [applyingAi, setApplyingAi] = useState(false);
 
-  // AI遺影写真（手札）を祭壇の遺影に反映する。対象者名で一致するAI遺影を検索。
+  // AI遺影写真（手札）を祭壇の遺影に反映する。
+  // 施行(見積)IDで一意照合(同姓同名でも誤マッチしない)。無ければ対象者名でフォールバック。
   async function applyAiPortrait() {
     setError(null);
+    const estimateId = g("estimateId");
     const name = [g("dSei"), g("dMei")].filter(Boolean).join(" ").trim();
-    if (!name) { setError("先に故人名を入力してください（AI遺影は対象者名で照合します）。"); return; }
     setApplyingAi(true);
     try {
-      const res = await fetch(`/api/iei-photo/for-deceased?name=${encodeURIComponent(name)}`);
-      const d = await res.json();
-      if (!d.found) { setError(`「${name}」のAI遺影写真が見つかりません。先にAI遺影写真を作成してください。`); return; }
+      let d: { found?: boolean; tefudaUrl?: string | null; imageUrl?: string | null } = { found: false };
+      // 1) 施行(見積)で一意照合
+      if (estimateId) {
+        d = await (await fetch(`/api/iei-photo/for-estimate?estimate_id=${encodeURIComponent(estimateId)}`)).json();
+      }
+      // 2) フォールバック: 対象者名で照合
+      if (!d.found && name) {
+        d = await (await fetch(`/api/iei-photo/for-deceased?name=${encodeURIComponent(name)}`)).json();
+      }
+      if (!d.found) {
+        setError(estimateId || name ? `この施行に紐づくAI遺影写真が見つかりません。先にAI遺影写真を作成してください。` : "先に故人名を入力するか、見積から作成してください。");
+        return;
+      }
       const url = (d.tefudaUrl || d.imageUrl) as string | null;
       if (!url) { setError("AI遺影写真の画像URLがありません。"); return; }
       const finalUrl = `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`;

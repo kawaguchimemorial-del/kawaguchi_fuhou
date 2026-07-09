@@ -214,13 +214,14 @@ export default function IeiPhotoPage() {
   );
   const [autoCorrect, setAutoCorrect] = useState<boolean>(false);
   // 事前登録(顧客/対象者)コンテキスト。/kanri/ai-portrait/new から渡される。
-  const [portraitCtx, setPortraitCtx] = useState<{ customerId?: string; customerName?: string; deceased?: string }>({});
+  const [portraitCtx, setPortraitCtx] = useState<{ customerId?: string; customerName?: string; deceased?: string; estimateId?: string }>({});
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     setPortraitCtx({
       customerId: sp.get("customer_id") || undefined,
       customerName: sp.get("customer_name") || undefined,
       deceased: sp.get("deceased") || undefined,
+      estimateId: sp.get("estimate_id") || undefined,
     });
   }, []);
   const [previewKind, setPreviewKind] = useState<IeiPhotoExportKind>("base");
@@ -1018,7 +1019,7 @@ export default function IeiPhotoPage() {
       const res = await fetch("/api/iei-photo/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baseDataUrl, tefudaDataUrl, deceasedName: name, customerId: portraitCtx.customerId }),
+        body: JSON.stringify({ baseDataUrl, tefudaDataUrl, deceasedName: name, customerId: portraitCtx.customerId, estimateId: portraitCtx.estimateId }),
       });
       const d = await res.json().catch(() => ({ ok: false, error: "応答が不正です" }));
       if (d.ok) setInfo("遺影を一覧に保存しました。管理画面の「AI遺影写真」で確認・ダウンロードできます。");

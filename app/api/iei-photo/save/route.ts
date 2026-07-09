@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return Response.json({ ok: false, error: "保存先が未設定です。" }, { status: 400 });
   }
-  let body: { baseDataUrl?: string; tefudaDataUrl?: string; dataUrl?: string; customerId?: string; deceasedName?: string; createdBy?: string };
+  let body: { baseDataUrl?: string; tefudaDataUrl?: string; dataUrl?: string; customerId?: string; estimateId?: string; deceasedName?: string; createdBy?: string };
   try { body = await req.json(); } catch { return Response.json({ ok: false, error: "リクエストが不正です。" }, { status: 400 }); }
 
   // 後方互換: dataUrl 単体でも受ける
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
   const { data, error } = await c.from("fk_ai_portraits").insert({
     funeral_home_id: KANRI_HOME_ID,
     customer_id: body.customerId || null,
+    estimate_id: body.estimateId || null,
     deceased_name: body.deceasedName?.trim() || null,
     image_url: base.url,
     tefuda_url: tefudaUrl || null,

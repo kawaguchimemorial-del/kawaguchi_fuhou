@@ -854,3 +854,14 @@
 - API新設 /api/iei-photo/for-deceased?name=: 対象者名で一致する最新AI遺影(手札URL)を返す(空白ゆらぎ吸収)。findAiPortraitByDeceased使用。
 - 未作成時は「該当するAI遺影写真が見つかりません。先に作成してください」を表示。
 - 検証: for-deceasedが 完全一致/空白ゆらぎ一致=found、不一致=not found を返すことをcurlで確認。tscエラー無し。
+
+## 2026-07-09 AI遺影の紐付けを「施行(見積)」軸に再設計(4人パネル)— 同姓同名/父母別葬儀を一意解決
+- 課題: 名前照合は同姓同名で誤マッチ、顧客IDだけでは同一喪主の父葬/母葬を区別不能。
+- 4人設計パネルの統合案を実装。正準キー=fk_estimates.id を fk_ai_portraits.estimate_id = memorials.estimate_id で直結(UUID等価)。
+- migration 0029: fk_ai_portraits.estimate_id(FK+部分index)、memorials.estimate_id(FK+index)を追加(列追加のみ・NULL許容=見積無し単発も許容)。
+- 保存API: estimateId受理→fk_ai_portraits.estimate_idに記録。/iei-photoはestimate_idパラメータを引き回し保存に付与。
+- 事前登録(PortraitStartForm): 顧客選択時にその顧客の見積(施行)一覧をロードし選択可能に。施行を選ぶと対象者名を自動補完しestimate_idを引き回す(/kanri/estimates/for-customer API新設)。見積無しでも作成可。
+- 訃報案内作成: from_estimateをmemorials.estimate_idに永続化(ceremonies/new initialState + CeremonyPayload.estimateId + buildRows memorial.estimate_id)。従来プレフィルのみで捨てていた欠落リンクを修正。
+- 祭壇反映(applyAiPortrait): g("estimateId")でfor-estimate(一意)を第一に照合→無ければfor-deceased(名前)にフォールバック。findAiPortraitByEstimate/for-estimate API新設。
+- 一覧に「施行未紐付け」バッジ。
+- 検証: 同姓同名「山田 太郎」の父見積/母見積に別々のAI遺影を作成→for-estimateがestimate_idごとに正しく別画像(父_tefuda/母_tefuda)を返すことを確認。tscエラー無し。テストデータ削除。

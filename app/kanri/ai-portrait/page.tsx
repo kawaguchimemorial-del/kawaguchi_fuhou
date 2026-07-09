@@ -63,6 +63,7 @@ export default async function AiPortraitPage() {
                 <div className="p-2">
                   <p className="truncate text-sm font-medium text-gray-800">{p.deceasedName || "（対象者未設定）"}</p>
                   {p.customerName && <p className="truncate text-xs text-gray-500">顧客：{p.customerName}</p>}
+                  {!p.estimateId && <p className="text-[11px] text-amber-600">施行未紐付け</p>}
                   <p className="text-xs text-gray-400">{fmt(p.createdAt)}</p>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
                     {p.imageUrl && <a href={`${p.imageUrl}?download=遺影_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">基準写真DL</a>}

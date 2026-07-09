@@ -32,6 +32,7 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
       const hasMourner = !!(e.addresseeLastName || e.mourner.lastName);
       const cust = !hasMourner && e.customerId ? await getCustomer(e.customerId) : null;
       initialState = {
+        estimateId: sp.from_estimate, // 施行(見積)IDを永続化しAI遺影と一意照合
         // 喪主（見積の宛名=喪主 → 喪主 → 顧客情報 の順で参照）
         mSei: e.addresseeLastName || e.mourner.lastName || cust?.lastName || "",
         mMei: e.addresseeFirstName || e.mourner.firstName || cust?.firstName || "",

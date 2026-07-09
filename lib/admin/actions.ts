@@ -160,6 +160,7 @@ export interface CeremonyPayload {
   mgmtNo?: string; attendeeName?: string; showOfferings?: string;
   frame?: string; side?: string; center?: string; top?: string; background?: string;
   portraitPath?: string; // 遺影写真の公開URL
+  estimateId?: string; // 紐づく見積(施行)ID。AI遺影の一意照合に使用。
   albumPaths?: string[]; // アルバム写真の公開URL一覧（別画面で管理。ウィザード保存時は温存）
   scenePaths?: string[]; // 葬儀の様子の写真の公開URL一覧（別画面で管理。ウィザード保存時は温存）
 }
@@ -212,6 +213,7 @@ function buildRows(p: CeremonyPayload) {
     : null;
 
   const memorial = {
+    estimate_id: p.estimateId || null,
     religion_type: p.religion || "仏式",
     koden_decline: p.kodenOption === "不要",
     flower_decline: p.flowerAccept === "受け付けない",
