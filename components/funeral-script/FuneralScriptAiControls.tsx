@@ -14,6 +14,11 @@ type FuneralScriptAiControlsProps = {
   onRevert: () => void;
   /** AI生成前に戻せるか（退避スナップショットがあるか） */
   canRevert: boolean;
+  /** 台本を保存する（PC保存＋サーバー保存＋一覧へ） */
+  onSave?: () => void;
+  saving?: boolean;
+  /** 保存後のメッセージ（成功/失敗） */
+  saveMessage?: { ok: boolean; text: string } | null;
 };
 
 /**
@@ -30,6 +35,9 @@ export default function FuneralScriptAiControls({
   onGenerate,
   onRevert,
   canRevert,
+  onSave,
+  saving,
+  saveMessage,
 }: FuneralScriptAiControlsProps) {
   if (targetCount === 0) return null;
 
@@ -74,7 +82,30 @@ export default function FuneralScriptAiControls({
         >
           AI生成前に戻す
         </button>
+        {onSave && (
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={loading || saving}
+            className="min-h-11 rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? "保存しています..." : "台本を保存する"}
+          </button>
+        )}
       </div>
+
+      {saveMessage && (
+        <p
+          className={cn(
+            "mt-3 rounded-md border px-3 py-2 text-sm",
+            saveMessage.ok
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-rose-200 bg-rose-50 text-rose-700",
+          )}
+        >
+          {saveMessage.text}
+        </p>
+      )}
 
       {error && (
         <p className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">

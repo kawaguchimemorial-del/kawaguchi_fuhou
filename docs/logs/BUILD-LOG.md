@@ -900,3 +900,14 @@
   - `app/api/funeral-script/generate-narration/route.ts`、`.../generate-original-letter/route.ts`
   - エラーメッセージ文言も Claude 用に更新。
 - Vercel環境変数に ANTHROPIC_API_KEY / ANTHROPIC_MODEL を設定済み(ユーザー作業)。tsc クリーン。
+
+## 2026-07-09 司会台本・会葬礼状を「一覧＋作成導線＋保存」化(AI遺影と同方針)＋PC/スマホUI刷新
+- サイドバー「司会台本・会葬礼状」→ 一覧ページ /kanri/funeral-script に変更(nav.ts)。
+- 一覧 /kanri/funeral-script: 作成した台本を列(テーブル)表示。上部「台本を作成する」CTA。開く/ダウンロード(txt)導線。
+- 作成導線 /kanri/funeral-script/new(ScriptStartForm): AI遺影同様に顧客＋施行(見積)＋対象者名を選択→ /funeral-script?customer_id&customer_name&estimate_id&deceased へ。
+- DB: 0030_funeral_scripts.sql(content jsonb に保存ファイル格納、customer/estimate FK、RLS)。pooler適用済み。
+- API: POST /api/funeral-script/save(insert/update・施行冪等・scriptId更新)、GET /api/funeral-script/[id](?format=txt で全文DL、既定は再編集用JSON)。
+- lib/kanri/funeral-scripts.ts: listFuneralScripts / getFuneralScriptContent。
+- /funeral-script: URLパラメータ引き継ぎ(顧客/施行/対象者名、script_idで再編集ロード)。「AI生成前に戻す」横に「台本を保存する」ボタン→ PCダウンロード＋サーバー保存＋一覧保存を1導線(AI遺影と同方針)。
+- レイアウト刷新(6専門家ワークフローの統合設計): 会葬礼状ON時の縦長二重スクロールを解消。PC/スマホ共通の上部セグメント(入力｜司会台本｜会葬礼状)＋既定は全幅1カラム。PCのみ「台本と礼状を並べる」トグルで2カラム(独立スクロール)。
+- tsc・next build 成功。

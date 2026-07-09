@@ -135,6 +135,8 @@ export default function FuneralScriptPage() {
     defaultFormData("buddhist_funeral"),
   );
   const [activeView, setActiveView] = useState<WorkspaceView>("form");
+  // PC: 会葬礼状ON時に台本と礼状を並べて表示するか（既定OFF＝全幅1カラム）
+  const [compareMode, setCompareMode] = useState(false);
   const [sections, setSections] = useState<FuneralScriptSection[]>([]);
   const [copied, setCopied] = useState(false);
   const [letterCopied, setLetterCopied] = useState(false);
@@ -158,6 +160,18 @@ export default function FuneralScriptPage() {
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [pdfFileName, setPdfFileName] = useState("葬儀司会台本.pdf");
   const [pdfShareAvailable, setPdfShareAvailable] = useState(false);
+
+  // 顧客/施行/既存台本の紐付け（一覧・作成導線から引き継ぐ）
+  const [scriptCtx, setScriptCtx] = useState<{
+    customerId?: string;
+    estimateId?: string;
+    scriptId?: string;
+  }>({});
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -354,6 +368,103 @@ export default function FuneralScriptPage() {
     [clearPdfResult],
   );
 
+  // 台本を保存する: PCにダウンロード ＋ サーバー保存 ＋ 一覧へ（AI遺影と同方針）
+  const handleSaveToList = useCallback(async () => {
+    if (sections.length === 0) return;
+    const name = form.deceasedName.trim();
+    if (!name) {
+      setSaveMessage({
+        ok: false,
+        text: "対象者（故人）名を入力してください。保存には氏名が必要です。",
+      });
+      return;
+    }
+    // 1) PCに保存（引き継ぎファイルをダウンロード）
+    handleSaveFile();
+    // 2) サーバー保存＋一覧
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const res = await fetch("/api/funeral-script/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId: scriptCtx.scriptId,
+          customerId: scriptCtx.customerId,
+          estimateId: scriptCtx.estimateId,
+          deceasedName: name,
+          form,
+          sections,
+          originalLetter: form.hasOriginalCondolenceLetter
+            ? originalLetter
+            : null,
+        }),
+      });
+      const data: { ok?: boolean; id?: string; error?: string } =
+        await res.json();
+      if (!res.ok || !data.ok) {
+        setSaveMessage({
+          ok: false,
+          text:
+            data.error ||
+            "サーバー保存に失敗しました。PCへのダウンロードは完了しています。",
+        });
+      } else {
+        if (data.id) setScriptCtx((p) => ({ ...p, scriptId: data.id }));
+        setSaveMessage({
+          ok: true,
+          text: "保存しました（PCにダウンロード＋一覧に保存）。",
+        });
+      }
+    } catch {
+      setSaveMessage({
+        ok: false,
+        text: "サーバー保存に失敗しました。PCへのダウンロードは完了しています。",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [sections, form, originalLetter, scriptCtx, handleSaveFile]);
+
+  // 作成導線/一覧からの引き継ぎ（URLパラメータ）を反映
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const scriptId = sp.get("script_id") ?? undefined;
+    const customerId = sp.get("customer_id") ?? undefined;
+    const estimateId = sp.get("estimate_id") ?? undefined;
+    const deceased = (sp.get("deceased") ?? "").trim();
+    setScriptCtx({ customerId, estimateId, scriptId });
+    if (scriptId) {
+      (async () => {
+        try {
+          const res = await fetch(`/api/funeral-script/${scriptId}`);
+          const data: {
+            ok?: boolean;
+            content?: {
+              form: FuneralScriptFormData;
+              sections: FuneralScriptSection[];
+              originalLetter?: FuneralScriptOriginalLetter | null;
+            };
+          } = await res.json();
+          if (res.ok && data.content) {
+            handleLoadFile(
+              data.content.form,
+              data.content.sections,
+              data.content.originalLetter ?? null,
+            );
+          }
+        } catch {
+          /* 読み込み失敗時は空のフォームのまま */
+        }
+      })();
+    } else if (deceased) {
+      setForm((prev) => ({ ...prev, deceasedName: deceased }));
+    }
+    // 初回マウント時のみ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleEditBody = useCallback((id: string, body: string) => {
     setSections((prev) =>
       prev.map((section) =>
@@ -523,6 +634,8 @@ export default function FuneralScriptPage() {
 
   const hasScript = sections.length > 0;
   const hasLetter = form.hasOriginalCondolenceLetter;
+  // PCで台本と礼状を左右に並べるか（礼状ONかつトグルON時のみ有効）
+  const compareOn = compareMode && hasLetter;
   const deceasedLabel = form.deceasedName.trim() || "故人名未入力";
 
   // 入力進捗（台本の土台になる主要項目の充足率）
@@ -764,189 +877,214 @@ export default function FuneralScriptPage() {
               </div>
             </div>
 
-            <nav className="sticky top-0 z-30 -mx-4 mb-4 border-y border-stone-200 bg-[#f7f4ee]/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:hidden">
-          <div className="grid grid-cols-3 gap-2">
-            {mobileTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveView(tab.id)}
-                disabled={tab.id === "letter" && !hasLetter}
-                className={cn(
-                  "min-h-12 rounded-md border px-2 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-45",
-                  activeView === tab.id
-                    ? "border-slate-800 bg-slate-800 text-white"
-                    : "border-stone-300 bg-white text-slate-700",
-                )}
-              >
-                <span className="block text-sm font-semibold">{tab.label}</span>
-                <span
-                  className={cn(
-                    "block text-[11px]",
-                    activeView === tab.id ? "text-slate-200" : "text-slate-500",
-                  )}
-                >
-                  {tab.status}
-                </span>
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start">
-          {/* 入力フォーム */}
-          <div
-            className={cn(
-              "content-start gap-4 lg:grid",
-              activeView === "form" ? "grid" : "hidden",
-            )}
-          >
-            <FuneralScriptForm
-              form={form}
-              onChange={handleChange}
-              onCeremonyTypeChange={handleCeremonyTypeChange}
-              onGenerate={handleGenerate}
-            />
-            <FuneralScriptFileControls
-              canSave={hasScript}
-              onSave={handleSaveFile}
-              onLoaded={handleLoadFile}
-            />
-          </div>
-
-          {/* プレビュー */}
-          <div className="grid content-start gap-3">
-            <div
-              className={cn(
-                "content-start gap-3 lg:grid",
-                activeView === "script" ? "grid" : "hidden",
-              )}
-            >
-              {hasScript && (
-                <FuneralScriptAiControls
-                  targetCount={aiTargetIds.length}
-                  hasGenerated={hasAiGenerated}
-                  loading={aiLoading}
-                  error={aiError}
-                  warnings={aiWarnings}
-                  onGenerate={handleGenerateAi}
-                  onRevert={handleRevertAi}
-                  canRevert={preAiSections !== null}
-                />
-              )}
-              <div className="lg:hidden">
-                <FuneralScriptToolbar
-                  printSize={form.printSize}
-                  onPrintSizeChange={(printSize) => handleChange({ printSize })}
-                  onCopy={handleCopy}
-                  onCreatePdf={handleCreatePdf}
-                  copied={copied}
-                  disabled={!hasScript}
-                  pdfLoading={pdfLoading}
-                />
-              </div>
-              {(pdfLoading || pdfError || pdfUrl) && (
-                <div
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-xs leading-5",
-                    pdfError
-                      ? "border-rose-200 bg-rose-50 text-rose-700"
-                      : "border-emerald-200 bg-emerald-50 text-slate-700",
-                  )}
-                >
-                  {pdfLoading && "PDFを作成しています。長い台本は少し時間がかかります。"}
-                  {pdfError && pdfError}
-                  {pdfUrl && !pdfLoading && !pdfError && (
-                    <div>
-                      <p>PDFを作成しました。</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {pdfShareAvailable && (
-                          <button
-                            type="button"
-                            onClick={handleSharePdf}
-                            className="min-h-10 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white"
-                          >
-                            ファイル/Driveへ保存
-                          </button>
+            {/* セグメント切替（入力｜司会台本｜会葬礼状）＋ 並べて表示（PCのみ） */}
+            <div className="sticky top-0 z-30 -mx-4 mb-4 border-y border-stone-200 bg-[#f7f4ee]/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+              <div className="flex items-center gap-2">
+                <div className={cn("grid flex-1 gap-2", hasLetter ? "grid-cols-3" : "grid-cols-2")}>
+                  {mobileTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeView === tab.id}
+                      onClick={() => setActiveView(tab.id)}
+                      disabled={tab.id === "letter" && !hasLetter}
+                      className={cn(
+                        "min-h-12 rounded-md border px-2 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-45",
+                        activeView === tab.id
+                          ? "border-slate-800 bg-slate-800 text-white"
+                          : "border-stone-300 bg-white text-slate-700 hover:bg-stone-50",
+                      )}
+                    >
+                      <span className="block text-sm font-semibold">{tab.label}</span>
+                      <span
+                        className={cn(
+                          "block text-[11px]",
+                          activeView === tab.id ? "text-slate-200" : "text-slate-500",
                         )}
-                        <button
-                          type="button"
-                          onClick={handleOpenPdf}
-                          className="min-h-10 rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800"
-                        >
-                          PDFを開く
-                        </button>
-                        <a
-                          href={pdfUrl}
-                          download={pdfFileName}
-                          className="inline-flex min-h-10 items-center rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
-                        >
-                          ダウンロード
-                        </a>
-                      </div>
-                    </div>
-                  )}
+                      >
+                        {tab.status}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              )}
-              {hasScript && (
-                <p className="text-xs text-slate-500">
-                  {CEREMONY_TYPE_LABELS[form.ceremonyType]} ／ 全{" "}
-                  {sections.length} セクション（本文は直接編集できます）
-                </p>
-              )}
+                {hasLetter && activeView !== "form" && (
+                  <button
+                    type="button"
+                    onClick={() => setCompareMode((v) => !v)}
+                    aria-pressed={compareMode}
+                    className={cn(
+                      "hidden shrink-0 items-center gap-1.5 rounded-md border px-3 py-2.5 text-xs font-semibold transition lg:inline-flex",
+                      compareMode
+                        ? "border-slate-800 bg-slate-800 text-white"
+                        : "border-stone-300 bg-white text-slate-700 hover:bg-stone-50",
+                    )}
+                    title="台本と礼状を左右に並べて表示"
+                  >
+                    <span aria-hidden>▥</span>
+                    {compareMode ? "並べて表示中" : "台本と礼状を並べる"}
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* プレビュー2枚（xlで台本と礼状を横並び表示） */}
+            {/* 入力 */}
             <div
               className={cn(
-                "gap-3",
-                hasLetter ? "xl:grid xl:grid-cols-2 xl:items-start" : "grid",
+                "content-start gap-4",
+                activeView === "form" ? "grid" : "hidden",
               )}
             >
+              <FuneralScriptForm
+                form={form}
+                onChange={handleChange}
+                onCeremonyTypeChange={handleCeremonyTypeChange}
+                onGenerate={handleGenerate}
+              />
+              <FuneralScriptFileControls
+                canSave={hasScript}
+                onSave={handleSaveFile}
+                onLoaded={handleLoadFile}
+              />
+            </div>
+
+            {/* 台本・礼状（既定は全幅1カラム。PCで「並べて表示」時のみ2カラム） */}
+            {activeView !== "form" && (
               <div
                 className={cn(
-                  "min-w-0",
-                  activeView === "script" ? "block" : "hidden",
-                  "lg:block",
+                  compareOn ? "lg:grid lg:grid-cols-2 lg:items-start lg:gap-4" : "",
                 )}
               >
-                <p className="mb-2 hidden text-center text-sm font-semibold text-slate-700 lg:block">
-                  葬儀司会台本（プレビュー）
-                </p>
-                <FuneralScriptPreview
-                  sections={sections}
-                  printSize={form.printSize}
-                  onEditBody={handleEditBody}
-                />
-              </div>
-
-              {hasLetter && (
+                {/* 司会台本カラム */}
                 <div
                   className={cn(
                     "min-w-0",
-                    activeView === "letter" ? "block" : "hidden",
-                    "lg:block",
+                    activeView === "script"
+                      ? "block"
+                      : compareOn
+                        ? "hidden lg:block"
+                        : "hidden",
                   )}
                 >
-                  <p className="mb-2 hidden text-center text-sm font-semibold text-slate-700 lg:block">
-                    オリジナル会葬礼状（プレビュー）
-                  </p>
-                  <FuneralScriptOriginalLetterPanel
-                    form={form}
-                    letter={originalLetter}
-                    loading={letterLoading}
-                    error={letterError}
-                    warnings={letterWarnings}
-                    copied={letterCopied}
-                    onEditBody={handleEditLetterBody}
-                    onRegenerate={handleGenerateLetter}
-                    onCopy={handleCopyLetter}
-                  />
+                  <div className="grid content-start gap-3">
+                    {hasScript && (
+                      <FuneralScriptAiControls
+                        targetCount={aiTargetIds.length}
+                        hasGenerated={hasAiGenerated}
+                        loading={aiLoading}
+                        error={aiError}
+                        warnings={aiWarnings}
+                        onGenerate={handleGenerateAi}
+                        onRevert={handleRevertAi}
+                        canRevert={preAiSections !== null}
+                        onSave={handleSaveToList}
+                        saving={saving}
+                        saveMessage={saveMessage}
+                      />
+                    )}
+                    <div className="lg:hidden">
+                      <FuneralScriptToolbar
+                        printSize={form.printSize}
+                        onPrintSizeChange={(printSize) => handleChange({ printSize })}
+                        onCopy={handleCopy}
+                        onCreatePdf={handleCreatePdf}
+                        copied={copied}
+                        disabled={!hasScript}
+                        pdfLoading={pdfLoading}
+                      />
+                    </div>
+                    {(pdfLoading || pdfError || pdfUrl) && (
+                      <div
+                        className={cn(
+                          "rounded-md border px-3 py-2 text-xs leading-5",
+                          pdfError
+                            ? "border-rose-200 bg-rose-50 text-rose-700"
+                            : "border-emerald-200 bg-emerald-50 text-slate-700",
+                        )}
+                      >
+                        {pdfLoading && "PDFを作成しています。長い台本は少し時間がかかります。"}
+                        {pdfError && pdfError}
+                        {pdfUrl && !pdfLoading && !pdfError && (
+                          <div>
+                            <p>PDFを作成しました。</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {pdfShareAvailable && (
+                                <button
+                                  type="button"
+                                  onClick={handleSharePdf}
+                                  className="min-h-10 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white"
+                                >
+                                  ファイル/Driveへ保存
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleOpenPdf}
+                                className="min-h-10 rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800"
+                              >
+                                PDFを開く
+                              </button>
+                              <a
+                                href={pdfUrl}
+                                download={pdfFileName}
+                                className="inline-flex min-h-10 items-center rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                              >
+                                ダウンロード
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {hasScript && (
+                      <p className="text-xs text-slate-500">
+                        {CEREMONY_TYPE_LABELS[form.ceremonyType]} ／ 全{" "}
+                        {sections.length} セクション（本文は直接編集できます）
+                      </p>
+                    )}
+                    <div className="min-w-0">
+                      <p className="mb-2 hidden text-center text-sm font-semibold text-slate-700 lg:block">
+                        葬儀司会台本（プレビュー）
+                      </p>
+                      <FuneralScriptPreview
+                        sections={sections}
+                        printSize={form.printSize}
+                        onEditBody={handleEditBody}
+                      />
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-          </div>
+
+                {/* 会葬礼状カラム */}
+                {hasLetter && (
+                  <div
+                    className={cn(
+                      "min-w-0",
+                      activeView === "letter"
+                        ? "block"
+                        : compareOn
+                          ? "hidden lg:block"
+                          : "hidden",
+                    )}
+                  >
+                    <p className="mb-2 hidden text-center text-sm font-semibold text-slate-700 lg:block">
+                      オリジナル会葬礼状（プレビュー）
+                    </p>
+                    <FuneralScriptOriginalLetterPanel
+                      form={form}
+                      letter={originalLetter}
+                      loading={letterLoading}
+                      error={letterError}
+                      warnings={letterWarnings}
+                      copied={letterCopied}
+                      onEditBody={handleEditLetterBody}
+                      onRegenerate={handleGenerateLetter}
+                      onCopy={handleCopyLetter}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
