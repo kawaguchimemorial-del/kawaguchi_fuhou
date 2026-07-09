@@ -27,9 +27,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         style={{ background: ADMIN }}
       >
         <span className="font-bold">マイページ</span>
-        <span className="rounded bg-white/95 px-3 py-1.5 text-sm text-[#333]">
-          👤 {homeName}
-        </span>
+        <div className="flex items-center gap-3">
+          <Link href="/kanri" className="flex items-center gap-1.5 rounded bg-white/95 px-3 py-1.5 text-sm font-medium text-[#1aa39a] hover:bg-white">
+            <List size={15} /> 葬儀管理へ
+          </Link>
+          <span className="rounded bg-white/95 px-3 py-1.5 text-sm text-[#333]">
+            👤 {homeName}
+          </span>
+        </div>
       </header>
 
       {/* モバイル用ナビ（横スクロール・md未満で表示） */}

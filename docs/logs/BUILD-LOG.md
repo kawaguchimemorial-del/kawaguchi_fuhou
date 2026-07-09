@@ -885,3 +885,8 @@
 - 修正: 見積フォームの「対象者名」を「対象者氏(deceased_last_name)／対象者名(deceased_first_name)」の2入力に分離。saveEstimateFullは各フィールドをそのまま保存(空白分割を廃止)。バリデーション/必須は「対象者氏」に。施行番号読込・編集復元も氏/名に分割対応。
 - 効果: 訃報案内作成(from_estimate)は e.deceased.lastName/firstName を dSei/dMei に入れるため、以後は氏名が正しく分かれる。
 - 検証: フォームに対象者氏/名の2欄表示、E2Eで氏=山田/名=花子を登録→DBに deceased_last_name=山田, deceased_first_name=花子 と分離保存を確認後削除。tscエラー無し。
+
+## 2026-07-09 訃報案内(/admin)↔葬儀管理(/kanri) の相互導線を追加
+- /admin ヘッダー右に「葬儀管理へ」ボタン(→/kanri)を追加。
+- /kanri トップバー右に「訃報案内へ」ボタン(→/admin, Megaphoneアイコン)を追加。
+- 検証: 両ページで相互リンク表示をcurl確認。tscエラー無し。
