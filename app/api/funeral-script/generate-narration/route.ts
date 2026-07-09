@@ -112,7 +112,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     if (result.status === 404 || result.status === 400) {
       return errorResponse(
-        `テキストモデルの呼び出しに失敗しました（HTTP ${result.status}）。OPENAI_TEXT_MODEL（現在: ${model}）が正しいかご確認ください。`,
+        `テキストモデルの呼び出しに失敗しました（HTTP ${result.status}）。OPENAI_TEXT_MODEL（現在: ${/^sk-/.test(model) ? "※不正な値（APIキーが設定されています）" : model}）が正しいかご確認ください。`,
         502,
         GENERIC_FAIL,
       );
