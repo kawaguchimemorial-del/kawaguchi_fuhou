@@ -379,9 +379,8 @@ export default function FuneralScriptPage() {
       });
       return;
     }
-    // 1) PCに保存（引き継ぎファイルをダウンロード）
-    handleSaveFile();
-    // 2) サーバー保存＋一覧
+    // サーバー保存を先に完了させ、成功後に端末へダウンロードする。
+    // （スマホではダウンロードでページ遷移が起き、先にfetchすると中断されるため順序が重要）
     setSaving(true);
     setSaveMessage(null);
     try {
@@ -400,26 +399,36 @@ export default function FuneralScriptPage() {
             : null,
         }),
       });
-      const data: { ok?: boolean; id?: string; error?: string } =
-        await res.json();
+      let data: { ok?: boolean; id?: string; error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* 非JSON応答（タイムアウト等）はfailとして扱う */
+      }
       if (!res.ok || !data.ok) {
         setSaveMessage({
           ok: false,
           text:
             data.error ||
-            "サーバー保存に失敗しました。PCへのダウンロードは完了しています。",
+            `サーバー保存に失敗しました（${res.status}）。時間をおいて再度お試しください。`,
         });
-      } else {
-        if (data.id) setScriptCtx((p) => ({ ...p, scriptId: data.id }));
-        setSaveMessage({
-          ok: true,
-          text: "保存しました（PCにダウンロード＋一覧に保存）。",
-        });
+        return;
       }
+      if (data.id) setScriptCtx((p) => ({ ...p, scriptId: data.id }));
+      // サーバー保存が成功してから端末へダウンロード（遷移してもデータは一覧に残る）
+      try {
+        handleSaveFile();
+      } catch {
+        /* 端末保存の失敗は致命ではない（サーバー保存は完了済み） */
+      }
+      setSaveMessage({
+        ok: true,
+        text: "保存しました（一覧に保存＋端末にダウンロード）。",
+      });
     } catch {
       setSaveMessage({
         ok: false,
-        text: "サーバー保存に失敗しました。PCへのダウンロードは完了しています。",
+        text: "サーバー保存に失敗しました。通信状況をご確認のうえ再度お試しください。",
       });
     } finally {
       setSaving(false);
@@ -441,6 +450,8 @@ export default function FuneralScriptPage() {
           const res = await fetch(`/api/funeral-script/${scriptId}`);
           const data: {
             ok?: boolean;
+            customerId?: string;
+            estimateId?: string;
             content?: {
               form: FuneralScriptFormData;
               sections: FuneralScriptSection[];
@@ -453,6 +464,12 @@ export default function FuneralScriptPage() {
               data.content.sections,
               data.content.originalLetter ?? null,
             );
+            // 再保存で紐付けが外れないよう、保存時の顧客/施行を復元
+            setScriptCtx({
+              scriptId,
+              customerId: data.customerId,
+              estimateId: data.estimateId,
+            });
           }
         } catch {
           /* 読み込み失敗時は空のフォームのまま */

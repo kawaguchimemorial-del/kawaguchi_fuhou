@@ -64,15 +64,19 @@ function mapRow(r: any): FuneralScriptRecord {
   };
 }
 
-// 保存済み台本の中身(保存ファイル)を返す。ツールでの再編集(開く)に使う。
+// 保存済み台本の中身(保存ファイル)＋紐付けを返す。ツールでの再編集(開く)に使う。
 export async function getFuneralScriptContent(
   id: string,
-): Promise<FuneralScriptSavedFile | null> {
+): Promise<{
+  content: FuneralScriptSavedFile;
+  customerId?: string;
+  estimateId?: string;
+} | null> {
   const c = db();
   if (!c || !id) return null;
   const { data } = await c
     .from("fk_funeral_scripts")
-    .select("content")
+    .select("content,customer_id,estimate_id")
     .eq("funeral_home_id", KANRI_HOME_ID)
     .eq("id", id)
     .is("deleted_at", null)
@@ -80,5 +84,9 @@ export async function getFuneralScriptContent(
     .single();
   const content = data?.content;
   if (!content || typeof content !== "object") return null;
-  return content as FuneralScriptSavedFile;
+  return {
+    content: content as FuneralScriptSavedFile,
+    customerId: data?.customer_id ?? undefined,
+    estimateId: data?.estimate_id ?? undefined,
+  };
 }

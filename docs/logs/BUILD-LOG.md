@@ -933,3 +933,10 @@
 - 請求書詳細(billing/[id]/page.tsx): 列見出し・ボタンを「領収書」→「領収証」。
 - 領収証PDF(billing/[id]/receipt/route.ts): 日付を請求書発行日(billedOn)ではなく入金日(入金伝票の最新paidOn)に変更(無ければbilledOn→当日にフォールバック)。文書タイトル・見出しも「領収証」に統一。
 - tsc・next build 成功。
+
+## 2026-07-10 スマホで台本保存が「サーバー保存に失敗」する不具合を修正
+- 原因(主因): 保存が「①端末ダウンロード→②サーバー保存fetch」の順。スマホ(特にiOS)は①のblobダウンロードでページ遷移/アンロードが起き、進行中の②fetchが中断→catchで失敗表示になっていた。
+- 修正: 順序を「①サーバー保存(await)→成功後に②端末ダウンロード」に入れ替え(app/funeral-script/page.tsx handleSaveToList)。非JSON応答も安全に扱い、失敗時はHTTPステータス付きメッセージに。
+- 副次バグ: customer_id/estimate_idが実在しないとFK違反で500。save routeで保存前に実在チェックし、無いIDはnull化して台本自体は必ず保存(app/api/funeral-script/save/route.ts)。
+- 再編集(開く→保存)で紐付けが外れる問題: GET /api/funeral-script/[id] が customerId/estimateId も返し、ツール側で復元(lib/kanri/funeral-scripts.ts, [id]/route.ts, page.tsx)。
+- 本番でFK不整合payloadが500→200(null化)になることを確認予定。tsc・next build 成功。

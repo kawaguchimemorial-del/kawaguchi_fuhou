@@ -53,10 +53,25 @@ export async function POST(req: Request) {
     originalLetter: body.originalLetter ?? null,
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const c = createAdminClient() as any;
+
+  // 外部キー不整合で保存全体が失敗しないよう、実在しないIDはnull化して紐付けのみ外す。
+  let customerId = body.customerId || null;
+  let estimateId = body.estimateId || null;
+  if (customerId) {
+    const { data } = await c.from("fk_customers").select("id").eq("id", customerId).maybeSingle();
+    if (!data) customerId = null;
+  }
+  if (estimateId) {
+    const { data } = await c.from("fk_estimates").select("id").eq("id", estimateId).maybeSingle();
+    if (!data) estimateId = null;
+  }
+
   const row = {
     funeral_home_id: KANRI_HOME_ID,
-    customer_id: body.customerId || null,
-    estimate_id: body.estimateId || null,
+    customer_id: customerId,
+    estimate_id: estimateId,
     deceased_name: deceasedName,
     ceremony_type: body.form.ceremonyType || null,
     title: (body.form.venueName || "").trim() || null,
@@ -64,9 +79,6 @@ export async function POST(req: Request) {
     created_by: body.createdBy?.trim() || null,
     updated_at: new Date().toISOString(),
   };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const c = createAdminClient() as any;
 
   // 1) 明示の scriptId(一覧から開いて再保存) → 更新
   if (body.scriptId) {
@@ -80,12 +92,12 @@ export async function POST(req: Request) {
   }
 
   // 2) 冪等: 同一施行(見積)の既存台本があれば更新(1施行1台本・二度押し防止)。施行無しは常に新規。
-  if (body.estimateId) {
+  if (estimateId) {
     const { data: ex } = await c
       .from("fk_funeral_scripts")
       .select("id")
       .eq("funeral_home_id", KANRI_HOME_ID)
-      .eq("estimate_id", body.estimateId)
+      .eq("estimate_id", estimateId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(1);

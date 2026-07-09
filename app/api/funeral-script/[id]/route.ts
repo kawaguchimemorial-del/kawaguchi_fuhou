@@ -11,10 +11,11 @@ type Params = { params: Promise<{ id: string }> };
 // - ?format=txt: 台本+礼状の全文テキスト(一覧のダウンロード用)。
 export async function GET(req: Request, { params }: Params) {
   const { id } = await params;
-  const content = await getFuneralScriptContent(id);
-  if (!content) {
+  const rec = await getFuneralScriptContent(id);
+  if (!rec) {
     return Response.json({ ok: false, error: "台本が見つかりません。" }, { status: 404 });
   }
+  const content = rec.content;
 
   const url = new URL(req.url);
   if (url.searchParams.get("format") === "txt") {
@@ -38,5 +39,10 @@ export async function GET(req: Request, { params }: Params) {
     });
   }
 
-  return Response.json({ ok: true, content });
+  return Response.json({
+    ok: true,
+    content,
+    customerId: rec.customerId,
+    estimateId: rec.estimateId,
+  });
 }
