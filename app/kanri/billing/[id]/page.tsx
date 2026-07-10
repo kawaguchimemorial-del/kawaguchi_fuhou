@@ -68,7 +68,7 @@ export default async function PaymentSlipManage({ params }: Params) {
                         </form>
                       )}
                     </td>
-                    <td className="px-3 py-2">{i === 0 && <a href={`/kanri/billing/${iv.id}/receipt`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収証</a>}</td>
+                    <td className="px-3 py-2"><a href={`/kanri/billing/${iv.id}/receipt?payment=${p.id}`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">領収証</a></td>
                   </tr>
                 )))
               )}

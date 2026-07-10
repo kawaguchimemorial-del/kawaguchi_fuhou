@@ -29,18 +29,40 @@ function hankoSvg(color = "#c0392b") {
   </svg>`;
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const res = await getInvoice(id);
   if (!res) return new Response("not found", { status: 404 });
   const { invoice: iv, estimate: e, details } = res;
   const co = await getCompanyInfo();
 
+  // 入金(内金/残金)ごとに領収証を出せるよう、対象の入金を特定する。
+  // ?payment=<入金ID> があればその入金、無ければ最新の入金を対象にする。
+  const slips = await listPaymentSlips(id);
+  const payments = slips.flatMap((sl) => sl.payments);
+  const paymentId = new URL(req.url).searchParams.get("payment");
+  const byDate = [...payments].sort((a, b) =>
+    String(a.paidOn ?? "").localeCompare(String(b.paidOn ?? "")),
+  );
+  const target = paymentId
+    ? payments.find((p) => p.id === paymentId)
+    : byDate[byDate.length - 1];
+
+  // 入金種別ラベル(内金/残金)。一部入金→内金・完納→残金に寄せる。その他/未選択は表示しない。
+  const catRaw = (target?.category ?? "").trim();
+  const categoryLabel =
+    catRaw === "内金" || catRaw === "一部入金"
+      ? "内金"
+      : catRaw === "残金" || catRaw === "完納"
+        ? "残金"
+        : "";
+
   const companyName = (co.company_name || "株式会社川口典礼").replace(/\s|　/g, "");
   const companyAddr = [co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
   const addrWithPref = [co.prefecture, companyAddr].filter(Boolean).join("");
   const to = iv.invoiceTargetName || iv.mournerName || iv.customerName || (e ? mournerFullName(e) : "");
-  const amount = iv.paidTotal > 0 ? iv.paidTotal : iv.total;
+  // 受領額: 対象入金があればその入金額、無ければ累計入金(無ければ請求総額)。
+  const amount = target ? target.amount : (iv.paidTotal > 0 ? iv.paidTotal : iv.total);
   // 税抜/消費税の内訳。
   // ※ DBの tax_amount は移植データが不正(8%換算や0)のため信用しない。
   //   各明細の 税込金額(amount_including_tax) と 税抜金額(amount)、無ければ税率(tax)から実額を算出する。
@@ -59,16 +81,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   } else {
     exTax = Math.round(amount / 1.1); tax = amount - exTax;
   }
-  const proviso = iv.title || (iv.deceasedName ? `${iv.deceasedName}家　葬儀内金` : "葬儀代");
-  // 領収書の日付は「入金日」を用いる（請求書の発行日ではない）。
-  // 入金伝票の全入金のうち最新の入金日を採用。無ければ請求発行日→当日にフォールバック。
-  const slips = await listPaymentSlips(id);
-  const paidDates = slips
-    .flatMap((sl) => sl.payments.map((p) => p.paidOn))
-    .filter((d): d is string => !!d)
-    .sort();
-  const paymentDate = paidDates.length ? paidDates[paidDates.length - 1] : undefined;
-  const issued = fmt(paymentDate) || fmt(iv.billedOn) || fmt(new Date().toISOString());
+  // 但し書き: 種別(内金/残金)があれば末尾に付す。
+  const provisoBase = iv.title || (iv.deceasedName ? `${iv.deceasedName}家　葬儀代` : "葬儀代");
+  const proviso = categoryLabel ? `${provisoBase}（${categoryLabel}）` : provisoBase;
+  // 領収証の日付は「入金日」を用いる（請求書の発行日ではない）。
+  // 対象入金の入金日を優先。無ければ請求発行日→当日にフォールバック。
+  const issued = fmt(target?.paidOn) || fmt(iv.billedOn) || fmt(new Date().toISOString());
   const no = iv.invoiceNo ?? iv.id.slice(0, 6);
   const invNo = co.invoice_no || "";
   const hankoRed = hankoSvg("#c0392b");
@@ -131,7 +149,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         <div class="to-box"><span class="nm">${esc(to)}</span> 様</div>
         <div class="no">No.&nbsp;&nbsp;${esc(no)}</div>
       </div>
-      <div class="amount-box"><span class="amount">${money(amount)}</span><span class="taxlabel">（税込）</span></div>
+      <div class="amount-box"><span class="amount">${money(amount)}</span><span class="taxlabel">（税込）</span>${categoryLabel ? `<span class="taxlabel">［${categoryLabel}］</span>` : ""}</div>
       <div class="provrow"><span>但し</span><span class="prov">${esc(proviso)}</span>${invNo ? `<span class="invno">事業者番号：${esc(invNo)}</span>` : ""}</div>
       <div class="recv">${issued}&nbsp;&nbsp;&nbsp;上記正に領収いたしました。</div>
       <div class="mid">
@@ -159,7 +177,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         <div class="to-box"><span class="nm">${esc(to)}</span> 様</div>
         <div class="no">No.&nbsp;&nbsp;${esc(no)}</div>
       </div>
-      <div class="amount-box"><span class="amount">${money(amount)}</span></div>
+      <div class="amount-box"><span class="amount">${money(amount)}</span>${categoryLabel ? `<span class="taxlabel">［${categoryLabel}］</span>` : ""}</div>
       <div class="provrow"><span>但し</span><span class="prov">${esc(proviso)}</span></div>
       <div class="recv">${issued}&nbsp;&nbsp;&nbsp;上記正に領収いたしました。</div>
       <div class="mid">
