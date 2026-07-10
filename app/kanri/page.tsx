@@ -28,7 +28,7 @@ const GROUPS = [
   { title: "その他", items: [
     { label: "営業日報", href: "/kanri/analytics", icon: FileText },
     { label: "顧客登録推移", href: "/kanri/analytics", icon: TrendingUp },
-    { label: "入金管理", href: "/kanri/billing", icon: CircleDollarSign },
+    { label: "入金管理", href: "/kanri/deposits", icon: CircleDollarSign },
     { label: "ユーザー管理", href: "/kanri/settings", icon: Users },
   ] },
 ];
