@@ -214,10 +214,11 @@ export default function IeiPhotoPage() {
   );
   const [autoCorrect, setAutoCorrect] = useState<boolean>(false);
   // 事前登録(顧客/対象者)コンテキスト。/kanri/ai-portrait/new から渡される。
-  const [portraitCtx, setPortraitCtx] = useState<{ customerId?: string; customerName?: string; deceased?: string; estimateId?: string }>({});
+  const [portraitCtx, setPortraitCtx] = useState<{ portraitId?: string; customerId?: string; customerName?: string; deceased?: string; estimateId?: string }>({});
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     setPortraitCtx({
+      portraitId: sp.get("portrait_id") || undefined,
       customerId: sp.get("customer_id") || undefined,
       customerName: sp.get("customer_name") || undefined,
       deceased: sp.get("deceased") || undefined,
@@ -934,11 +935,12 @@ export default function IeiPhotoPage() {
     });
     const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
     const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu");
-    const [baseDataUrl, tefudaDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob)]);
+    const monitorBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "monitor169") : await exportFromBaseByKind(base as HTMLCanvasElement, "monitor169");
+    const [baseDataUrl, tefudaDataUrl, monitorDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob), toDataUrl(monitorBlob)]);
     const res = await fetch("/api/iei-photo/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ baseDataUrl, tefudaDataUrl, deceasedName: name, customerId: portraitCtx.customerId, estimateId: portraitCtx.estimateId }),
+      body: JSON.stringify({ baseDataUrl, tefudaDataUrl, monitorDataUrl, deceasedName: name, portraitId: portraitCtx.portraitId, customerId: portraitCtx.customerId, estimateId: portraitCtx.estimateId }),
     });
     const d = await res.json().catch(() => ({ ok: false, error: "応答が不正です" }));
     if (!d.ok) { setError(d.error || "一覧への保存に失敗しました。"); return false; }
@@ -1280,8 +1282,13 @@ export default function IeiPhotoPage() {
               </h1>
               {(portraitCtx.deceased || portraitCtx.customerName) && (
                 <p className="truncate text-xs text-slate-500">
-                  {portraitCtx.deceased ? `${portraitCtx.deceased} 様の遺影を作成中` : ""}
+                  {portraitCtx.deceased ? `${portraitCtx.deceased} 様の遺影を${portraitCtx.portraitId ? "差し替え中" : "作成中"}` : ""}
                   {portraitCtx.customerName ? `（顧客：${portraitCtx.customerName}）` : ""}
+                </p>
+              )}
+              {portraitCtx.portraitId && (
+                <p className="truncate text-[11px] text-amber-600">
+                  写真を差し替えて保存すると、一覧のこの遺影が更新されます。
                 </p>
               )}
             </div>

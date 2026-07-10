@@ -58,7 +58,7 @@ export default async function AiPortraitPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b bg-gray-50 text-xs text-gray-500">
-                <tr>{["写真", "対象者", "顧客", "葬儀日", "作成", "ダウンロード"].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}</tr>
+                <tr>{["写真", "対象者", "顧客", "葬儀日", "作成", "ダウンロード", "編集"].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y">
                 {portraits.map((p) => (
@@ -85,7 +85,22 @@ export default async function AiPortraitPage() {
                       <div className="flex gap-3">
                         {p.imageUrl && <a href={`${p.imageUrl}?download=遺影_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">基準</a>}
                         {p.tefudaUrl && <a href={`${p.tefudaUrl}?download=遺影手札_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">手札</a>}
+                        {p.monitorUrl && <a href={`${p.monitorUrl}?download=遺影モニター_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">モニター</a>}
                       </div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs">
+                      <a
+                        href={`/iei-photo?${new URLSearchParams({
+                          portrait_id: p.id,
+                          ...(p.deceasedName ? { deceased: p.deceasedName } : {}),
+                          ...(p.customerId ? { customer_id: p.customerId } : {}),
+                          ...(p.customerName ? { customer_name: p.customerName } : {}),
+                          ...(p.estimateId ? { estimate_id: p.estimateId } : {}),
+                        }).toString()}`}
+                        className="rounded border border-[#2c8c6f] px-2 py-1 font-medium text-[#2c8c6f] hover:bg-[#f2fbfa]"
+                      >
+                        写真を差し替え
+                      </a>
                     </td>
                   </tr>
                 ))}

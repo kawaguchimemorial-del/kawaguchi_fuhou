@@ -953,3 +953,11 @@
 - 但し書きの既定を「○○家 葬儀内金」→「○○家 葬儀代」に変更(内金固定をやめ、実際の種別を付与)。
 - 請求書詳細の各入金行に領収証ボタン(?payment付き)を表示(従来は伝票先頭のみ)。
 - tsc・next build 成功。
+
+## 2026-07-10 AI遺影一覧: モニターDL追加＋編集(写真差し替え)
+- DB: 0031_ai_portrait_monitor.sql で fk_ai_portraits.monitor_url 追加(pooler適用済み)。
+- 保存API(iei-photo/save): monitorDataUrl を受けて monitor_url に保存。portraitId 指定で既存レコードを更新(編集・写真差し替え)。
+- ツール(iei-photo): saveToServer で monitor169 も書き出して送信。URLの portrait_id を portraitCtx に取り込み保存時に渡す。差し替え中の表示を追加。
+- lib(ai-portraits): monitorUrl をtype/mapRowに追加。
+- 一覧(kanri/ai-portrait): ダウンロードに「モニター」リンク追加、「編集」列に「写真を差し替え」ボタン(/iei-photo?portrait_id...)を追加。
+- tsc・next build 成功。

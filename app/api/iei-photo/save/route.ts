@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return Response.json({ ok: false, error: "保存先が未設定です。" }, { status: 400 });
   }
-  let body: { baseDataUrl?: string; tefudaDataUrl?: string; dataUrl?: string; customerId?: string; estimateId?: string; deceasedName?: string; createdBy?: string };
+  let body: { baseDataUrl?: string; tefudaDataUrl?: string; monitorDataUrl?: string; dataUrl?: string; portraitId?: string; customerId?: string; estimateId?: string; deceasedName?: string; createdBy?: string };
   try { body = await req.json(); } catch { return Response.json({ ok: false, error: "リクエストが不正です。" }, { status: 400 }); }
 
   // 後方互換: dataUrl 単体でも受ける
@@ -42,6 +42,11 @@ export async function POST(req: Request) {
     const t = await upload(c, body.tefudaDataUrl);
     if (!t.error) tefudaUrl = t.url; // 手札は失敗しても本体は保存する
   }
+  let monitorUrl: string | undefined;
+  if (body.monitorDataUrl) {
+    const m = await upload(c, body.monitorDataUrl);
+    if (!m.error) monitorUrl = m.url; // モニターも失敗しても本体は保存する
+  }
 
   const row = {
     funeral_home_id: KANRI_HOME_ID,
@@ -50,9 +55,16 @@ export async function POST(req: Request) {
     deceased_name: deceasedName,
     image_url: base.url,
     tefuda_url: tefudaUrl || null,
+    monitor_url: monitorUrl || null,
     created_by: body.createdBy?.trim() || null,
   };
-  // 冪等: 同一施行(見積)の既存遺影があれば更新(1施行1遺影・二度押し防止)。施行無しは常に新規。
+  // 1) 明示の portraitId(一覧の「編集」で写真差し替え) → 更新
+  if (body.portraitId) {
+    const { error } = await c.from("fk_ai_portraits").update(row).eq("funeral_home_id", KANRI_HOME_ID).eq("id", body.portraitId);
+    if (error) return Response.json({ ok: false, error: `更新に失敗しました：${error.message}` }, { status: 500 });
+    return Response.json({ ok: true, id: body.portraitId, url: base.url, updated: true });
+  }
+  // 2) 冪等: 同一施行(見積)の既存遺影があれば更新(1施行1遺影・二度押し防止)。施行無しは常に新規。
   if (body.estimateId) {
     const { data: ex } = await c.from("fk_ai_portraits").select("id").eq("funeral_home_id", KANRI_HOME_ID).eq("estimate_id", body.estimateId).is("deleted_at", null).order("created_at", { ascending: false }).limit(1);
     if (ex && ex[0]) {

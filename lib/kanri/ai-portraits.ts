@@ -12,6 +12,7 @@ export interface AiPortrait {
   deceasedName?: string;
   imageUrl?: string;
   tefudaUrl?: string;
+  monitorUrl?: string;
   thumbUrl?: string;
   sourceImageUrl?: string;
   note?: string;
@@ -42,7 +43,7 @@ function mapRow(r: any): AiPortrait {
     customerName: r.fk_customers ? `${r.fk_customers.last_name ?? ""} ${r.fk_customers.first_name ?? ""}`.trim() : undefined,
     funeralAt, funeralAtIsWake: !r.fk_estimates?.funeral_at && !!r.fk_estimates?.wake_at,
     deceasedName: r.deceased_name ?? undefined,
-    imageUrl: r.image_url ?? undefined, tefudaUrl: r.tefuda_url ?? undefined, thumbUrl: r.thumb_url ?? undefined,
+    imageUrl: r.image_url ?? undefined, tefudaUrl: r.tefuda_url ?? undefined, monitorUrl: r.monitor_url ?? undefined, thumbUrl: r.thumb_url ?? undefined,
     sourceImageUrl: r.source_image_url ?? undefined, note: r.note ?? undefined,
     createdBy: r.created_by ?? undefined, createdAt: r.created_at,
   };
