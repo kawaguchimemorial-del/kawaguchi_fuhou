@@ -961,3 +961,9 @@
 - lib(ai-portraits): monitorUrl をtype/mapRowに追加。
 - 一覧(kanri/ai-portrait): ダウンロードに「モニター」リンク追加、「編集」列に「写真を差し替え」ボタン(/iei-photo?portrait_id...)を追加。
 - tsc・next build 成功。
+
+## 2026-07-10 商品カタログ「料理（旬菜亭）」を登録(カタログ8枚から抽出)
+- public/tmp/オンライン祭壇/商品/旬菜亭/ の旬菜亭カタログ(8スキャン)を読み取り、種別「料理（旬菜亭）」で登録。
+- 子カテゴリ(判断)7分類: セット料理(3)/懐石弁当(8)/折詰弁当(4)/子供膳(2)/一品料理(23)/追加オプション(9)/変更オプション(4)＝計53商品。
+- 価格は unit_price=税抜・tax_rate=0.1(既存「華鳳」規約に一致、税込=×1.1で全件整合を確認)。product_code(25xxx/P25xxx/MAISEN25)も格納。
+- fk_master_items(product_kind「料理（旬菜亭）」sort=23＋product_sub_kind×7 extra.parent=料理（旬菜亭）)、fk_products×53をpooler経由で登録。本番一覧に即時反映(force-dynamic)。
