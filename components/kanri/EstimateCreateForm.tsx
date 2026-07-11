@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
 import { saveEstimateFull, saveInvoiceFull, type KanriResult } from "@/lib/kanri/actions";
@@ -22,7 +22,7 @@ export interface FormInitial {
   title?: string; memo?: string; date1?: string; date2?: string;
   crematorium?: string; brand?: string;
   productSetId?: string;
-  items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number }[];
+  items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; isSetItem?: boolean; hiddenPaper?: boolean }[];
   advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 担当者(最終更新者)
   preConsultation?: boolean; // 事前相談
@@ -96,7 +96,11 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [setOpen, setSetOpen] = useState(false);
   const [chosenSet, setChosenSet] = useState<ProductSet | null>(initial?.productSetId ? (productSets.find((s) => s.id === initial.productSetId) ?? null) : null);
   // セット内訳（選択時に全展開・行ごとに「表示しない」チェック）
-  const [setItems, setSetItems] = useState<{ name: string; quantity: number; hidden: boolean }[]>([]);
+  // 編集時: 保存済みのセット内訳(is_set_item)を復元し、非表示チェック(hidden_paper)も引き継ぐ。
+  const initSetItems = (initial?.items ?? [])
+    .filter((it) => it.isSetItem)
+    .map((it) => ({ name: it.name, quantity: it.quantity || 1, hidden: !!it.hiddenPaper }));
+  const [setItems, setSetItems] = useState<{ name: string; quantity: number; hidden: boolean }[]>(initSetItems);
   async function loadSetItems(setId: string) {
     try {
       const res = await fetch(`/kanri/product-sets/${setId}/items`);
@@ -106,12 +110,18 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   }
   const [prodOpen, setProdOpen] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  // 編集時: 既存明細を復元（セット行=セット名一致は除外、値引は値引行へ、他はオプション行へ）
+  // 編集時: 既存明細を復元（セット価格行=セット名一致 と セット内訳=is_set_item は除外、値引は値引行へ、他はオプション行へ）
   const initItems = initial?.items ?? [];
   const initSetName = initial?.productSetId ? productSets.find((s) => s.id === initial.productSetId)?.name : undefined;
   const [opts, setOpts] = useState<OptRow[]>(
-    initItems.filter((it) => it.lineKind === "item" && it.name !== initSetName).map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
+    initItems.filter((it) => it.lineKind === "item" && !it.isSetItem && it.name !== initSetName).map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
   );
+  // 旧データ救済: セット選択済みなのに保存済みセット内訳が無い場合のみ、セット定義から内訳を読み込む。
+  useEffect(() => {
+    if (chosenSet && initSetItems.length === 0) loadSetItems(chosenSet.id);
+    // マウント時のみ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [optPickKey, setOptPickKey] = useState<number | null>(null); // カード単位の商品選択対象
   // 商品選択モーダルの絞り込み（種別を選んで商品名で検索）
   const [pickKind, setPickKind] = useState("");

@@ -967,3 +967,13 @@
 - 子カテゴリ(判断)7分類: セット料理(3)/懐石弁当(8)/折詰弁当(4)/子供膳(2)/一品料理(23)/追加オプション(9)/変更オプション(4)＝計53商品。
 - 価格は unit_price=税抜・tax_rate=0.1(既存「華鳳」規約に一致、税込=×1.1で全件整合を確認)。product_code(25xxx/P25xxx/MAISEN25)も格納。
 - fk_master_items(product_kind「料理（旬菜亭）」sort=23＋product_sub_kind×7 extra.parent=料理（旬菜亭）)、fk_products×53をpooler経由で登録。本番一覧に即時反映(force-dynamic)。
+
+## 2026-07-11 見積編集: セットプラン内包品がオプション行として復元される不具合を修正
+- 原因: 編集フォーム(EstimateCreateForm)の復元で、opts(オプション行)フィルタがセット内訳(is_set_item)を除外しておらず、さらに編集ページが initial.items に isSetItem/hiddenPaper を渡していなかった。加えて編集時にセット内訳(setItems)を読み戻す処理が無く空だった(保存側は is_set_item/hidden_paper を正しく保存済み)。
+- 修正:
+  - FormInitial.items 型に isSetItem/hiddenPaper を追加。
+  - 見積編集ページ(estimates/[id]/edit) の items マッピングに isSetItem/hiddenPaper を追加。
+  - opts 復元フィルタに `!it.isSetItem` を追加（セット内包品をオプション行に混ぜない）。
+  - setItems を保存済みセット内訳から復元（非表示チェック hidden_paper も引き継ぐ）。
+  - 旧データ救済: セット選択済みで保存済み内訳が無い場合のみ、セット定義から内訳を読み込む useEffect を追加。
+- tsc・next build 成功。
