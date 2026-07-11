@@ -2,32 +2,12 @@ import { getInvoice } from "@/lib/kanri/invoices";
 import { listPaymentSlips } from "@/lib/kanri/payments";
 import { mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
+import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
 
 export const dynamic = "force-dynamic";
 
 function esc(v?: string | number | null) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 function fmt(iso?: string | null) { if (!iso) return ""; const d = new Date(String(iso)); if (isNaN(d.getTime())) return ""; return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; }
-
-// 角印（赤・篆書風の近似）。会社名に重ねる用。
-function hankoSvg(color = "#c0392b") {
-  // 3列×3行に「株式会社川口典礼」を配置した近似角印
-  const chars = [["株", "式", "会"], ["社", "川", "口"], ["典", "礼", ""]];
-  let cells = "";
-  for (let ci = 0; ci < chars.length; ci++) {
-    for (let ri = 0; ri < chars[ci].length; ri++) {
-      const ch = chars[ci][ri];
-      if (!ch) continue;
-      const x = 62 - ci * 24; // 右列から（右→左）
-      const y = 20 + ri * 24;
-      cells += `<text x="${x}" y="${y}" font-size="20" font-family="'Yu Mincho','Noto Serif JP',serif" font-weight="bold" fill="${color}" text-anchor="middle" dominant-baseline="middle">${ch}</text>`;
-    }
-  }
-  return `<svg viewBox="0 0 84 84" width="84" height="84" xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="3" width="78" height="78" fill="none" stroke="${color}" stroke-width="4"/>
-    <rect x="8" y="8" width="68" height="68" fill="none" stroke="${color}" stroke-width="1.5"/>
-    ${cells}
-  </svg>`;
-}
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -57,7 +37,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         ? "残金"
         : "";
 
-  const companyName = (co.company_name || "株式会社川口典礼").replace(/\s|　/g, "");
+  const companyName = (co.company_name || "株式会社 川口典礼").trim();
+  const telFmt = (t?: string) => {
+    const d = (t || "").replace(/[^0-9]/g, "");
+    if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+    return t || "";
+  };
   const companyAddr = [co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
   const addrWithPref = [co.prefecture, companyAddr].filter(Boolean).join("");
   const to = iv.invoiceTargetName || iv.mournerName || iv.customerName || (e ? mournerFullName(e) : "");
@@ -84,12 +70,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   // 但し書き: 種別(内金/残金)があれば末尾に付す。
   const provisoBase = iv.title || (iv.deceasedName ? `${iv.deceasedName}家　葬儀代` : "葬儀代");
   const proviso = categoryLabel ? `${provisoBase}（${categoryLabel}）` : provisoBase;
+  const seal = `<img class="seal" src="${KAKUIN_DATA_URL}" alt="社印">`;
   // 領収証の日付は「入金日」を用いる（請求書の発行日ではない）。
   // 対象入金の入金日を優先。無ければ請求発行日→当日にフォールバック。
   const issued = fmt(target?.paidOn) || fmt(iv.billedOn) || fmt(new Date().toISOString());
   const no = iv.invoiceNo ?? iv.id.slice(0, 6);
   const invNo = co.invoice_no || "";
-  const hankoRed = hankoSvg("#c0392b");
 
   const money = (n: number) => `¥${n.toLocaleString()}－`;
 
@@ -112,7 +98,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   .receipt .to-box { background: #fff; padding: 4px 0; }
   .no { font-size: 15px; white-space: nowrap; padding-top: 8px; }
   .amount-box { text-align: center; margin: 14px 0 6px; }
-  .receipt .amount-box { background: #fff; padding: 10px 0; display: flex; align-items: baseline; justify-content: center; gap: 20px; }
+  .receipt .amount-box { background: #fff7d6; padding: 10px 0; display: flex; align-items: baseline; justify-content: center; gap: 20px; }
   .amount { font-size: 40px; font-weight: 700; }
   .taxlabel { font-size: 20px; }
   .provrow { display: flex; align-items: baseline; gap: 24px; margin: 6px 0 2px; font-size: 17px; }
@@ -120,22 +106,22 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   .invno { margin-left: auto; font-weight: 700; font-size: 15px; }
   .recv { font-size: 17px; margin: 4px 0 10px; }
   .mid { display: flex; align-items: flex-start; gap: 18px; margin-top: 8px; }
-  .breakdown { width: 38%; }
+  .breakdown { width: 34%; }
   .breakdown .ttl { text-align: center; letter-spacing: 1em; padding-left: 1em; border-bottom: 2px solid currentColor; padding-bottom: 2px; }
   .breakdown table { width: 100%; border-collapse: collapse; margin-top: 4px; }
   .breakdown td { padding: 4px 6px; font-size: 15px; }
   .breakdown tr { border-bottom: 2px solid currentColor; }
   .stamp-box { width: 76px; height: 76px; flex: 0 0 76px; border: 1px solid #555; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; line-height: 1.5; letter-spacing: .3em; }
-  .company { flex: 1; position: relative; padding-left: 10px; font-size: 14px; line-height: 1.7; }
-  .company .cat { font-weight: 700; }
+  .company { flex: 1; position: relative; padding-left: 10px; font-size: 12.5px; line-height: 1.65; }
+  .company .cat { font-weight: 700; white-space: nowrap; }
   .company .hall { font-weight: 700; }
-  .company .cname { position: relative; display: inline-block; white-space: nowrap; font-size: 23px; font-weight: 800; letter-spacing: .04em; margin: 2px 0; }
-  .company .cname .hanko { position: absolute; right: -6px; top: 50%; transform: translateY(-50%); opacity: .92; }
+  .company .addr { white-space: nowrap; }
+  .company .cname { position: relative; display: inline-block; white-space: nowrap; font-size: 22px; font-weight: 800; letter-spacing: .04em; margin: 2px 0; }
   .tantou { width: 90px; flex: 0 0 90px; border: 1px solid #555; }
   .tantou .h { text-align: center; letter-spacing: .6em; padding-left: .6em; border-bottom: 1px solid #555; font-size: 14px; padding: 3px 0; }
   .tantou .b { height: 66px; }
   .copy .amount-box { margin-top: 20px; }
-  .copy-hanko { position: absolute; right: 20mm; bottom: 12mm; }
+  .seal { position: absolute; right: 14mm; bottom: 12mm; width: 30mm; height: auto; opacity: .95; }
 </style>
 <script>window.onload=function(){setTimeout(function(){window.print();},400);};</script></head>
 <body>
@@ -162,12 +148,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         <div class="company">
           <div class="cat">葬祭業務全般・仏壇仏具・霊園墓石販売</div>
           <div class="hall">川口メモリアルホール</div>
-          <div class="cname">${esc(companyName)}<span class="hanko">${hankoRed}</span></div>
-          <div>${co.postcode ? `〒${esc(co.postcode)} ` : ""}${esc(addrWithPref)}</div>
-          <div>${co.tel ? `TEL: ${esc(co.tel)}　` : ""}${co.fax ? `FAX: ${esc(co.fax)}` : ""}</div>
+          <div class="cname">${esc(companyName)}</div>
+          <div class="addr">${co.postcode ? `〒${esc(co.postcode)} ` : ""}${esc(addrWithPref)}</div>
+          <div class="addr">${co.tel ? `TEL: ${esc(telFmt(co.tel))}　` : ""}${co.fax ? `FAX: ${esc(co.fax)}` : ""}</div>
         </div>
         <div class="tantou"><div class="h">担当</div><div class="b"></div></div>
       </div>
+      ${seal}
     </div>
 
     <!-- 下半分: 入金伝票（控え） -->
@@ -189,7 +176,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         <div style="flex:1"></div>
         <div class="tantou"><div class="h" style="color:#c8641f;border-color:#c8641f">担当</div><div class="b"></div></div>
       </div>
-      <div class="copy-hanko">${hankoRed}</div>
+      ${seal}
     </div>
 
   </div>

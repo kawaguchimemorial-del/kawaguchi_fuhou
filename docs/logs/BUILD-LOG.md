@@ -1002,3 +1002,9 @@
 - 没日はJST日付で比較(date文字列はそのまま/timestamptzはAsia/Tokyoで抽出)。喪主名は memorials.announce_mourner_name と空白正規化比較。
 - new/page.tsx: deathDate(見積の没日)と喪主名(宛名/喪主/顧客の順)を渡すよう変更。
 - tsc・next build 成功。
+
+## 2026-07-11 Web版領収証を ryousyu/印刷.pdf と一致させ角印画像を使用
+- 角印画像(角印.png)を base64 で lib/kanri/kakuin.ts に埋め込み、receipt route の SVG近似角印を廃止して実画像に置換。領収証・入金伝票の各半分の右下(.seal 右14mm/下12mm/幅30mm)に配置。
+- 金額欄(領収証側)を淡黄色 #fff7d6 に(印刷.pdfと一致)。会社名は空白保持(株式会社 川口典礼)、TELを048-281-1117形式に整形。
+- 会社ブロックの折返しを解消(breakdown 38%→34%、.company 12.5px、.cat/.addr を nowrap、cname 22px)。
+- Edgeヘッドレスでローカル本番ビルドをレンダリングし、印刷.pdf と一致することを確認。tsc・next build 成功。
