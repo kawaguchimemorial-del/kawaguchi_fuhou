@@ -1017,3 +1017,8 @@
   - 収入印紙16mm角・担当22mm枠を罫線化。縦の余白(provrow/recv/mid/company line-height)を拡大しゆったり感を再現。
   - 角印を右下(right20mm/bottom16mm/幅27mm)。下段(入金伝票)は各枠をオレンジ罫線(#c8641f)に。
 - Edgeヘッドレスで実データをレンダリングし 印刷.pdf と一致を確認。tsc・next build 成功。
+
+## 2026-07-11 Web版領収証の縦寸法を印刷.pdfに一致(PDF計測で確認)
+- PyMuPDFで両PDFを計測: 目標(Excel)=上下余白30.6mm/緑帯117.8mm/内容235.7mm(中央寄せ・約85%サイズ)、Web(旧)=余白0/帯148.4mm/全面297mm。
+- 対応: .sheet に padding-top:30.6mm+box-sizing、.half height 148.5→117.8mm、内容(フォント/余白)を約85%に縮小して117.8mmに収める。
+- 再計測でWeb=上余白30.7mm/帯高117.7mm となり目標(30.6/117.8)と一致。Edgeレンダリングで内容切れ無しを確認。tsc・next build 成功。

@@ -87,47 +87,47 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   body { margin: 0; font-family: "Yu Gothic","Noto Sans JP",sans-serif; color: #1a1a1a; }
   @media print { .receipt { background: #eaf1e2 !important; } }
   .print { position: fixed; top: 6px; right: 6px; z-index: 10; } @media print { .print { display: none; } }
-  .sheet { width: 210mm; height: 297mm; margin: 0 auto; }
-  .half { height: 148.5mm; padding: 14mm 14mm; position: relative; overflow: hidden; }
+  .sheet { width: 210mm; height: 297mm; margin: 0 auto; padding-top: 30.6mm; box-sizing: border-box; }
+  .half { height: 117.8mm; padding: 9mm 14mm; position: relative; overflow: hidden; }
   .receipt { background: #eaf1e2; }
   .copy { background: #fff; color: #c8641f; }
   .row1 { display: flex; align-items: center; justify-content: space-between; }
-  h1 { font-size: 34px; letter-spacing: .35em; margin: 0; font-weight: 700; }
-  .to-box { flex: none; width: 52%; margin: 0 auto; border: 1px solid #000; background: #fff; min-height: 13mm; display: flex; align-items: center; justify-content: center; padding: 4px 0; }
-  .to-box .nm { font-size: 26px; letter-spacing: .2em; }
+  h1 { font-size: 29px; letter-spacing: .35em; margin: 0; font-weight: 700; }
+  .to-box { flex: none; width: 52%; margin: 0 auto; border: 1px solid #000; background: #fff; min-height: 10mm; display: flex; align-items: center; justify-content: center; padding: 3px 0; }
+  .to-box .nm { font-size: 22px; letter-spacing: .2em; }
   .receipt .to-box { background: #fff; padding: 0; }
   .copy .to-box { border-color: #c8641f; }
-  .no { font-size: 15px; white-space: nowrap; }
-  .amount-box { text-align: center; margin: 18px 0 10px; }
-  .receipt .amount-box { border: 1px solid #000; background: #fdf6d8; padding: 0; height: 15mm; display: flex; align-items: center; justify-content: center; gap: 14px; }
-  .copy .amount-box { border: 1px solid #c8641f; height: 15mm; display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 24px; }
-  .amount { font-size: 36px; font-weight: 700; line-height: 1; }
-  .taxlabel { font-size: 20px; }
-  .provrow { display: flex; align-items: baseline; gap: 24px; margin: 14px 0 4px; font-size: 17px; }
-  .prov { margin-left: 40px; }
-  .invno { margin-left: auto; font-weight: 700; font-size: 15px; }
-  .recv { font-size: 17px; margin: 10px 0 16px; }
-  .mid { display: flex; align-items: flex-start; gap: 22px; margin-top: 18px; }
+  .no { font-size: 13px; white-space: nowrap; }
+  .amount-box { text-align: center; margin: 9px 0 5px; }
+  .receipt .amount-box { border: 1px solid #000; background: #fdf6d8; padding: 0; height: 12mm; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .copy .amount-box { border: 1px solid #c8641f; height: 12mm; display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 13px; }
+  .amount { font-size: 30px; font-weight: 700; line-height: 1; }
+  .taxlabel { font-size: 17px; }
+  .provrow { display: flex; align-items: baseline; gap: 20px; margin: 7px 0 3px; font-size: 14px; }
+  .prov { margin-left: 34px; }
+  .invno { margin-left: auto; font-weight: 700; font-size: 13px; }
+  .recv { font-size: 14px; margin: 5px 0 8px; }
+  .mid { display: flex; align-items: flex-start; gap: 18px; margin-top: 9px; }
   .breakdown { width: 38%; }
-  .breakdown .ttl { border: 1px solid #000; border-bottom: none; text-align: center; letter-spacing: .6em; padding: 4px 0; }
+  .breakdown .ttl { border: 1px solid #000; border-bottom: none; text-align: center; letter-spacing: .6em; padding: 3px 0; font-size: 13px; }
   .breakdown table { width: 100%; border-collapse: collapse; margin-top: 0; }
-  .breakdown td { border: 1px solid #000; padding: 6px 8px; font-size: 15px; }
+  .breakdown td { border: 1px solid #000; padding: 4px 6px; font-size: 13px; }
   .breakdown td:first-child { width: 55%; white-space: nowrap; }
   .breakdown td:last-child { text-align: right; }
   .copy .breakdown .ttl, .copy .breakdown td { border-color: #c8641f; }
-  .stamp-box { width: 16mm; height: 16mm; flex: 0 0 16mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; line-height: 1.3; letter-spacing: .3em; }
+  .stamp-box { width: 14mm; height: 14mm; flex: 0 0 14mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; line-height: 1.3; letter-spacing: .3em; }
   .copy .stamp-box { border-color: #c8641f; }
-  .company { flex: 1; position: relative; padding-left: 10px; padding-right: 6mm; font-size: 12.5px; line-height: 1.9; }
+  .company { flex: 1; position: relative; padding-left: 8px; padding-right: 6mm; font-size: 11px; line-height: 1.55; }
   .company .cat { font-weight: 700; white-space: nowrap; }
   .company .hall { font-weight: 700; }
   .company .addr { white-space: nowrap; }
-  .company .cname { position: relative; display: inline-block; white-space: nowrap; font-size: 22px; font-weight: 800; letter-spacing: .04em; margin: 2px 0; }
-  .tantou { width: 22mm; flex: 0 0 22mm; border: 1px solid #000; }
+  .company .cname { position: relative; display: inline-block; white-space: nowrap; font-size: 19px; font-weight: 800; letter-spacing: .04em; margin: 1px 0; }
+  .tantou { width: 20mm; flex: 0 0 20mm; border: 1px solid #000; }
   .copy .tantou { border-color: #c8641f; }
-  .tantou .h { text-align: center; letter-spacing: .6em; padding-left: .6em; border-bottom: 1px solid #000; font-size: 14px; padding: 3px 0; }
+  .tantou .h { text-align: center; letter-spacing: .6em; padding-left: .6em; border-bottom: 1px solid #000; font-size: 13px; padding: 2px 0; }
   .copy .tantou .h { border-bottom-color: #c8641f; }
-  .tantou .b { height: 60px; }
-  .seal { position: absolute; right: 20mm; bottom: 16mm; width: 27mm; height: auto; opacity: .95; z-index: 2; }
+  .tantou .b { height: 44px; }
+  .seal { position: absolute; right: 16mm; bottom: 10mm; width: 24mm; height: auto; opacity: .95; z-index: 2; }
 </style>
 <script>window.onload=function(){setTimeout(function(){window.print();},400);};</script></head>
 <body>
