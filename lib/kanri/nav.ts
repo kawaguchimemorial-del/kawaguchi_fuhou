@@ -10,11 +10,7 @@ export const CRM_NAV: NavNode[] = [
     { label: "領収書", href: "/kanri/receipts" },
     { label: "売掛残高", href: "/kanri/receivables" },
   ] },
-  { label: "発注管理", icon: "ShoppingCart", children: [
-    { label: "発注", href: "/kanri/orders" },
-    { label: "納品管理", href: "/kanri/deliveries" },
-    { label: "買掛残高", href: "/kanri/payables" },
-  ] },
+  // 発注管理(発注/納品管理/買掛残高)は現状不要のため非表示(ページ・機能は残置)。
   { label: "スケジュール管理", icon: "CalendarDays", children: [
     { label: "直近予定", href: "/kanri/schedule" },
     { label: "カレンダー", href: "/kanri/schedule/calendar" },
@@ -29,7 +25,7 @@ export const CRM_NAV: NavNode[] = [
     { label: "EC売上", href: "/kanri/analytics/ec" },
     { label: "発注分析", href: "/kanri/analytics/orders" },
   ] },
-  { label: "SMS", icon: "Send", children: [{ label: "送信", href: "/kanri/sms" }] },
+  // SMSは現状不要のため非表示(ページ・機能は残置)。
   // 設定メニュー: 実スマート葬儀のリボン(設定展開時)の項目・順序に準拠
   { label: "設定", icon: "Settings", children: [
     { label: "基本", children: [
@@ -108,10 +104,7 @@ export const CRM_NAV: NavNode[] = [
       { label: "イベント分類", href: "/kanri/settings/meeting_kind" },
       { label: "緊急連絡先", href: "/kanri/settings/emergency_contact" },
     ] },
-    { label: "SMS", children: [
-      { label: "SMS配信テンプレート", href: "/kanri/settings/sms_template" },
-      { label: "SMS自動配信設定", href: "/kanri/settings/sms_auto_sent" },
-    ] },
+    // SMS設定は現状不要のため非表示。
     { label: "アフターセールス", children: [
       { label: "ｱﾌﾀｰｾｰﾙｽ項目", href: "/kanri/settings/after_sale_item" },
       { label: "ｱﾌﾀｰｾｰﾙｽ用ステータス", href: "/kanri/settings/after_sale_action" },

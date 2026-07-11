@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserPlus, Users, FileText, Receipt, CheckSquare, Send, TrendingUp, CircleDollarSign, Bell, ClipboardList } from "lucide-react";
+import { UserPlus, Users, FileText, Receipt, CheckSquare, TrendingUp, CircleDollarSign, Bell, ClipboardList } from "lucide-react";
 import { listCustomers, monthlyCustomerCounts, countCustomers } from "@/lib/kanri/data";
 import { listEstimates, deceasedFullName } from "@/lib/kanri/estimates";
 import { Calendar } from "@/components/kanri/Calendar";
@@ -23,7 +23,6 @@ const GROUPS = [
   ] },
   { title: "葬儀後アフター", items: [
     { label: "アフターtodo", href: "/kanri/schedule", icon: CheckSquare },
-    { label: "SMS配信", href: "/kanri/sms", icon: Send },
   ] },
   { title: "その他", items: [
     { label: "営業日報", href: "/kanri/analytics", icon: FileText },
