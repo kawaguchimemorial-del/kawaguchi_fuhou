@@ -1050,3 +1050,17 @@
   - 上段=黒/緑帯、下段=オレンジ罫線。両段とも会社ブロック・内訳・印紙・担当を同構造で描画。
 - 検証ループ: prodビルド→localhost:3987でEdge headless印刷→PyMuPDFで実測。印刷web4.pdfの各枠が印刷.pdfと±0.3mm一致。会社名cnameを21pxに合わせ視覚的にも完全一致を確認。
 - next build 成功。
+
+---
+
+## 2026-07-12 — セッション: 請求書CSVダウンロードの誤り修正
+
+### 問題
+- 請求書一覧の「請求書CSVダウンロード」を押すと、**入金一覧_.csv**（入金管理のCSV）が落ちていた。
+- 原因: ボタンが `/kanri/billing/export`（＝入金一覧CSV。25列・filename入金一覧_）を指していた。当該ルートは入金管理ページのCSVダウンロードと共有。
+
+### 修正
+- 新規 `app/kanri/billing/invoices-export/route.ts` を作成。`listInvoices()` を用い**請求書ごとに1行**の請求書一覧CSV（17列: 請求書ID/顧客名/対象者/件名/請求日/支払期限/合計金額/入金額/未入金残/売上区分/施行番号/請求先名/請求先郵便番号/請求先住所/発行会社/計上担当者/最終更新者、filename `請求書一覧_.csv`）を出力。
+- `app/kanri/billing/page.tsx` のボタンリンクを `/kanri/billing/export` → `/kanri/billing/invoices-export` に変更。
+- `/kanri/billing/export`（入金一覧）は入金管理ページ用にそのまま残置。
+- next build 成功。ローカルでCSVヘッダー・filename・データ行を確認。
