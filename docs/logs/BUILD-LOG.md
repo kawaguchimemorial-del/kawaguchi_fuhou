@@ -1064,3 +1064,11 @@
 - `app/kanri/billing/page.tsx` のボタンリンクを `/kanri/billing/export` → `/kanri/billing/invoices-export` に変更。
 - `/kanri/billing/export`（入金一覧）は入金管理ページ用にそのまま残置。
 - next build 成功。ローカルでCSVヘッダー・filename・データ行を確認。
+
+---
+
+## 2026-07-12 — 分析メニューからEC売上・発注分析を非表示
+
+- `lib/kanri/nav.ts` の「分析」から「EC売上」「発注分析」を削除（売上実績・売上分析のみ表示）。
+- ページ本体(`app/kanri/analytics/ec`, `.../orders`)は残置。
+- next build 成功。

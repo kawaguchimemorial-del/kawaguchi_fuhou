@@ -22,8 +22,7 @@ export const CRM_NAV: NavNode[] = [
   { label: "分析", icon: "LineChart", children: [
     { label: "売上実績", href: "/kanri/analytics" },
     { label: "売上分析", href: "/kanri/analytics/sales" },
-    { label: "EC売上", href: "/kanri/analytics/ec" },
-    { label: "発注分析", href: "/kanri/analytics/orders" },
+    // EC売上・発注分析は現状不要のため非表示(ページ・機能は残置)。
   ] },
   // SMSは現状不要のため非表示(ページ・機能は残置)。
   // 設定メニュー: 実スマート葬儀のリボン(設定展開時)の項目・順序に準拠
