@@ -392,6 +392,26 @@ function reconstructState(mem: any, dec: any, ev: any): Record<string, string> {
 }
 
 // 編集用：保存済みフォーム状態を取得（form_state を優先し、無い項目は実データから復元）
+// 施行(見積)IDに紐づく既存の訃報(memorial)があれば、その slug を返す。
+// 見積一覧から訃報作成する際、既存があれば新規でなく編集(上書き)に回すために使う。
+export async function findMemorialSlugByEstimate(
+  estimateId: string
+): Promise<string | null> {
+  if (!estimateId) return null;
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const { data } = await supabase
+    .from("memorials")
+    .select("slug")
+    .eq("estimate_id", estimateId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const rows = (data ?? []) as { slug?: string }[];
+  return rows[0]?.slug ?? null;
+}
+
 export async function getCeremonyFormState(
   slug: string
 ): Promise<{ withVenue: boolean; isTest: boolean; state: Record<string, string> } | null> {

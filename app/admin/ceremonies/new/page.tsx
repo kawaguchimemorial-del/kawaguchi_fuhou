@@ -1,6 +1,8 @@
+import { redirect } from "next/navigation";
 import { CeremonyWizard } from "@/components/admin/CeremonyWizard";
 import { getEstimate } from "@/lib/kanri/estimates";
 import { getCustomer } from "@/lib/kanri/data";
+import { findMemorialSlugByEstimate } from "@/lib/admin/actions";
 
 type Search = { searchParams: Promise<{ type?: string; test?: string; from_estimate?: string }> };
 
@@ -18,6 +20,12 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
   const sp = await searchParams;
   const withVenue = sp.type === "obituary_venue";
   const isTest = sp.test === "1";
+
+  // 見積もりから作成: 既に同じ施行(見積)で訃報を作成済みなら、新規でなく編集(上書き)へ回す。
+  if (sp.from_estimate) {
+    const existingSlug = await findMemorialSlugByEstimate(sp.from_estimate);
+    if (existingSlug) redirect(`/admin/ceremonies/${existingSlug}/edit`);
+  }
 
   // 見積もりから作成: 喪主・故人・式日を初期入力
   let initialState: Record<string, string | boolean> | undefined;

@@ -985,3 +985,9 @@
   - opts 復元からお供え行を除外(オプションに複製しない)。
   - 編集時は保存済みお供え明細から数量を osonaeQty に復元。新規は従来の既定数量1。
 - tsc・next build 成功。
+
+## 2026-07-11 見積一覧→訃報案内作成: 既存があれば上書き編集に
+- 現状は常に新規作成だったため、同じ施行(見積)で二重に訃報が作られていた。
+- lib/admin/actions.ts に findMemorialSlugByEstimate(estimateId) を追加(memorials.estimate_id一致・未削除の最新slug)。
+- app/admin/ceremonies/new/page.tsx: from_estimate に既存訃報があれば /admin/ceremonies/<slug>/edit へリダイレクト(編集=上書き)。無ければ従来どおり新規作成(見積から初期入力)。
+- tsc・next build 成功。
