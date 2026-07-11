@@ -88,40 +88,46 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   @media print { .receipt { background: #eaf1e2 !important; } }
   .print { position: fixed; top: 6px; right: 6px; z-index: 10; } @media print { .print { display: none; } }
   .sheet { width: 210mm; height: 297mm; margin: 0 auto; }
-  .half { height: 148.5mm; padding: 14mm 12mm; position: relative; }
+  .half { height: 148.5mm; padding: 14mm 14mm; position: relative; overflow: hidden; }
   .receipt { background: #eaf1e2; }
   .copy { background: #fff; color: #c8641f; }
-  .row1 { display: flex; align-items: flex-start; justify-content: space-between; }
+  .row1 { display: flex; align-items: center; justify-content: space-between; }
   h1 { font-size: 34px; letter-spacing: .35em; margin: 0; font-weight: 700; }
-  .to-box { flex: 1; margin: 0 14px; text-align: center; }
-  .to-box .nm { font-size: 30px; letter-spacing: .2em; }
-  .receipt .to-box { background: #fff; padding: 4px 0; }
-  .no { font-size: 15px; white-space: nowrap; padding-top: 8px; }
-  .amount-box { text-align: center; margin: 14px 0 6px; }
-  .receipt .amount-box { background: #fff7d6; padding: 10px 0; display: flex; align-items: baseline; justify-content: center; gap: 20px; }
-  .amount { font-size: 40px; font-weight: 700; }
+  .to-box { flex: none; width: 52%; margin: 0 auto; border: 1px solid #000; background: #fff; min-height: 13mm; display: flex; align-items: center; justify-content: center; padding: 4px 0; }
+  .to-box .nm { font-size: 26px; letter-spacing: .2em; }
+  .receipt .to-box { background: #fff; padding: 0; }
+  .copy .to-box { border-color: #c8641f; }
+  .no { font-size: 15px; white-space: nowrap; }
+  .amount-box { text-align: center; margin: 18px 0 10px; }
+  .receipt .amount-box { border: 1px solid #000; background: #fdf6d8; padding: 0; height: 15mm; display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .copy .amount-box { border: 1px solid #c8641f; height: 15mm; display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 24px; }
+  .amount { font-size: 36px; font-weight: 700; line-height: 1; }
   .taxlabel { font-size: 20px; }
-  .provrow { display: flex; align-items: baseline; gap: 24px; margin: 6px 0 2px; font-size: 17px; }
+  .provrow { display: flex; align-items: baseline; gap: 24px; margin: 14px 0 4px; font-size: 17px; }
   .prov { margin-left: 40px; }
   .invno { margin-left: auto; font-weight: 700; font-size: 15px; }
-  .recv { font-size: 17px; margin: 4px 0 10px; }
-  .mid { display: flex; align-items: flex-start; gap: 18px; margin-top: 8px; }
-  .breakdown { width: 34%; }
-  .breakdown .ttl { text-align: center; letter-spacing: 1em; padding-left: 1em; border-bottom: 2px solid currentColor; padding-bottom: 2px; }
-  .breakdown table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-  .breakdown td { padding: 4px 6px; font-size: 15px; }
-  .breakdown tr { border-bottom: 2px solid currentColor; }
-  .stamp-box { width: 76px; height: 76px; flex: 0 0 76px; border: 1px solid #555; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; line-height: 1.5; letter-spacing: .3em; }
-  .company { flex: 1; position: relative; padding-left: 10px; font-size: 12.5px; line-height: 1.65; }
+  .recv { font-size: 17px; margin: 10px 0 16px; }
+  .mid { display: flex; align-items: flex-start; gap: 22px; margin-top: 18px; }
+  .breakdown { width: 38%; }
+  .breakdown .ttl { border: 1px solid #000; border-bottom: none; text-align: center; letter-spacing: .6em; padding: 4px 0; }
+  .breakdown table { width: 100%; border-collapse: collapse; margin-top: 0; }
+  .breakdown td { border: 1px solid #000; padding: 6px 8px; font-size: 15px; }
+  .breakdown td:first-child { width: 55%; white-space: nowrap; }
+  .breakdown td:last-child { text-align: right; }
+  .copy .breakdown .ttl, .copy .breakdown td { border-color: #c8641f; }
+  .stamp-box { width: 16mm; height: 16mm; flex: 0 0 16mm; border: 1px solid #000; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; line-height: 1.3; letter-spacing: .3em; }
+  .copy .stamp-box { border-color: #c8641f; }
+  .company { flex: 1; position: relative; padding-left: 10px; padding-right: 6mm; font-size: 12.5px; line-height: 1.9; }
   .company .cat { font-weight: 700; white-space: nowrap; }
   .company .hall { font-weight: 700; }
   .company .addr { white-space: nowrap; }
   .company .cname { position: relative; display: inline-block; white-space: nowrap; font-size: 22px; font-weight: 800; letter-spacing: .04em; margin: 2px 0; }
-  .tantou { width: 90px; flex: 0 0 90px; border: 1px solid #555; }
-  .tantou .h { text-align: center; letter-spacing: .6em; padding-left: .6em; border-bottom: 1px solid #555; font-size: 14px; padding: 3px 0; }
-  .tantou .b { height: 66px; }
-  .copy .amount-box { margin-top: 20px; }
-  .seal { position: absolute; right: 14mm; bottom: 12mm; width: 30mm; height: auto; opacity: .95; }
+  .tantou { width: 22mm; flex: 0 0 22mm; border: 1px solid #000; }
+  .copy .tantou { border-color: #c8641f; }
+  .tantou .h { text-align: center; letter-spacing: .6em; padding-left: .6em; border-bottom: 1px solid #000; font-size: 14px; padding: 3px 0; }
+  .copy .tantou .h { border-bottom-color: #c8641f; }
+  .tantou .b { height: 60px; }
+  .seal { position: absolute; right: 20mm; bottom: 16mm; width: 27mm; height: auto; opacity: .95; z-index: 2; }
 </style>
 <script>window.onload=function(){setTimeout(function(){window.print();},400);};</script></head>
 <body>

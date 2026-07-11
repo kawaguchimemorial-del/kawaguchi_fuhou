@@ -1008,3 +1008,12 @@
 - 金額欄(領収証側)を淡黄色 #fff7d6 に(印刷.pdfと一致)。会社名は空白保持(株式会社 川口典礼)、TELを048-281-1117形式に整形。
 - 会社ブロックの折返しを解消(breakdown 38%→34%、.company 12.5px、.cat/.addr を nowrap、cname 22px)。
 - Edgeヘッドレスでローカル本番ビルドをレンダリングし、印刷.pdf と一致することを確認。tsc・next build 成功。
+
+## 2026-07-11 Web版領収証を印刷.pdf(Excel)と一致(10専門家仕様・Edge検証)
+- 10専門家ワークフローの仕様に基づき receipt route のCSSを全面調整:
+  - 宛名: 罫線ボックス化(border#000, width52%, 中央, min-height13mm)。
+  - 金額欄: 罫線＋高さ15mm(padding0, 中央)。
+  - 内訳: 下線方式→「外枠+全罫線グリッド」(見出しセル+td全罫線, 左ラベル/右金額)。
+  - 収入印紙16mm角・担当22mm枠を罫線化。縦の余白(provrow/recv/mid/company line-height)を拡大しゆったり感を再現。
+  - 角印を右下(right20mm/bottom16mm/幅27mm)。下段(入金伝票)は各枠をオレンジ罫線(#c8641f)に。
+- Edgeヘッドレスで実データをレンダリングし 印刷.pdf と一致を確認。tsc・next build 成功。
