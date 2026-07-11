@@ -412,6 +412,49 @@ export async function findMemorialSlugByEstimate(
   return rows[0]?.slug ?? null;
 }
 
+// estimate_id 未設定の既存訃報を「対象者(故人)名」で名寄せする。
+// 見つかった場合はその memorial に estimate_id を補完(今後は施行で一意照合できるように)し、slug を返す。
+// 誤照合を避けるため、対象は estimate_id が未設定の訃報のみ。
+export async function findMemorialSlugByDeceasedName(
+  deceasedName: string,
+  estimateId: string
+): Promise<string | null> {
+  const target = (deceasedName || "").replace(/[\s　]/g, "");
+  if (!target) return null;
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  // estimate_id 未設定・未削除の訃報を新しい順に取得
+  const { data: mems } = await supabase
+    .from("memorials")
+    .select("id, slug, created_at")
+    .is("estimate_id", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  const rows = (mems ?? []) as { id: string; slug: string }[];
+  if (rows.length === 0) return null;
+  const ids = rows.map((r) => r.id);
+  const { data: decs } = await supabase
+    .from("deceased")
+    .select("memorial_id, name_kanji")
+    .in("memorial_id", ids);
+  const nameByMemorial = new Map<string, string>();
+  for (const d of (decs ?? []) as { memorial_id: string; name_kanji?: string }[]) {
+    nameByMemorial.set(d.memorial_id, (d.name_kanji ?? "").replace(/[\s　]/g, ""));
+  }
+  // 新しい順に走査し、対象者名が一致する最初の訃報を採用
+  const hit = rows.find((r) => nameByMemorial.get(r.id) === target);
+  if (!hit) return null;
+  // 今後の一意照合のため estimate_id を補完(失敗しても編集導線は成立させる)
+  try {
+    await supabase.from("memorials").update({ estimate_id: estimateId }).eq("id", hit.id);
+  } catch {
+    /* 補完失敗は致命ではない */
+  }
+  return hit.slug;
+}
+
 export async function getCeremonyFormState(
   slug: string
 ): Promise<{ withVenue: boolean; isTest: boolean; state: Record<string, string> } | null> {

@@ -991,3 +991,8 @@
 - lib/admin/actions.ts に findMemorialSlugByEstimate(estimateId) を追加(memorials.estimate_id一致・未削除の最新slug)。
 - app/admin/ceremonies/new/page.tsx: from_estimate に既存訃報があれば /admin/ceremonies/<slug>/edit へリダイレクト(編集=上書き)。無ければ従来どおり新規作成(見積から初期入力)。
 - tsc・next build 成功。
+
+## 2026-07-11 訃報作成の名寄せ拡張(estimate_id未設定の既存訃報も対象者名で上書き)
+- lib/admin/actions.ts に findMemorialSlugByDeceasedName(name, estimateId) を追加。estimate_id未設定・未削除の訃報を deceased.name_kanji(空白正規化)で照合、一致すれば当該memorialに estimate_id を補完してslugを返す(以後は施行で一意照合)。
+- app/admin/ceremonies/new/page.tsx: estimate_id一致で見つからない場合、見積の対象者名(deceasedFullName)で名寄せ→見つかれば編集(上書き)へリダイレクト。誤照合防止のため対象はestimate_id未設定の訃報のみ。
+- tsc・next build 成功。

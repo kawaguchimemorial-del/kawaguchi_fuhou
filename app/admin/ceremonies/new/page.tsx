@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { CeremonyWizard } from "@/components/admin/CeremonyWizard";
-import { getEstimate } from "@/lib/kanri/estimates";
+import { getEstimate, deceasedFullName } from "@/lib/kanri/estimates";
 import { getCustomer } from "@/lib/kanri/data";
-import { findMemorialSlugByEstimate } from "@/lib/admin/actions";
+import { findMemorialSlugByEstimate, findMemorialSlugByDeceasedName } from "@/lib/admin/actions";
 
 type Search = { searchParams: Promise<{ type?: string; test?: string; from_estimate?: string }> };
 
@@ -32,6 +32,9 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
   if (sp.from_estimate) {
     const e = await getEstimate(sp.from_estimate);
     if (e) {
+      // estimate_id 未設定の既存訃報を対象者名で名寄せ。見つかれば編集(上書き)へ。
+      const byName = await findMemorialSlugByDeceasedName(deceasedFullName(e), sp.from_estimate);
+      if (byName) redirect(`/admin/ceremonies/${byName}/edit`);
       const wake = jstParts(e.wakeAt);
       const funeral = jstParts(e.funeralAt);
       // 通夜があれば通夜式、無ければ告別式を初期の式に
