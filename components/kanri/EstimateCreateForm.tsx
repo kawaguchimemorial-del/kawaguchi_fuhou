@@ -174,7 +174,8 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [dBirth, setDBirth] = useState(initial?.deceasedBirthDate ?? "");
   const [dDeath, setDDeath] = useState(initial?.deceasedDeathDate ?? "");
   const [dRelation, setDRelation] = useState(initial?.deceasedRelation ?? "");
-  // 通夜日時・告別式日時
+  // 見積日（必須）・通夜日時・告別式日時
+  const [estimateOn, setEstimateOn] = useState(initial?.date1 ?? "");
   const [wakeAt, setWakeAt] = useState(toLocal(initial?.wakeAt));
   const [funeralAt, setFuneralAt] = useState(toLocal(initial?.funeralAt));
   // 事前相談・担当者(バリデーション用に制御化)
@@ -287,6 +288,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     if (!titleVal.trim()) m.push("件名");
     if (!chargedUser.trim()) m.push("計上担当者");
     if (!staffName.trim()) m.push("担当者（葬儀担当）");
+    if (!estimateOn) m.push("見積日");
     if (!isPre) {
       // 本見積もり: 顧客情報・対象者情報も必須
       if (newCustomer) {
@@ -302,8 +304,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       if (!dGender) m.push("性別");
       if (!dBirth) m.push("生年月日");
       if (!dDeath) m.push("没年月日");
-      if (!wakeAt) m.push("通夜日時");
-      if (!funeralAt) m.push("告別式日時");
+      if (!funeralAt) m.push("告別式日時（火葬日時）");
     }
     return m;
   }
@@ -458,14 +459,14 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
             <F label="請求日" required><input type="date" name="billed_on" required defaultValue={initial?.date1 ?? ""} className={inp} /></F>
             <F label="お支払い期限"><input type="date" name="due_on" defaultValue={initial?.date2 ?? ""} className={inp} /></F>
           </>) : (<>
-            <F label="見積日"><input type="date" name="estimate_on" defaultValue={initial?.date1 ?? ""} className={inp} /></F>
+            <F label="見積日" required><input type="date" name="estimate_on" required value={estimateOn} onChange={(e) => setEstimateOn(e.target.value)} className={inp} /></F>
             <F label="見積有効期限"><input type="date" name="estimate_limit_on" defaultValue={initial?.date2 ?? ""} className={inp} /></F>
           </>)}
         </div>
         {!asInvoice && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <F label="通夜日時" required={!isPre}><input type="datetime-local" name="wake_at" value={wakeAt} onChange={(e) => setWakeAt(e.target.value)} className={inp} /></F>
-            <F label="告別式日時" required={!isPre}><input type="datetime-local" name="funeral_at" value={funeralAt} onChange={(e) => setFuneralAt(e.target.value)} className={inp} /></F>
+            <F label="通夜日時"><input type="datetime-local" name="wake_at" value={wakeAt} onChange={(e) => setWakeAt(e.target.value)} className={inp} /></F>
+            <F label="告別式日時（火葬日時）" required={!isPre}><input type="datetime-local" name="funeral_at" value={funeralAt} onChange={(e) => setFuneralAt(e.target.value)} className={inp} /></F>
           </div>
         )}
         <div className="mt-3"><F label="火葬場"><input name="crematorium_name" defaultValue={initial?.crematorium ?? ""} className={inp} /></F></div>
@@ -736,7 +737,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       </Card>
 
       <div className="flex gap-3">
-        <button disabled={pending || (asInvoice && !customer && !newCustomer) || (!asInvoice && !isPre && (!wakeAt || !funeralAt))} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
+        <button disabled={pending || (asInvoice && !customer && !newCustomer) || (!asInvoice && !estimateOn) || (!asInvoice && !isPre && !funeralAt)} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
         <Link href={asInvoice ? "/kanri/billing" : "/kanri/estimates"} className="rounded border bg-white px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
 
