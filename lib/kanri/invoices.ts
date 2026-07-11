@@ -97,4 +97,28 @@ export async function listInvoicesByCustomer(customerId: string): Promise<Invoic
   return ((data ?? []) as any[]).map(map);
 }
 
+// 会計仕訳用: 各請求書の「8%対象」の税抜金額・消費税額を明細から集計する。
+// （10%分は合計金額からの逆算で算出し、合計と必ず一致させる想定のため、ここでは8%のみ返す。）
+export async function listInvoice8pctBreakdown(ids: string[]): Promise<Map<string, { ex8: number; tax8: number }>> {
+  const out = new Map<string, { ex8: number; tax8: number }>();
+  const c = db();
+  if (!c || ids.length === 0) return out;
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    const { data } = await c.from("fk_invoice_details").select("invoice_id,tax,amount,amount_including_tax").in("invoice_id", chunk);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const d of ((data ?? []) as any[])) {
+      const rate = Number(d.tax ?? 0.1);
+      if (Math.abs(rate - 0.08) > 0.005) continue; // 8%(軽減税率)のみ
+      const ex = d.amount ?? 0;
+      const inc = d.amount_including_tax ?? 0;
+      const t = inc > ex ? inc - ex : Math.round(ex * 0.08);
+      const cur = out.get(d.invoice_id) ?? { ex8: 0, tax8: 0 };
+      cur.ex8 += ex; cur.tax8 += t;
+      out.set(d.invoice_id, cur);
+    }
+  }
+  return out;
+}
+
 export const INVOICE_STATUS_LABEL: Record<string, string> = { unpaid: "未入金", partial: "一部入金", paid: "入金済" };
