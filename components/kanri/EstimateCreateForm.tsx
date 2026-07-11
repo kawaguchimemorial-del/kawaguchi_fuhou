@@ -113,8 +113,14 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   // 編集時: 既存明細を復元（セット価格行=セット名一致 と セット内訳=is_set_item は除外、値引は値引行へ、他はオプション行へ）
   const initItems = initial?.items ?? [];
   const initSetName = initial?.productSetId ? productSets.find((s) => s.id === initial.productSetId)?.name : undefined;
+  // お供え/その他費用は名称で判別（保存明細に専用フラグが無いため、お供えマスタ名と一致＝お供え行）。
+  const osonaeIdByName = useMemo(() => new Map(osonae.map((m) => [m.name, m.id])), [osonae]);
+  const isOsonaeLine = (it: { lineKind: string; productId?: string | null; name: string }) =>
+    it.lineKind === "item" && !it.productId && osonaeIdByName.has(it.name);
   const [opts, setOpts] = useState<OptRow[]>(
-    initItems.filter((it) => it.lineKind === "item" && !it.isSetItem && it.name !== initSetName).map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
+    initItems
+      .filter((it) => it.lineKind === "item" && !it.isSetItem && it.name !== initSetName && !isOsonaeLine(it))
+      .map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
   );
   // 旧データ救済: セット選択済みなのに保存済みセット内訳が無い場合のみ、セット定義から内訳を読み込む。
   useEffect(() => {
@@ -133,14 +139,23 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     () => Array.from(new Set(products.filter((p) => !pickKind || p.productKind === pickKind).map((p) => p.productSubKind).filter(Boolean))) as string[],
     [products, pickKind]
   );
-  // 見積の新規作成時: その他オプション(追加安置日数/追加ドライアイス/収骨容器一式/本尊セット一式)をデフォルト数量1に
-  const defaultOsonaeQty: Record<string, number> = {};
-  if (!initial && !asInvoice) {
+  // お供え数量の初期値。
+  // - 編集時: 保存済みのお供え明細(名称一致)から数量を復元する。
+  // - 新規作成時: 既定のお供え(追加安置日数/追加ドライアイス/収骨容器一式/本尊セット一式)を数量1に。
+  const initOsonaeQty: Record<string, number> = {};
+  if (initial) {
+    for (const it of initItems) {
+      if (isOsonaeLine(it)) {
+        const id = osonaeIdByName.get(it.name);
+        if (id) initOsonaeQty[id] = it.quantity;
+      }
+    }
+  } else if (!asInvoice) {
     for (const m of osonae) {
-      if (["追加安置日数", "追加ドライアイス", "収骨容器", "本尊セット"].some((kw) => m.name.includes(kw))) defaultOsonaeQty[m.id] = 1;
+      if (["追加安置日数", "追加ドライアイス", "収骨容器", "本尊セット"].some((kw) => m.name.includes(kw))) initOsonaeQty[m.id] = 1;
     }
   }
-  const [osonaeQty, setOsonaeQty] = useState<Record<string, number>>(defaultOsonaeQty);
+  const [osonaeQty, setOsonaeQty] = useState<Record<string, number>>(initOsonaeQty);
   const [discRows, setDiscRows] = useState<DiscRow[]>(initItems.filter((it) => it.lineKind === "discount").map((it) => ({ key: seq++, name: it.name, amount: Math.abs(it.unitPrice * it.quantity) })));
   const [advance, setAdvance] = useState(initial?.advance ? String(initial.advance) : "");
   // 参照モーダル・読込
