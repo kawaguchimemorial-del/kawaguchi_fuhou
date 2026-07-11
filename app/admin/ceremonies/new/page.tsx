@@ -32,9 +32,6 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
   if (sp.from_estimate) {
     const e = await getEstimate(sp.from_estimate);
     if (e) {
-      // estimate_id 未設定の既存訃報を対象者名で名寄せ。見つかれば編集(上書き)へ。
-      const byName = await findMemorialSlugByDeceasedName(deceasedFullName(e), sp.from_estimate);
-      if (byName) redirect(`/admin/ceremonies/${byName}/edit`);
       const wake = jstParts(e.wakeAt);
       const funeral = jstParts(e.funeralAt);
       // 通夜があれば通夜式、無ければ告別式を初期の式に
@@ -42,6 +39,13 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
       // 喪主情報が無い場合は顧客情報で補完
       const hasMourner = !!(e.addresseeLastName || e.mourner.lastName);
       const cust = !hasMourner && e.customerId ? await getCustomer(e.customerId) : null;
+      // estimate_id 未設定の既存訃報を「対象者名＋（没日 or 喪主名）」で厳格に名寄せ。見つかれば編集(上書き)へ。
+      const mournerName = `${e.addresseeLastName || e.mourner.lastName || cust?.lastName || ""} ${e.addresseeFirstName || e.mourner.firstName || cust?.firstName || ""}`.trim();
+      const byName = await findMemorialSlugByDeceasedName(
+        { deceasedName: deceasedFullName(e), deathDate: e.deceased.deathDate ?? undefined, mournerName },
+        sp.from_estimate
+      );
+      if (byName) redirect(`/admin/ceremonies/${byName}/edit`);
       initialState = {
         estimateId: sp.from_estimate, // 施行(見積)IDを永続化しAI遺影と一意照合
         // 喪主（見積の宛名=喪主 → 喪主 → 顧客情報 の順で参照）

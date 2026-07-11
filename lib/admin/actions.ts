@@ -412,41 +412,67 @@ export async function findMemorialSlugByEstimate(
   return rows[0]?.slug ?? null;
 }
 
-// estimate_id 未設定の既存訃報を「対象者(故人)名」で名寄せする。
-// 見つかった場合はその memorial に estimate_id を補完(今後は施行で一意照合できるように)し、slug を返す。
-// 誤照合を避けるため、対象は estimate_id が未設定の訃報のみ。
+const stripSpace = (s?: string) => (s || "").replace(/[\s　]/g, "");
+// タイムスタンプ/日付文字列 → JSTの YYYY-MM-DD（date-only文字列はそのまま）。
+function jstYmd(v?: string): string {
+  if (!v) return "";
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
+// estimate_id 未設定の既存訃報を「対象者(故人)名＋（没日 or 喪主名）」で厳格に名寄せする。
+// - 対象者名は必須一致。加えて、没日が一致するか喪主名が一致した場合のみ採用。
+// - 没日が双方にあって食い違う場合は「別人」とみなし除外（同姓同名の誤照合防止）。
+// - 名前しか手掛かりが無い場合は採用しない（安全側）。
+// 見つかった場合はその memorial に estimate_id を補完し、slug を返す。対象は estimate_id 未設定の訃報のみ。
 export async function findMemorialSlugByDeceasedName(
-  deceasedName: string,
+  params: { deceasedName: string; deathDate?: string; mournerName?: string },
   estimateId: string
 ): Promise<string | null> {
-  const target = (deceasedName || "").replace(/[\s　]/g, "");
-  if (!target) return null;
+  const targetName = stripSpace(params.deceasedName);
+  if (!targetName) return null;
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  const estDeath = jstYmd(params.deathDate);
+  const estMourner = stripSpace(params.mournerName);
+  // 追加照合キーが一切無ければ、名前だけの照合は行わない（厳格化）。
+  if (!estDeath && !estMourner) return null;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as unknown as { from: (t: string) => any };
-  // estimate_id 未設定・未削除の訃報を新しい順に取得
   const { data: mems } = await supabase
     .from("memorials")
-    .select("id, slug, created_at")
+    .select("id, slug, announce_mourner_name, created_at")
     .is("estimate_id", null)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(500);
-  const rows = (mems ?? []) as { id: string; slug: string }[];
+  const rows = (mems ?? []) as { id: string; slug: string; announce_mourner_name?: string }[];
   if (rows.length === 0) return null;
   const ids = rows.map((r) => r.id);
   const { data: decs } = await supabase
     .from("deceased")
-    .select("memorial_id, name_kanji")
+    .select("memorial_id, name_kanji, death_date")
     .in("memorial_id", ids);
-  const nameByMemorial = new Map<string, string>();
-  for (const d of (decs ?? []) as { memorial_id: string; name_kanji?: string }[]) {
-    nameByMemorial.set(d.memorial_id, (d.name_kanji ?? "").replace(/[\s　]/g, ""));
+  const decByMemorial = new Map<string, { name: string; death: string }>();
+  for (const d of (decs ?? []) as { memorial_id: string; name_kanji?: string; death_date?: string }[]) {
+    decByMemorial.set(d.memorial_id, { name: stripSpace(d.name_kanji), death: jstYmd(d.death_date) });
   }
-  // 新しい順に走査し、対象者名が一致する最初の訃報を採用
-  const hit = rows.find((r) => nameByMemorial.get(r.id) === target);
+
+  const hit = rows.find((r) => {
+    const dec = decByMemorial.get(r.id);
+    if (!dec || dec.name !== targetName) return false; // 対象者名は必須一致
+    // 没日が双方にあって食い違う → 別人として除外
+    if (estDeath && dec.death && estDeath !== dec.death) return false;
+    const deathMatch = !!estDeath && !!dec.death && estDeath === dec.death;
+    const memMourner = stripSpace(r.announce_mourner_name);
+    const mournerMatch = !!estMourner && !!memMourner && estMourner === memMourner;
+    // 名前一致に加え、没日一致 か 喪主名一致 のいずれかが必要
+    return deathMatch || mournerMatch;
+  });
   if (!hit) return null;
-  // 今後の一意照合のため estimate_id を補完(失敗しても編集導線は成立させる)
   try {
     await supabase.from("memorials").update({ estimate_id: estimateId }).eq("id", hit.id);
   } catch {

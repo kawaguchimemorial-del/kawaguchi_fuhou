@@ -996,3 +996,9 @@
 - lib/admin/actions.ts に findMemorialSlugByDeceasedName(name, estimateId) を追加。estimate_id未設定・未削除の訃報を deceased.name_kanji(空白正規化)で照合、一致すれば当該memorialに estimate_id を補完してslugを返す(以後は施行で一意照合)。
 - app/admin/ceremonies/new/page.tsx: estimate_id一致で見つからない場合、見積の対象者名(deceasedFullName)で名寄せ→見つかれば編集(上書き)へリダイレクト。誤照合防止のため対象はestimate_id未設定の訃報のみ。
 - tsc・next build 成功。
+
+## 2026-07-11 訃報名寄せの厳格化(対象者名＋没日/喪主名)
+- findMemorialSlugByDeceasedName を厳格化: 対象者名の一致に加え「没日一致 or 喪主名一致」を必須に。没日が双方にあって食い違う場合は別人として除外。追加キーが皆無(名前のみ)なら採用しない。
+- 没日はJST日付で比較(date文字列はそのまま/timestamptzはAsia/Tokyoで抽出)。喪主名は memorials.announce_mourner_name と空白正規化比較。
+- new/page.tsx: deathDate(見積の没日)と喪主名(宛名/喪主/顧客の順)を渡すよう変更。
+- tsc・next build 成功。
