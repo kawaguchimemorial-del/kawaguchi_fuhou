@@ -2,6 +2,7 @@ import { getInvoice } from "@/lib/kanri/invoices";
 import { mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
 import { getCustomer } from "@/lib/kanri/data";
+import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const hasEmail = !!cust?.email;
   const co = await getCompanyInfo();
   const companyName = co.company_name || "株式会社 川口典礼";
+  // 担当（最終更新者＝葬儀担当者名）
+  const staffName = iv.staffName ?? "";
+  const telFmt = (t?: string) => {
+    const d = (t || "").replace(/[^0-9]/g, "");
+    if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+    return t || "";
+  };
   const companyAddr = [co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
   // 明細: 請求書明細(実データ)があればそれを優先。無ければ見積明細。
   // セット内訳(isSetItem)は「表示しない」チェック(hiddenPaper)を除き、数値なしでセット直下にグループ表示する。
@@ -78,7 +87,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .head{display:flex;justify-content:space-between;}
   h1{text-align:center;font-size:22px;letter-spacing:.3em;margin:6px 0 18px;}
   .addr{font-size:11px;color:#555;} .to{font-size:18px;margin-top:4px;}
-  .company{text-align:left;font-size:11px;} .company .nm{font-weight:bold;font-size:13px;}
+  .company{text-align:left;font-size:11px;position:relative;display:flex;align-items:flex-start;gap:6px;} .company .nm{font-weight:bold;font-size:13px;}
+  .company .cbody{flex:1;} .company .tantou{margin-top:2px;}
+  .company .cseal{width:18mm;height:18mm;object-fit:contain;margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .kingaku{font-size:22px;font-weight:bold;border-bottom:2px solid #333;padding-bottom:6px;margin:6px 0 16px;}
   table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #999;padding:5px 7px;}
   th{background:#eee;text-align:center;} td.r{text-align:right;} td.c{text-align:center;} td.l{text-align:left;}
@@ -114,8 +125,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       <div class="kingaku">合計金額　${yen(iv.total)}</div>
     </div>
     <div class="company">
-      <div class="nm">${esc(companyName)}</div>
-      ${co.postcode ? `〒${esc(co.postcode)}<br>` : ""}${esc([co.prefecture, companyAddr].filter(Boolean).join(""))}<br>${esc(co.tel ?? "")}
+      <div class="cbody">
+        <div class="nm">${esc(companyName)}</div>
+        ${co.postcode ? `〒${esc(co.postcode)}<br>` : ""}${esc([co.prefecture, companyAddr].filter(Boolean).join(""))}<br>${co.tel ? `TEL: ${esc(telFmt(co.tel))}` : ""}
+        ${staffName ? `<div class="tantou">担当：${esc(staffName)}</div>` : ""}
+      </div>
+      <img class="cseal" src="${KAKUIN_DATA_URL}" alt="社印">
     </div>
   </div>
 

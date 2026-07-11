@@ -1079,3 +1079,13 @@
 
 - `app/kanri/billing/page.tsx` の右上ボタン群から「請求書一括登録」(/kanri/billing/bulk)リンクを削除。ページ本体は残置。
 - next build 成功。
+
+---
+
+## 2026-07-12 — 請求書印刷: 担当表示と角印を追加
+
+- `app/kanri/billing/[id]/print/route.ts`:
+  - 会社ブロックを flex 化し、**会社名の横に角印**(領収証と同じ KAKUIN_DATA_URL, 18×18mm)を表示。
+  - 電話番号の下に「**担当：<最終更新者/葬儀担当者名>**」(iv.staffName)を表示。
+  - TEL をハイフン整形(telFmt)。
+- next build 成功。ローカル印刷プレビューで角印・担当表示を確認。
