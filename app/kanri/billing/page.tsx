@@ -39,7 +39,6 @@ export default async function BillingPage({ searchParams }: SP) {
         <div className="flex flex-wrap gap-2 text-xs">
           <a href="/kanri/billing/invoices-export" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書CSVダウンロード</a>
           <Link href="/kanri/billing/new" className="rounded bg-white px-3 py-1.5 font-medium text-[#2c8c6f]">請求書追加</Link>
-          <Link href="/kanri/billing/bulk" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書一括登録</Link>
           <Link href="/kanri/billing/import" className="rounded bg-white/15 px-3 py-1.5 text-white hover:bg-white/25">請求書CSVインポート</Link>
         </div>
       </div>

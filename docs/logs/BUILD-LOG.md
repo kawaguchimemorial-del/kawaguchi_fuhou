@@ -1072,3 +1072,10 @@
 - `lib/kanri/nav.ts` の「分析」から「EC売上」「発注分析」を削除（売上実績・売上分析のみ表示）。
 - ページ本体(`app/kanri/analytics/ec`, `.../orders`)は残置。
 - next build 成功。
+
+---
+
+## 2026-07-12 — 請求書一覧から「請求書一括登録」ボタンを削除
+
+- `app/kanri/billing/page.tsx` の右上ボタン群から「請求書一括登録」(/kanri/billing/bulk)リンクを削除。ページ本体は残置。
+- next build 成功。
