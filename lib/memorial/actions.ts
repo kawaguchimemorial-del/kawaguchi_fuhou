@@ -246,19 +246,51 @@ export async function submitOrder(
   try {
     const co = await getCompanyInfo();
     const company = co.company_name || "株式会社 川口典礼";
+    const tel = co.tel || "";
+    const addr = [co.prefecture, co.address_city, co.address_street].filter(Boolean).join("");
+    const deceasedNm = m.deceased?.nameKanji || "";
+    const mournerNm = m.chiefMourner?.nameKanji || "";
+    // 送信専用の注記＋電話問い合わせ案内（両メール共通）
+    const noReplyNote = `<p style="color:#888;font-size:12px;line-height:1.6">`
+      + `※ このメールは送信専用アドレスから配信しています。ご返信いただいてもお受けできません。<br>`
+      + `ご不明な点・ご変更・キャンセル等は、お手数ですが${tel ? `お電話（${tel}）` : "お電話"}にてお問い合わせください。</p>`;
+    const signature = `<p>――――――――――<br>${company}<br>${addr}<br>${tel ? "TEL: " + tel : ""}</p>`;
+    const orderLines = `商品：${product.name}<br>数量：${d.quantity}<br>札名：${d.namePlateText}<br>`
+      + `旧字体希望：${d.oldChar === "on" ? "あり" : "なし"}<br>合計：${total.toLocaleString()}円（税込）<br>お支払い方法：${paymentMethod}`;
+    const ordererInfo = `お名前：${fullName}<br>フリガナ：${fullKana || "—"}<br>`
+      + (d.company ? `法人・団体：${d.company}<br>` : "")
+      + `ご住所：〒${d.postalCode} ${fullAddress}<br>お電話：${d.phone}<br>メール：${d.email}`
+      + (d.invoiceName ? `<br>請求書・領収書宛名：${d.invoiceName}` : "")
+      + (d.memo ? `<br>備考：${d.memo}` : "");
+
+    // 1) 注文者への確認メール
     const subject = `【${company}】供花・供物ご注文ありがとうございます`;
     const html = `<p>${fullName} 様</p>`
       + `<p>この度は供花・供物のご注文をいただき、誠にありがとうございます。以下の内容で承りました。</p>`
-      + `<p>商品：${product.name}<br>数量：${d.quantity}<br>札名：${d.namePlateText}<br>合計：${total.toLocaleString()}円（税込）<br>お支払い方法：${paymentMethod}</p>`
+      + `<p>${orderLines}</p>`
       + (paymentMethod === "当日現地払い"
         ? `<p>当日、会場にてお支払いをお願いいたします。</p>`
         : (invoiceId
-          ? `<p>下記より請求書を開き、印刷のうえお支払いをお願いいたします。<br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">▶ 請求書を表示・印刷する</a></p>`
+          ? `<p>お支払いは、下記より請求書を開いて印刷のうえ、記載の方法にてお願いいたします。<br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">▶ 請求書を表示・印刷する</a></p>`
           : `<p>後ほど請求書のご案内をお送りいたします。</p>`))
-      + `<p>――――――――――<br>${company}<br>${[co.prefecture, co.address_city, co.address_street].filter(Boolean).join("")}<br>${co.tel ? "TEL: " + co.tel : ""}</p>`;
+      + noReplyNote + signature;
     const mailRes = await sendMailWithPdf({ to: d.email, subject, html });
     if (!mailRes.ok) console.error("[flower-order] 確認メール送信失敗:", mailRes.error);
-  } catch (e) { console.error("[flower-order] 確認メール例外:", e instanceof Error ? e.message : e); }
+
+    // 2) 葬儀社への注文通知メール
+    const notifyTo = process.env.ORDER_NOTIFY_TO || "flower@kawaguchi-memorial-hall.com";
+    const nsubject = `【供花注文】${deceasedNm ? `故${deceasedNm}様　` : ""}${fullName}様より`;
+    const nhtml = `<p>オンライン供花・供物のご注文が入りました。</p>`
+      + `<p><b>■ 対象</b><br>故人：${deceasedNm || "—"}<br>喪主：${mournerNm || "—"}</p>`
+      + `<p><b>■ ご注文内容</b><br>${orderLines}</p>`
+      + `<p><b>■ ご注文者</b><br>${ordererInfo}</p>`
+      + (invoiceId
+        ? `<p><b>■ 請求書（社内管理用に自動作成済み）</b><br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">請求書を表示・印刷する</a></p>`
+        : "")
+      + signature;
+    const notifyRes = await sendMailWithPdf({ to: notifyTo, subject: nsubject, html: nhtml });
+    if (!notifyRes.ok) console.error("[flower-order] 注文通知メール送信失敗:", notifyRes.error);
+  } catch (e) { console.error("[flower-order] メール処理例外:", e instanceof Error ? e.message : e); }
   return {
     ok: true,
     message: `ご注文を承りました（${product.name} ×${d.quantity}／合計 ${total.toLocaleString()}円・税込）。葬儀社よりご連絡のうえ確定いたします。`,
