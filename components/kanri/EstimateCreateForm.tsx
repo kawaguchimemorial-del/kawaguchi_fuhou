@@ -301,9 +301,12 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     setOpts((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
-  // 料理商品(種別が「料理」で始まる)が選択されているか
-  const cuisineIds = useMemo(() => new Set(products.filter((p) => (p.productKind ?? "").startsWith("料理")).map((p) => p.id)), [products]);
-  const hasCuisine = !asInvoice && opts.some((r) => r.productId && cuisineIds.has(r.productId));
+  // 料理商品(種別が「料理」で始まる= 料理 / 料理（旬菜亭） / 料理（華鳳） など)が選択されているか。
+  // productId が付かない経路で追加された場合に備え、商品名でも判定する。
+  const cuisineProducts = useMemo(() => products.filter((p) => (p.productKind ?? "").startsWith("料理")), [products]);
+  const cuisineIds = useMemo(() => new Set(cuisineProducts.map((p) => p.id)), [cuisineProducts]);
+  const cuisineNames = useMemo(() => new Set(cuisineProducts.map((p) => p.name)), [cuisineProducts]);
+  const hasCuisine = !asInvoice && opts.some((r) => (r.productId && cuisineIds.has(r.productId)) || (r.name && cuisineNames.has(r.name)));
   const wCount = Number(wakeMealCount) || 0;
   const fCount = Number(funeralMealCount) || 0;
   const wServers = wCount > 0 ? Math.ceil(wCount / 15) : 0;
