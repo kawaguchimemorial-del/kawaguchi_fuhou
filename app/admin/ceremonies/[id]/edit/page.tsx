@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCeremonyFormState } from "@/lib/admin/actions";
 import { CeremonyWizard } from "@/components/admin/CeremonyWizard";
+import { listProducts } from "@/lib/admin/product-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function EditCeremonyPage({ params, searchParams }: Params)
   const { step } = await searchParams;
   const fs = await getCeremonyFormState(id);
   if (!fs) notFound();
+  const flowerProducts = await listProducts();
 
   const focusStep = step != null && step !== "" ? Number(step) : undefined;
 
@@ -26,6 +28,7 @@ export default async function EditCeremonyPage({ params, searchParams }: Params)
         editSlug={id}
         initialState={fs.state}
         focusStep={Number.isFinite(focusStep) ? focusStep : undefined}
+        flowerProducts={flowerProducts}
       />
     </div>
   );

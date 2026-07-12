@@ -154,6 +154,7 @@ export interface CeremonyPayload {
   placeMode?: string; venueId?: string; venueName?: string; venuePostal?: string; venueAddress?: string;
   // 香典/供花
   kodenOption?: string; flowerAccept?: string;
+  flowerProductIds?: string[]; // 表示する供花・供物のID(空=全表示)
   // オンライン式場
   venueOnlineName?: string; greetingHeading?: string; greetingBody?: string; greetingSign?: string;
   publishImmediately?: string; openFrom?: string; openDays?: string;
@@ -217,6 +218,7 @@ function buildRows(p: CeremonyPayload) {
     religion_type: p.religion || "仏式",
     koden_decline: p.kodenOption === "不要",
     flower_decline: p.flowerAccept === "受け付けない",
+    flower_product_ids: Array.isArray(p.flowerProductIds) && p.flowerProductIds.length ? p.flowerProductIds : null,
     obituary_title: p.obituaryTitle || "訃報",
     obituary_body: p.obituaryBody || null,
     announce_mourner_name: p.announceMourner || null,

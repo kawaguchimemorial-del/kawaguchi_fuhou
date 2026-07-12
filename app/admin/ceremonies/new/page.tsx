@@ -3,6 +3,7 @@ import { CeremonyWizard } from "@/components/admin/CeremonyWizard";
 import { getEstimate, deceasedFullName } from "@/lib/kanri/estimates";
 import { getCustomer } from "@/lib/kanri/data";
 import { findMemorialSlugByEstimate, findMemorialSlugByDeceasedName } from "@/lib/admin/actions";
+import { listProducts } from "@/lib/admin/product-actions";
 
 type Search = { searchParams: Promise<{ type?: string; test?: string; from_estimate?: string }> };
 
@@ -69,12 +70,13 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
     }
   }
 
+  const flowerProducts = await listProducts();
   return (
     <div>
       <h1 className="mb-6 text-xl font-bold">
         新しい葬儀を作成{withVenue ? "（訃報＋オンライン式場）" : "（訃報のみ）"}
       </h1>
-      <CeremonyWizard withVenue={withVenue} isTest={isTest} initialState={initialState} />
+      <CeremonyWizard withVenue={withVenue} isTest={isTest} initialState={initialState} flowerProducts={flowerProducts} />
     </div>
   );
 }

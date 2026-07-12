@@ -102,6 +102,16 @@ export interface PublicProduct {
 
 /** 公開注文フォーム用：有効な商品マスタを並び順で取得（service_role）。
  *  type を省略すると供花・供物すべて。未設定・未取得時は空配列。 */
+// 訃報ごとに選択された「表示する供花・供物」のID配列(空/未設定=全表示なので null を返す)。
+export async function getMemorialFlowerSelection(slug: string): Promise<string[] | null> {
+  if (!dbEnabled()) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createAdminClient() as unknown as { from: (t: string) => any };
+  const { data } = await db.from("memorials").select("flower_product_ids").eq("slug", slug).maybeSingle();
+  const ids = data?.flower_product_ids;
+  return Array.isArray(ids) && ids.length ? (ids as string[]) : null;
+}
+
 export async function getPublicProducts(type?: "供花" | "供物"): Promise<PublicProduct[]> {
   if (!dbEnabled()) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
