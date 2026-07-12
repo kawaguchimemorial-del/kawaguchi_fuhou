@@ -69,6 +69,10 @@ export function FlowerOrderForm({
       <div className="rounded-md bg-[var(--card)] px-6 py-10 text-center">
         <p className="font-serif text-lg text-[var(--primary)]">ご注文を承りました</p>
         <p className="mt-3 text-sm text-[var(--muted)]">{state.message}</p>
+        <p className="mt-4 rounded bg-amber-50 px-4 py-3 text-left text-xs text-amber-800">
+          ご登録のメールアドレスへ確認メールをお送りしました。<br />
+          しばらく経っても届かない場合は、<b>迷惑メールフォルダ</b>に振り分けられている可能性がありますのでご確認ください。それでも見当たらない場合は、お手数ですがお電話にてお問い合わせください。
+        </p>
         <Link
           href={`/m/${slug}`}
           className="mt-8 inline-block rounded-sm border border-[var(--accent)] px-6 py-3 text-[var(--accent)]"
