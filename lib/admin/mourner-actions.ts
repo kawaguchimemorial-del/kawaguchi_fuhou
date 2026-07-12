@@ -83,22 +83,35 @@ export async function getMournerAccount(
   return { issued: !!data.mourner_account_issued, loginId: data.mourner_login_id ?? null, method: data.mourner_contact_method ?? null };
 }
 
-// 喪主アカウント発行フォームの初期値(電話/メール)。連携見積の喪主電話→顧客電話/メールを参照。
+// 喪主アカウント発行フォームの初期値(発行方法/電話/メール)。
+// 優先: 訃報作成時の入力(form_state idMethod/idContact) → 連携見積の喪主電話 → 顧客電話/メール。
 export async function getMournerContactDefaults(
   slug: string
-): Promise<{ phone: string; email: string }> {
-  if (!enabled()) return { phone: "", email: "" };
+): Promise<{ method: "phone" | "email"; phone: string; email: string }> {
+  if (!enabled()) return { method: "phone", phone: "", email: "" };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
-  const { data: mem } = await admin.from("memorials").select("estimate_id").eq("slug", slug).single();
-  if (!mem?.estimate_id) return { phone: "", email: "" };
-  const { data: est } = await admin.from("fk_estimates").select("mourner_phone, customer_id").eq("id", mem.estimate_id).maybeSingle();
-  let phone = (est?.mourner_phone ?? "").replace(/[^0-9]/g, "");
+  const { data: mem } = await admin.from("memorials").select("estimate_id, form_state").eq("slug", slug).single();
+  if (!mem) return { method: "phone", phone: "", email: "" };
+  const fs = (mem.form_state ?? {}) as { idMethod?: string; idContact?: string };
+  const wantEmail = fs.idMethod === "メールアドレス";
+  const idContact = (fs.idContact ?? "").trim();
+  let phone = "";
   let email = "";
-  if (est?.customer_id) {
-    const { data: cu } = await admin.from("fk_customers").select("telephone_number, mobile_number, email").eq("id", est.customer_id).maybeSingle();
-    if (!phone) phone = ((cu?.mobile_number || cu?.telephone_number) ?? "").replace(/[^0-9]/g, "");
-    email = cu?.email ?? "";
+  // 作成時の入力を最優先(発行方法に応じて電話orメールへ)
+  if (idContact) {
+    if (wantEmail || idContact.includes("@")) email = idContact;
+    else phone = idContact.replace(/[^0-9]/g, "");
   }
-  return { phone, email };
+  // 見積・顧客で不足分を補完
+  if (mem.estimate_id && (!phone || !email)) {
+    const { data: est } = await admin.from("fk_estimates").select("mourner_phone, customer_id").eq("id", mem.estimate_id).maybeSingle();
+    if (!phone) phone = (est?.mourner_phone ?? "").replace(/[^0-9]/g, "");
+    if (est?.customer_id) {
+      const { data: cu } = await admin.from("fk_customers").select("telephone_number, mobile_number, email").eq("id", est.customer_id).maybeSingle();
+      if (!phone) phone = ((cu?.mobile_number || cu?.telephone_number) ?? "").replace(/[^0-9]/g, "");
+      if (!email) email = cu?.email ?? "";
+    }
+  }
+  return { method: wantEmail ? "email" : "phone", phone, email };
 }

@@ -52,13 +52,15 @@ export default async function CeremonyDetail({ params }: Params) {
       </div>
 
       {/* 喪主アカウント発行 */}
-      <MournerAccount slug={id} issued={mourner.issued} loginId={mourner.loginId} defaultPhone={contactDefaults.phone} defaultEmail={contactDefaults.email} />
+      <MournerAccount slug={id} issued={mourner.issued} loginId={mourner.loginId} defaultMethod={contactDefaults.method} defaultPhone={contactDefaults.phone} defaultEmail={contactDefaults.email} />
 
       {/* === セクション群 === */}
       <Section title="喪主／故人" status="登録済" editHref={`${editBase}?step=0`}>
         <Row label="故人">{m.deceased.nameKanji}{m.deceased.nameKana ? `（${m.deceased.nameKana}）` : ""}</Row>
         <Row label="没日">{m.deceased.deathDate ? `${toWarekiDate(m.deceased.deathDate)}${m.deceased.ageKazoe ? `　享年${m.deceased.ageKazoe}` : ""}` : "—"}</Row>
         <Row label="喪主">{m.chiefMourner?.nameKanji ?? "—"}</Row>
+        <Row label="喪主 電話番号">{contactDefaults.phone || "—"}</Row>
+        {contactDefaults.email && <Row label="喪主 メール">{contactDefaults.email}</Row>}
         <Row label="ログインID">{mourner.issued ? mourner.loginId : "未発行"}</Row>
       </Section>
 

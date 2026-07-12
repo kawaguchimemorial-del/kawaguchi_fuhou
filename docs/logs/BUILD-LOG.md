@@ -1549,3 +1549,13 @@
 - getMournerContactDefaults(slug): 連携見積の mourner_phone → 顧客の携帯/固定電話、メールは顧客メールを取得。
 - MournerAccount: defaultPhone/defaultEmail を受け、初期値を電話でプレフィル。発行方法(電話/メール)の切替時、未入力or既定値のままなら対応する既定値を自動セット。
 - next build成功。
+
+---
+
+## 2026-07-13 — 喪主アカウント発行: 作成時のログインID連絡先を反映＋喪主情報にも電話表示
+
+- ウィザードの「喪主管理画面ログインID発行」(idMethod/idContact)を喪主アカウント発行フォームに反映。
+  - getMournerContactDefaults: 優先 form_state(idMethod/idContact) → 見積の喪主電話 → 顧客電話/メール。methodも返す。
+  - MournerAccount: defaultMethod/defaultPhone/defaultEmail を初期値化(発行方法も作成時の指定を反映)。
+- 詳細画面「喪主／故人」に「喪主 電話番号」「喪主 メール」行を追加。ID発行で入れた連絡先が喪主情報にも表示されるように。
+- next build成功。

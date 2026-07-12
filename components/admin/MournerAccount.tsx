@@ -8,19 +8,21 @@ export function MournerAccount({
   slug,
   issued,
   loginId,
+  defaultMethod = "phone",
   defaultPhone = "",
   defaultEmail = "",
 }: {
   slug: string;
   issued: boolean;
   loginId: string | null;
+  defaultMethod?: "phone" | "email";
   defaultPhone?: string;
   defaultEmail?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [method, setMethod] = useState<"phone" | "email">("phone");
-  const [contact, setContact] = useState(defaultPhone);
+  const [method, setMethod] = useState<"phone" | "email">(defaultMethod);
+  const [contact, setContact] = useState(defaultMethod === "email" ? defaultEmail : defaultPhone);
   // 発行方法の切替時、未入力/既定値のままなら対応する既定値(電話/メール)を自動入力
   const pickMethod = (m: "phone" | "email") => {
     setMethod(m);
