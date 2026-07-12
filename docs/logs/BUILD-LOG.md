@@ -1540,3 +1540,12 @@
 ### 修正
 - 埋め込みをFK制約名で明示: `fk_estimates!memorials_estimate(fk_customers(...))`。
 - ローカルprodビルドで /admin/ceremonies が212行表示されることを確認。
+
+---
+
+## 2026-07-13 — 喪主アカウント発行: 電話番号を自動入力
+
+- 発行フォームの電話/メール欄に、作成時の情報を自動入力(入力の手間削減)。
+- getMournerContactDefaults(slug): 連携見積の mourner_phone → 顧客の携帯/固定電話、メールは顧客メールを取得。
+- MournerAccount: defaultPhone/defaultEmail を受け、初期値を電話でプレフィル。発行方法(電話/メール)の切替時、未入力or既定値のままなら対応する既定値を自動セット。
+- next build成功。

@@ -82,3 +82,23 @@ export async function getMournerAccount(
   if (!data) return { issued: false, loginId: null, method: null };
   return { issued: !!data.mourner_account_issued, loginId: data.mourner_login_id ?? null, method: data.mourner_contact_method ?? null };
 }
+
+// 喪主アカウント発行フォームの初期値(電話/メール)。連携見積の喪主電話→顧客電話/メールを参照。
+export async function getMournerContactDefaults(
+  slug: string
+): Promise<{ phone: string; email: string }> {
+  if (!enabled()) return { phone: "", email: "" };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = createAdminClient() as any;
+  const { data: mem } = await admin.from("memorials").select("estimate_id").eq("slug", slug).single();
+  if (!mem?.estimate_id) return { phone: "", email: "" };
+  const { data: est } = await admin.from("fk_estimates").select("mourner_phone, customer_id").eq("id", mem.estimate_id).maybeSingle();
+  let phone = (est?.mourner_phone ?? "").replace(/[^0-9]/g, "");
+  let email = "";
+  if (est?.customer_id) {
+    const { data: cu } = await admin.from("fk_customers").select("telephone_number, mobile_number, email").eq("id", est.customer_id).maybeSingle();
+    if (!phone) phone = ((cu?.mobile_number || cu?.telephone_number) ?? "").replace(/[^0-9]/g, "");
+    email = cu?.email ?? "";
+  }
+  return { phone, email };
+}

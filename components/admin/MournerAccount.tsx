@@ -8,15 +8,26 @@ export function MournerAccount({
   slug,
   issued,
   loginId,
+  defaultPhone = "",
+  defaultEmail = "",
 }: {
   slug: string;
   issued: boolean;
   loginId: string | null;
+  defaultPhone?: string;
+  defaultEmail?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<"phone" | "email">("phone");
-  const [contact, setContact] = useState("");
+  const [contact, setContact] = useState(defaultPhone);
+  // 発行方法の切替時、未入力/既定値のままなら対応する既定値(電話/メール)を自動入力
+  const pickMethod = (m: "phone" | "email") => {
+    setMethod(m);
+    if (contact === "" || contact === defaultPhone || contact === defaultEmail) {
+      setContact(m === "phone" ? defaultPhone : defaultEmail);
+    }
+  };
   const [result, setResult] = useState<IssueResult | null>(null);
   const [pending, start] = useTransition();
 
@@ -65,8 +76,8 @@ export function MournerAccount({
       {open && (
         <div className="mt-3 space-y-3 rounded bg-white p-4 text-gray-700">
           <div className="flex gap-4">
-            <label className="flex items-center gap-1"><input type="radio" checked={method === "phone"} onChange={() => setMethod("phone")} /> 電話番号で発行</label>
-            <label className="flex items-center gap-1"><input type="radio" checked={method === "email"} onChange={() => setMethod("email")} /> メールアドレスで発行</label>
+            <label className="flex items-center gap-1"><input type="radio" checked={method === "phone"} onChange={() => pickMethod("phone")} /> 電話番号で発行</label>
+            <label className="flex items-center gap-1"><input type="radio" checked={method === "email"} onChange={() => pickMethod("email")} /> メールアドレスで発行</label>
           </div>
           <input
             value={contact}

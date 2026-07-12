@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getAdminMemorial, getFuneralHomeName, listOrders, getViewStats, listGuestbook, type OrderRow } from "@/lib/admin/data";
-import { getMournerAccount } from "@/lib/admin/mourner-actions";
+import { getMournerAccount, getMournerContactDefaults } from "@/lib/admin/mourner-actions";
 import { MournerAccount } from "@/components/admin/MournerAccount";
 import { AlbumGallery } from "@/components/guest/AlbumGallery";
 import { ClickableRow } from "@/components/admin/ClickableRow";
@@ -21,11 +21,12 @@ export default async function CeremonyDetail({ params }: Params) {
   const m = await getAdminMemorial(id);
   if (!m) notFound();
   const homeName = await getFuneralHomeName();
-  const [orders, views, guestbook, mourner] = await Promise.all([
+  const [orders, views, guestbook, mourner, contactDefaults] = await Promise.all([
     listOrders(id),
     getViewStats(id, "obituary"),
     listGuestbook(id),
     getMournerAccount(id),
+    getMournerContactDefaults(id),
   ]);
 
   const appUrl = await getSiteOrigin();
@@ -51,7 +52,7 @@ export default async function CeremonyDetail({ params }: Params) {
       </div>
 
       {/* 喪主アカウント発行 */}
-      <MournerAccount slug={id} issued={mourner.issued} loginId={mourner.loginId} />
+      <MournerAccount slug={id} issued={mourner.issued} loginId={mourner.loginId} defaultPhone={contactDefaults.phone} defaultEmail={contactDefaults.email} />
 
       {/* === セクション群 === */}
       <Section title="喪主／故人" status="登録済" editHref={`${editBase}?step=0`}>
