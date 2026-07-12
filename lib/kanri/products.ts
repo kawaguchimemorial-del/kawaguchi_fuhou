@@ -39,6 +39,7 @@ export interface Product {
   orderOnly?: boolean;
   hiddenPicking?: boolean;
   hidden?: boolean;
+  imageUrl?: string; // 商品画像URL(見積作成時に画像を見ながら選ぶ用)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,7 +53,7 @@ function map(r: any): Product {
     availableEc: !!r.available_ec, availableHomepage: !!r.available_homepage, availableAttendant: !!r.available_attendant,
     availableReturnedItem: !!r.available_returned_item, availableItem: !!r.available_item,
     grouped: !!r.grouped, notOrdering: !!r.not_ordering, orderOnly: !!r.order_only,
-    hiddenPicking: !!r.hidden_picking, hidden: !!r.hidden };
+    hiddenPicking: !!r.hidden_picking, hidden: !!r.hidden, imageUrl: r.image_url ?? undefined };
 }
 
 export interface ProductSetItem { id: string; productSourceId?: string; productId?: string; productName?: string; quantity: number; hideOnInvoice: boolean; notOrdering: boolean }

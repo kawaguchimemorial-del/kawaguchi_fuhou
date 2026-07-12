@@ -172,6 +172,7 @@ export async function saveProduct(_prev: KanriResult | null, fd: FormData): Prom
     available_item: bool(fd, "available_item"), grouped: bool(fd, "grouped"),
     not_ordering: bool(fd, "not_ordering"), order_only: bool(fd, "order_only"),
     hidden_picking: bool(fd, "hidden_picking"), hidden: bool(fd, "hidden"),
+    image_url: s(fd, "image_url"),
   };
   const c = admin();
   if (id) {

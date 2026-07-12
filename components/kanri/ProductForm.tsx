@@ -12,6 +12,7 @@ export function ProductForm({ product, kinds, suppliers, subKinds }: { product?:
   const [kind, setKind] = useState<string>(product?.productKind ?? "");
   const subOptions = (subKinds ?? []).filter((s) => !kind || !s.parent || s.parent === kind).map((s) => s.name);
   const [taxRate, setTaxRate] = useState<number>(product?.taxRate ?? 0.1);
+  const [imageUrl, setImageUrl] = useState<string>(product?.imageUrl ?? "");
   const incPrice = exPrice !== "" && !isNaN(Number(exPrice)) ? Math.round(Number(exPrice) * (1 + taxRate)) : "";
   const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#2c8c6f] focus:outline-none";
 
@@ -67,6 +68,16 @@ export function ProductForm({ product, kinds, suppliers, subKinds }: { product?:
       </div>
 
       <F label="商品説明"><textarea name="description" rows={3} defaultValue={product?.description ?? ""} className={inp} /></F>
+
+      {/* 商品画像(将来: 見積作成時に画像を見ながら選ぶ)。現状はURL指定。 */}
+      <F label="商品画像URL">
+        <input name="image_url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className={inp} placeholder="https://... （画像のURL）" />
+        <p className="mt-0.5 text-[11px] text-gray-400">画像URLを入れると下にプレビューが出ます（将来、見積作成時に表示予定）</p>
+        {imageUrl.trim() !== "" && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="商品画像プレビュー" className="mt-2 max-h-40 rounded border object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.display = "block"; }} />
+        )}
+      </F>
 
       {/* EC表示/グループ/発注/非表示系チェックは現状不要のため非表示(既存値は編集時も維持されるようhiddenで送信) */}
       <input type="hidden" name="available_ec" value={product?.availableEc ? "1" : ""} />
