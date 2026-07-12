@@ -100,7 +100,7 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
     const { data, error } = await supabase
       .from("memorials")
       .select(
-        "slug,status,access_level,koden_decline,published_at,venue,announce_mourner_name,estimate_id,deceased(name_kanji),funeral_events(event_type,start_at,datetime_label),fk_estimates(fk_customers(last_name,first_name))"
+        "slug,status,access_level,koden_decline,published_at,venue,announce_mourner_name,estimate_id,deceased(name_kanji),funeral_events(event_type,start_at,datetime_label),fk_estimates!memorials_estimate(fk_customers(last_name,first_name))"
       )
       .eq("funeral_home_id", DEMO_FUNERAL_HOME_ID)
       .is("deleted_at", null)

@@ -1529,3 +1529,14 @@
 - 現状: memorials.estimate_id → fk_estimates のFK(SET NULL)＋非UNIQUEインデックスは存在。ただしUNIQUEでなかったため、バグの横取り補完で重複(estimate_id 3e7a50e4に2件)が発生していた。
 - 対応: 重複していた榎原慶子のdraft1件をソフト削除。migration 0037 で部分ユニークインデックス uq_memorials_estimate_live(estimate_id where estimate_id is not null and deleted_at is null)を追加し、1見積=生存訃報1件をDBで保証。
 - ※真因は名寄せヒューリスティックの横取り(前コミットで修正済)。UNIQUE化はDBレベルの再発防止の二重ガード。
+
+---
+
+## 2026-07-13 — 葬儀一覧に過去分が出ない不具合を修正(embed曖昧エラー)
+
+### 原因
+- 前回追加した listCeremonies の顧客名join `fk_estimates(...)` が、memorials↔fk_estimates に複数のリレーション(memorials.estimate_id と fk_estimates.memorial_id)があるためPostgRESTが曖昧と判断しクエリがエラー。catchでシード(2件)にフォールバックし、実データ212件が消えていた。
+
+### 修正
+- 埋め込みをFK制約名で明示: `fk_estimates!memorials_estimate(fk_customers(...))`。
+- ローカルprodビルドで /admin/ceremonies が212行表示されることを確認。
