@@ -1167,3 +1167,16 @@
 - 担当者: 施行担当CSV→staff_name(請求)、一覧最終更新者→staff_name(見積)、明細CSV計上担当者→charged_user(未入力分はスマート葬儀側で元々空)。
 - sale_kind(一般/返金・値引)・税率(0.1/0.08/0)・is_set_item(紙面+preview突合)・宛名・葬家(対象者/喪主/通夜葬儀日時/宗旨)も移植。
 - スクリプト群: tmp/ss-import/(crawl-manifest/crawl-details/crawl-papers/crawl-links/parse-csv/parse-crawl/parse-papers/transform/load) — gitignore対象だが再実行手順としてここに記録。
+
+---
+
+## 2026-07-12 — 移行顧客の電話/メール汚染とSMS/DM配信フラグを修正
+
+### 原因
+- 顧客詳細クロールの解析時、携帯番号欄の横のバッジ/ボタン文字(「SMS自動配信対象」「SMSを送る」「SMS送信履歴」)とメール欄の「DM配信対象」を値の一部として取り込んでいた。
+- available_sms_auto_sent/available_dm_send/available_mail_magazine が列デフォルトで全員trueになっていた。
+
+### 修正
+- DB清掃(SQL, トランザクション): 携帯1,043/自宅91/FAX2/メール1,031件からバッジ文字・数字以外を除去。番号なし→null(実携帯125件・実メール18件)。@なしメールnull。配信フラグ全1,063件をfalseに。
+- 恒久対応: parse-crawl.py にバッジ文字除去を追加、transform.mjs で配信フラグを明示false。
+- 検証: 汚染0件・フラグON 0件を確認。
