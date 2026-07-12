@@ -12,8 +12,10 @@ export async function GET(req: Request) {
   const to = url.searchParams.get("to") || "kawaguchi.memorial@gmail.com";
   const cfg = {
     smtpHost: process.env.SMTP_HOST ?? null,
-    smtpUser: !!process.env.SMTP_USER,
-    smtpPass: !!process.env.SMTP_PASS,
+    smtpUser: process.env.SMTP_USER ?? null,
+    smtpUserLen: (process.env.SMTP_USER ?? "").length,
+    smtpPassLen: (process.env.SMTP_PASS ?? "").length,
+    smtpPassHasSpace: /\s/.test(process.env.SMTP_PASS ?? ""),
     mailFrom: process.env.MAIL_FROM ?? null,
     smtpPort: process.env.SMTP_PORT ?? null,
   };
