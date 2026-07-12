@@ -38,7 +38,8 @@ export async function issueMournerAccount(
   const { data: mem, error: findErr } = await admin.from("memorials").select("id").eq("slug", slug).single();
   if (findErr || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
 
-  const tempPassword = genPassword();
+  // 初期パスワード: 電話番号発行なら電話番号の下6桁。メール発行は電話が無いためランダム。
+  const tempPassword = method === "phone" ? c.slice(-6) : genPassword();
 
   // Supabase Auth に実ユーザー作成（ベストエフォート。失敗してもDB記録は行う）
   let authCreated = false;
