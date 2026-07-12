@@ -37,6 +37,7 @@ export interface Estimate {
   createdAt: string;
   items?: EstimateItem[];
   customerName?: string;
+  mournerSign?: string; mournerSignedAt?: string; ownerSign?: string; ownerSignedAt?: string;
   sourceId?: string;
   // 宛名情報・セット商品・発行情報（作成/編集フォーム用）
   addresseeKind?: string; addresseeLastName?: string; addresseeFirstName?: string; addresseeHonorific?: string;
@@ -68,6 +69,8 @@ function mapEstimate(r: any): Estimate {
     productSetId: r.product_set_id ?? undefined, brand: r.brand ?? undefined,
     issuerCompany: r.issuer_company ?? undefined, chargedOrg: r.charged_org ?? undefined, chargedUser: r.charged_user ?? undefined,
     staffName: r.staff_name ?? undefined,
+    mournerSign: r.mourner_sign ?? undefined, mournerSignedAt: r.mourner_signed_at ?? undefined,
+    ownerSign: r.owner_sign ?? undefined, ownerSignedAt: r.owner_signed_at ?? undefined,
     isPreConsultation: !!r.is_pre_consultation,
   };
 }

@@ -5,6 +5,7 @@ import { getCustomer } from "@/lib/kanri/data";
 import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
 import { LOGO_DATA_URL } from "@/lib/kanri/logo";
 import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
+import { signTableHtml, signWidgetHtml, SIGN_CSS } from "@/lib/kanri/sign-widget";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .bank{border:1px solid #333;padding:8px 10px;margin-top:6px;}
   .bank .ttl{font-weight:bold;margin-bottom:4px;}
   .bank .cols{display:flex;gap:32px;font-size:12px;}
+  .sign{width:40%;margin-top:24px;margin-left:auto;}
+${SIGN_CSS}
 </style></head>
 <body>
   <div class="toolbar" data-html2canvas-ignore="true">
@@ -170,6 +173,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     <tbody>${breakdownRows([...items, ...discounts], yen)}</tbody>
   </table>` : ""}
   ${reduced ? `<div class="note" style="margin-top:8px">● 軽減税率(8%)対象</div>` : ""}
+  ${signTableHtml(
+    { sign: iv.mournerSign ?? e?.mournerSign, signedAt: iv.mournerSign ? iv.mournerSignedAt : e?.mournerSignedAt, inherited: !iv.mournerSign && !!e?.mournerSign },
+    { sign: iv.ownerSign ?? e?.ownerSign, signedAt: iv.ownerSign ? iv.ownerSignedAt : e?.ownerSignedAt, inherited: !iv.ownerSign && !!e?.ownerSign },
+  )}
+  ${signWidgetHtml("invoice", iv.id)}
   <script src="/vendor/html2canvas.min.js"></script>
   <script src="/vendor/jspdf.umd.min.js"></script>
   <script>

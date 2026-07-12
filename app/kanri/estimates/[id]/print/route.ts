@@ -4,6 +4,7 @@ import { getCustomer } from "@/lib/kanri/data";
 import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
 import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
 import { LOGO_DATA_URL } from "@/lib/kanri/logo";
+import { signTableHtml, signWidgetHtml, SIGN_CSS } from "@/lib/kanri/sign-widget";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .setmark td{background:#f7f7f7;font-weight:bold;font-size:11px;color:#555;}
   .breakdown{width:66%;margin-left:auto;margin-top:8px;}
   .sign{width:40%;margin-top:24px;margin-left:auto;}
+${SIGN_CSS}
   .note{text-align:right;font-size:11px;color:#666;margin-top:6px;}
 </style></head>
 <body>
@@ -155,11 +157,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   <div style="text-align:center;margin-top:8px;font-weight:bold">摘要</div>
   <div style="min-height:24px;border-bottom:1px solid #ccc">${esc(e.memo ?? "")}</div>
 
-  <table class="sign">
-    <tr><th style="width:6em">署名日</th><td></td></tr>
-    <tr><th>喪主様サイン</th><td style="height:40px"></td></tr>
-    <tr><th>施主サイン</th><td style="height:40px"></td></tr>
-  </table>
+  ${signTableHtml({ sign: e.mournerSign, signedAt: e.mournerSignedAt }, { sign: e.ownerSign, signedAt: e.ownerSignedAt })}
+  ${signWidgetHtml("estimate", e.id)}
   <script src="/vendor/html2canvas.min.js"></script>
   <script src="/vendor/jspdf.umd.min.js"></script>
   <script>

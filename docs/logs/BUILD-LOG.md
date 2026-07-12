@@ -1276,3 +1276,19 @@
 - 見積書に請求書と同じ会社ブロックを実装: 担当：staff_name、角印(KAKUIN_DATA_URL)、TELハイフン整形。
 - ロゴ: tmp/ロゴ/LOGO.png を lib/kanri/logo.ts(データURL)化し、見積書・請求書とも社名の上に15mm幅で表示。
 - 検証: ローカルレンダリングで宛名/ロゴ/担当/角印の表示を確認。next build成功。
+
+---
+
+## 2026-07-12 — 見積書/請求書に手書きサイン(契約署名)機能を実装(8専門家)
+
+### 仕様(8専門家会議で確定)
+- 印刷プレビューの喪主様サイン/施主サイン欄をタップ→Canvasモーダルで手書き→保存→印刷/メールPDFに反映。
+- Canvas: PointerEvents一本・touch-action:none・内部600×200固定・中点スムージング・透明PNG・座標はgetBoundingClientRect比率換算。
+- 保存: POST /kanri/api/sign。target/roleホワイトリスト・UUID検証・PNG data URL完全一致+PNGシグネチャ検証(XSS遮断)・200KB上限・signed_atはサーバ時刻。image:nullで削除。
+- DB: fk_estimates/fk_invoices に mourner_sign/owner_sign(+signed_at) 4列(migration 0032)。
+- 請求書: 未署名なら見積のサインを表示継承(署名日も見積側)、タップで請求書用に書き直し(見積原本へはコピーしない)。継承中は注記表示(印刷/PDFには出さない)。
+- 印刷制御: hint/モーダルは @media print + data-html2canvas-ignore で除外。署名画像はobject-fit:containで歪みなし。
+
+### 実装
+- 0032_document_signs.sql / app/kanri/api/sign/route.ts / lib/kanri/sign-widget.ts(共通ウィジェット) / 両print route組込 / Estimate・Invoice型にサイン4項目。
+- E2E検証: API保存ok→見積印刷に画像反映→紐付く請求書で「見積書のサインを表示中」継承表示→不正data URL(text/html)は400拒否。next build成功。

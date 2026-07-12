@@ -24,6 +24,7 @@ export interface Invoice {
   issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   productSetId?: string; advancePayment?: number;
   staffName?: string; // 最終更新者(葬儀担当者)
+  mournerSign?: string; mournerSignedAt?: string; ownerSign?: string; ownerSignedAt?: string;
 }
 
 export interface InvoiceDetail {
@@ -56,6 +57,8 @@ function map(r: any): Invoice {
     issuerCompany: r.issuer_company ?? undefined, chargedOrg: r.charged_org ?? undefined, chargedUser: r.charged_user ?? undefined,
     productSetId: r.product_set_id ?? undefined, advancePayment: r.advance_payment ?? undefined,
     staffName: r.staff_name ?? undefined,
+    mournerSign: r.mourner_sign ?? undefined, mournerSignedAt: r.mourner_signed_at ?? undefined,
+    ownerSign: r.owner_sign ?? undefined, ownerSignedAt: r.owner_signed_at ?? undefined,
   };
 }
 
