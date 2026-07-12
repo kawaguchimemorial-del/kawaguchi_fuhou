@@ -14,6 +14,7 @@ export interface CeremonyListItem {
   isTest: boolean;
   mournerName: string;
   deceasedName: string;
+  customerName?: string;
   event1: { name: string; date: string };
   event2?: { name: string; date: string };
   publishFrom: string;
@@ -99,7 +100,7 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
     const { data, error } = await supabase
       .from("memorials")
       .select(
-        "slug,status,access_level,koden_decline,published_at,venue,announce_mourner_name,deceased(name_kanji),funeral_events(event_type,start_at,datetime_label)"
+        "slug,status,access_level,koden_decline,published_at,venue,announce_mourner_name,estimate_id,deceased(name_kanji),funeral_events(event_type,start_at,datetime_label),fk_estimates(fk_customers(last_name,first_name))"
       )
       .eq("funeral_home_id", DEMO_FUNERAL_HOME_ID)
       .is("deleted_at", null)
@@ -127,6 +128,7 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
         isTest: false,
         mournerName: (m.announce_mourner_name ?? "").replace(/^喪主\s*/, "") || "—",
         deceasedName: dec?.name_kanji ?? "—",
+        customerName: (() => { const e = Array.isArray(m.fk_estimates) ? m.fk_estimates[0] : m.fk_estimates; const cu = e && (Array.isArray(e.fk_customers) ? e.fk_customers[0] : e.fk_customers); return cu ? [cu.last_name, cu.first_name].filter(Boolean).join(" ") : undefined; })(),
         event1: ev(events[0]) ?? { name: "—", date: "" },
         event2: ev(events[1]),
         publishFrom: fmtDateTime(m.published_at),

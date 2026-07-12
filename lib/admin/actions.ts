@@ -252,6 +252,18 @@ function guard(p: CeremonyPayload): string | null {
 }
 
 // 新規作成
+// 喪主未入力(announce_mourner_name 空) かつ 見積IDがある場合、見積の顧客名を喪主に採用する。
+// 顧客名が入っていて喪主が同じ場合に喪主を空で保存しても、顧客名が喪主に反映されるようにするための保存時フォールバック。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fillMournerFromCustomer(supabase: any, memorial: { announce_mourner_name?: string | null; estimate_id?: string | null }) {
+  if (memorial.announce_mourner_name || !memorial.estimate_id) return;
+  const { data: est } = await supabase.from("fk_estimates").select("customer_id").eq("id", memorial.estimate_id).maybeSingle();
+  if (!est?.customer_id) return;
+  const { data: cu } = await supabase.from("fk_customers").select("last_name, first_name").eq("id", est.customer_id).maybeSingle();
+  const full = [cu?.last_name, cu?.first_name].filter(Boolean).join(" ").trim();
+  if (full) memorial.announce_mourner_name = `喪主 ${full}`;
+}
+
 export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> {
   const err = guard(p);
   if (err) return { ok: false, error: err };
@@ -260,6 +272,7 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
   const slug = randomUUID().replace(/-/g, "");
   const memorialId = randomUUID();
   const { memorial, deceased, event } = buildRows(p);
+  await fillMournerFromCustomer(supabase, memorial);
 
   const { error: mErr } = await supabase.from("memorials").insert({
     id: memorialId,
@@ -296,6 +309,7 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
   if (findErr || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
   const memorialId = mem.id as string;
   const { memorial, deceased, event } = buildRows(p);
+  await fillMournerFromCustomer(supabase, memorial);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: mErr } = await (supabase.from("memorials").update(memorial as any).eq("id", memorialId) as any);
@@ -466,14 +480,16 @@ export async function findMemorialSlugByDeceasedName(
 
   const hit = rows.find((r) => {
     const dec = decByMemorial.get(r.id);
-    if (!dec || dec.name !== targetName) return false; // 対象者名は必須一致
-    // 没日が双方にあって食い違う → 別人として除外
-    if (estDeath && dec.death && estDeath !== dec.death) return false;
-    const deathMatch = !!estDeath && !!dec.death && estDeath === dec.death;
-    const memMourner = stripSpace(r.announce_mourner_name);
-    const mournerMatch = !!estMourner && !!memMourner && estMourner === memMourner;
-    // 名前一致に加え、没日一致 か 喪主名一致 のいずれかが必要
-    return deathMatch || mournerMatch;
+    if (!dec || dec.name !== targetName) return false; // 対象者(故人)名は必須一致
+    // 他の見積に既にリンク済みの訃報は横取りしない(別葬家の可能性)。
+    if (r.estimate_id && r.estimate_id !== estimateId) return false;
+    // 自見積に既リンクなら本人確定。
+    if (r.estimate_id === estimateId) return true;
+    // --- 未リンク(estimate_id=null)候補: 没日 AND 喪主名 の両方一致を必須(誤マッチ・横取り防止) ---
+    if (!estDeath || !dec.death || estDeath !== dec.death) return false; // 没日は双方存在＆一致必須
+    const memMourner = stripSpace(r.announce_mourner_name).replace(/^喪主/, ""); // 「喪主」接頭辞を除去
+    const est = estMourner.replace(/^喪主/, "");
+    return !!est && !!memMourner && (memMourner.includes(est) || est.includes(memMourner));
   });
   if (!hit) return null;
   // estimate_id 未設定の場合のみ補完(既存リンクは奪わない)

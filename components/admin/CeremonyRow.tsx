@@ -18,6 +18,7 @@ export function CeremonyRow({ r }: { r: CeremonyListItem }) {
           <span className="mt-1 inline-block rounded bg-red-100 px-2 py-0.5 text-xs text-red-600">テスト</span>
         )}
       </td>
+      <td className="px-3 py-4">{r.customerName ?? "—"}</td>
       <td className="px-3 py-4 font-medium text-[#9b2fae]">{r.mournerName}</td>
       <td className="px-3 py-4">{r.deceasedName}</td>
       <td className="px-3 py-4">{r.event1.name}<br /><span className="text-xs text-gray-500">{r.event1.date}</span></td>
