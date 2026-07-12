@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Search, Phone, Bell, List, HelpCircle, Megaphone } from "lucide-react";
 import { KanriSidebar } from "@/components/kanri/Sidebar";
 import { KanriMobileNav } from "@/components/kanri/MobileNav";
+import "./theme-v2.css";
 
 export const metadata = {
   title: "川口典礼 葬儀管理ソフト",
@@ -9,8 +10,10 @@ export const metadata = {
 };
 
 export default function KanriLayout({ children }: { children: React.ReactNode }) {
+  // UIテーマv2。NEXT_PUBLIC_KANRI_V2=0 で旧デザインへ即時切替(キルスイッチ)。
+  const v2 = process.env.NEXT_PUBLIC_KANRI_V2 !== "0";
   return (
-    <div className="min-h-screen bg-[#eef1f4] text-gray-800">
+    <div className="min-h-screen bg-[#eef1f4] text-gray-800" {...(v2 ? { "data-kanri-v2": "" } : {})}>
       {/* トップバー */}
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-white px-4 py-2.5">
         <KanriMobileNav />

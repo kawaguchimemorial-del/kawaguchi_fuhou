@@ -1,0 +1,159 @@
+/* =============================================================================
+   川口典礼CRM UIテーマ v2（15専門家会議 2026-07-13 確定仕様）
+   - [data-kanri-v2] スコープ内のみ有効。/admin・印刷route(HTML生成)には無影響。
+   - ロールバック: このファイル削除 + layout.tsx の2行(import/data属性)を戻すだけ。
+     もしくは Vercel環境変数 NEXT_PUBLIC_KANRI_V2=0 で即時OFF。
+   - 第1層(hex写像)のみ !important 許可。第2層(質感)は禁止。
+   ========================================================================== */
+
+[data-kanri-v2] {
+  /* ブランド(深緑) — bg/text/border を別トークンで管理 */
+  --k-brand-bg:     #1f6b54;  /* 白文字 5.9:1 AA。旧 #2c8c6f/#1aa39a/#2bb8ae/#57ab5a の統合先 */
+  --k-brand-strong: #17493d;  /* ヘッダー帯・hover。白文字 10.2:1 */
+  --k-brand-text:   #1f6b54;
+  --k-brand-border: #1f6b54;
+  --k-brand-tint:        #eef4f1;
+  --k-brand-tint-strong: #dde9e3;
+  --k-brand-line:        #c7d6ce;
+  --k-brand-line-strong: #9cb8ab;
+
+  /* アクション(藍鼠) 旧 #4f7cff/#5b6ee1 統合先 */
+  --k-action:      #35597a;
+  --k-action-tint: #e9eef4;
+
+  /* 状態色 */
+  --k-danger:      #c74a24;   /* 旧 #f2683f/#e8613c 統合先 */
+  --k-danger-tint: #faeee8;
+  --k-warn:        #b45309;
+  --k-warn-tint:   #fdf3e3;
+
+  /* 訃報側識別(古代紫) 旧 #9b2fae 統合先 */
+  --k-obituary:      #6d4a7c;
+  --k-obituary-tint: #f2edf5;
+
+  /* ニュートラル(緑がかったウォーム) */
+  --k-surface: #f4f4f0;
+  --k-card:    #ffffff;
+  --k-line:      #e3e6e2;
+  --k-line-soft: #edefec;
+  --k-ink:      #1f2421;
+  --k-ink-soft: #57605a;
+  --k-row-hover: #e3ece7;
+
+  /* 装飾(唯一の金。ヘッダーヘアライン専用) */
+  --k-accent-hairline: #b08d3f;
+
+  /* 形状・密度 */
+  --k-radius:      8px;
+  --k-radius-sm:   6px;
+  --k-shadow-card: 0 1px 3px rgb(0 0 0 / .08);
+  --k-focus:       0 0 0 2px #fff, 0 0 0 4px var(--k-brand-bg);
+  --k-row-h:   44px;
+  --k-input-h: 44px;
+}
+
+/* ===== 第1層: ハードコード色の写像(!importantはこの層のみ) ===== */
+
+/* 背景 */
+[data-kanri-v2] .bg-\[\#2c8c6f\],
+[data-kanri-v2] .bg-\[\#1aa39a\],
+[data-kanri-v2] .bg-\[\#2bb8ae\],
+[data-kanri-v2] .bg-\[\#57ab5a\] { background-color: var(--k-brand-bg) !important; }
+[data-kanri-v2] .bg-\[\#4f7cff\],
+[data-kanri-v2] .bg-\[\#5b6ee1\] { background-color: var(--k-action) !important; }
+[data-kanri-v2] .bg-\[\#f2683f\],
+[data-kanri-v2] .bg-\[\#e8613c\] { background-color: var(--k-danger) !important; }
+[data-kanri-v2] .bg-\[\#eef1f4\] { background-color: var(--k-surface) !important; }
+[data-kanri-v2] .bg-\[\#f2fbfa\],
+[data-kanri-v2] .bg-\[\#f0faf8\],
+[data-kanri-v2] .bg-\[\#f7fcfb\] { background-color: var(--k-brand-tint) !important; }
+[data-kanri-v2] .bg-\[\#e6f6f4\] { background-color: var(--k-brand-tint-strong) !important; }
+[data-kanri-v2] .bg-\[\#eef4ff\] { background-color: var(--k-action-tint) !important; }
+[data-kanri-v2] .bg-\[\#fff4f0\],
+[data-kanri-v2] .bg-\[\#fff4ec\] { background-color: var(--k-danger-tint) !important; }
+[data-kanri-v2] .bg-\[\#f3e8ff\],
+[data-kanri-v2] .bg-\[\#f3e9f6\] { background-color: var(--k-obituary-tint) !important; }
+
+/* 文字 */
+[data-kanri-v2] .text-\[\#2c8c6f\],
+[data-kanri-v2] .text-\[\#1aa39a\],
+[data-kanri-v2] .text-\[\#2bb8ae\] { color: var(--k-brand-text) !important; }
+[data-kanri-v2] .text-\[\#4f7cff\],
+[data-kanri-v2] .text-\[\#5b6ee1\] { color: var(--k-action) !important; }
+[data-kanri-v2] .text-\[\#f2683f\],
+[data-kanri-v2] .text-\[\#e8613c\] { color: var(--k-danger) !important; }
+[data-kanri-v2] .text-\[\#9b2fae\] { color: var(--k-obituary) !important; }
+
+/* 枠線 */
+[data-kanri-v2] .border-\[\#2c8c6f\],
+[data-kanri-v2] .border-\[\#1aa39a\],
+[data-kanri-v2] .border-\[\#2bb8ae\] { border-color: var(--k-brand-border) !important; }
+[data-kanri-v2] .border-\[\#4f7cff\],
+[data-kanri-v2] .border-\[\#5b6ee1\] { border-color: var(--k-action) !important; }
+[data-kanri-v2] .border-\[\#f2683f\] { border-color: var(--k-danger) !important; }
+[data-kanri-v2] .border-\[\#9b2fae\] { border-color: var(--k-obituary) !important; }
+[data-kanri-v2] .border-\[\#bfe3dc\] { border-color: var(--k-brand-line) !important; }
+[data-kanri-v2] .border-\[\#8fd0c8\] { border-color: var(--k-brand-line-strong) !important; }
+
+/* divide(EstimateCreateForm) */
+[data-kanri-v2] .divide-\[\#e0f0ec\] > :not(:last-child) { border-color: var(--k-line-soft) !important; }
+
+/* グラデーション(ai-portrait) */
+[data-kanri-v2] .from-\[\#2c8c6f\] { --tw-gradient-from: var(--k-brand-bg) !important; }
+[data-kanri-v2] .to-\[\#1aa39a\]   { --tw-gradient-to: var(--k-brand-strong) !important; }
+
+/* hover系 — タブレットのsticky hover対策で必ず (hover:hover) 内 */
+@media (hover: hover) {
+  [data-kanri-v2] .hover\:bg-\[\#f2fbfa\]:hover,
+  [data-kanri-v2] .hover\:bg-\[\#f0faf8\]:hover { background-color: var(--k-brand-tint) !important; }
+  [data-kanri-v2] .hover\:bg-\[\#f3e9f6\]:hover { background-color: var(--k-obituary-tint) !important; }
+  [data-kanri-v2] .hover\:text-\[\#2c8c6f\]:hover { color: var(--k-brand-text) !important; }
+}
+
+/* focus系 */
+[data-kanri-v2] .focus\:border-\[\#1aa39a\]:focus,
+[data-kanri-v2] .focus\:border-\[\#2c8c6f\]:focus { border-color: var(--k-brand-border) !important; }
+
+/* globals.cssの * { border-color: ベージュ } をkanri内で中和 */
+[data-kanri-v2] * { border-color: var(--k-line); }
+
+/* ===== 第2層: 質感(!important禁止) ===== */
+
+/* テーブル */
+[data-kanri-v2] table { font-variant-numeric: tabular-nums; border-color: var(--k-line); }
+[data-kanri-v2] th {
+  font-size: 12px; font-weight: 600; color: var(--k-ink-soft);
+  background: var(--k-surface); white-space: nowrap;
+}
+[data-kanri-v2] td { font-size: 14px; height: var(--k-row-h); }
+@media (hover: hover) {
+  [data-kanri-v2] tbody tr:hover > td { background-color: var(--k-row-hover); }
+}
+/* 第1列固定はopt-in */
+[data-kanri-v2] .k-sticky-col td:first-child,
+[data-kanri-v2] .k-sticky-col th:first-child {
+  position: sticky; left: 0; background: var(--k-card); z-index: 1;
+  box-shadow: 2px 0 4px -2px rgb(0 0 0 / .1);
+}
+
+/* フォーム(iOS/iPad Safariのズーム暴発防止に16px必須) */
+[data-kanri-v2] input:not([type="checkbox"]):not([type="radio"]),
+[data-kanri-v2] select,
+[data-kanri-v2] textarea {
+  font-size: 16px;
+  min-height: var(--k-input-h);
+  border-radius: var(--k-radius-sm);
+}
+[data-kanri-v2] :focus-visible { outline: none; box-shadow: var(--k-focus); }
+
+/* タッチ端末のみ48px昇格(PCの一覧密度は維持) */
+@media (pointer: coarse) {
+  [data-kanri-v2] { --k-input-h: 48px; --k-row-h: 52px; }
+  [data-kanri-v2] button { min-height: 48px; }
+}
+
+/* カード質感 */
+[data-kanri-v2] .rounded-lg.bg-white,
+[data-kanri-v2] .rounded.bg-white { box-shadow: var(--k-shadow-card); }
+
+/* ===== 例外ブロック(必要になったらここに後置宣言で追記) ===== */
