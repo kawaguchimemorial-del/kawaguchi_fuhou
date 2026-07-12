@@ -2,6 +2,8 @@ import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/esti
 import { getCompanyInfo } from "@/lib/kanri/masters";
 import { getCustomer } from "@/lib/kanri/data";
 import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
+import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
+import { LOGO_DATA_URL } from "@/lib/kanri/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +27,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const discounts = (e.items ?? []).filter((it) => it.lineKind === "discount");
   const on = fmtd(e.estimateOn) || fmtd(e.createdAt);
   const withTax = (amt: number, rate: number) => lineIncTax(amt, rate);
-  const mournerAddr = [e.mourner.prefecture, e.mourner.addressCity, e.mourner.addressStreet, e.mourner.addressBuilding].filter(Boolean).join("");
+  const mournerAddr = [e.addresseePrefecture ?? e.mourner.prefecture, e.addresseeCity ?? e.mourner.addressCity, e.addresseeStreet ?? e.mourner.addressStreet, e.addresseeBuilding ?? e.mourner.addressBuilding].filter(Boolean).join("");
+  // 宛名: 宛名情報 → 喪主 → 顧客名 の順で解決(移植データは宛名/顧客のみのことがある)
+  const toName = [e.addresseeLastName, e.addresseeFirstName].filter(Boolean).join(" ") || mournerFullName(e) || e.customerName || "";
+  const honorific = e.addresseeHonorific ?? "様";
+  const staffName = e.staffName ?? "";
+  const telFmt = (t?: string) => {
+    const d = (t || "").replace(/[^0-9]/g, "");
+    if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+    return t || "";
+  };
 
   // 税率別内訳用の行データ(税抜=amount, 税込=行確定値)
   const toBd = (it: { taxRate: number; amount: number }) => ({ taxRate: it.taxRate, amount: it.amount, incTax: lineIncTax(it.amount, it.taxRate) });
@@ -61,7 +73,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   }).join("");
   const discSubtotal = `<tr><td colspan="4" class="r" style="font-weight:bold">小計</td><td class="r">${neg(discExTax)}</td><td class="r">${neg(discIncTax)}</td></tr>`;
 
-  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>お見積書 ${esc(mournerFullName(e))}</title>
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>お見積書 ${esc(toName)}</title>
 <style>
   @page{size:A4;margin:12mm;} body{font-family:"Noto Sans JP","Yu Gothic",sans-serif;color:#222;font-size:12px;}
   .toolbar{position:fixed;top:6px;left:6px;display:flex;gap:8px;z-index:50;} @media print{.toolbar{display:none;}}
@@ -71,7 +83,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .head{display:flex;justify-content:space-between;}
   h1{text-align:center;font-size:22px;letter-spacing:.3em;margin:6px 0 18px;}
   .addr{font-size:11px;color:#555;} .to{font-size:18px;margin-top:4px;}
-  .company{text-align:left;font-size:11px;} .company .nm{font-weight:bold;font-size:13px;}
+  .company{text-align:left;font-size:11px;position:relative;display:flex;align-items:flex-start;gap:6px;} .company .nm{font-weight:bold;font-size:13px;}
+  .company .cbody{flex:1;} .company .tantou{margin-top:2px;}
+  .company .clogo{width:15mm;height:auto;display:block;margin-bottom:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .company .cseal{width:18mm;height:18mm;object-fit:contain;margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .kingaku{font-size:22px;font-weight:bold;border-bottom:2px solid #333;padding-bottom:6px;margin:6px 0 16px;}
   table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #999;padding:5px 7px;}
   th{background:#eee;text-align:center;} td.r{text-align:right;} td.c{text-align:center;} td.l{text-align:left;}
@@ -89,7 +104,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   <div class="head">
     <div style="width:60%">
       <div class="addr">${esc(mournerAddr)}</div>
-      <div class="to">${esc(mournerFullName(e))} 様</div>
+      <div class="to">${esc(toName)}${toName ? ` ${esc(honorific)}` : ""}</div>
     </div>
     <div style="text-align:right;font-size:11px">
       見積書番号 ${esc(e.estimateNo ?? "")}<br>見積日 ${on}
@@ -102,8 +117,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       <div class="kingaku">合計金額　${yen(e.total)}</div>
     </div>
     <div class="company">
-      <div class="nm">${esc(companyName)}</div>
-      ${co.postcode ? `〒${esc(co.postcode)}<br>` : ""}${esc(companyAddr)}<br>${esc(co.tel ?? "")}
+      <div class="cbody">
+        <img class="clogo" src="${LOGO_DATA_URL}" alt="ロゴ">
+        <div class="nm">${esc(companyName)}</div>
+        ${co.postcode ? `〒${esc(co.postcode)}<br>` : ""}${esc(companyAddr)}<br>${co.tel ? `TEL: ${esc(telFmt(co.tel))}` : ""}
+        ${staffName ? `<div class="tantou">担当：${esc(staffName)}</div>` : ""}
+      </div>
+      <img class="cseal" src="${KAKUIN_DATA_URL}" alt="社印">
     </div>
   </div>
 

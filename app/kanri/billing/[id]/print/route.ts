@@ -3,6 +3,7 @@ import { mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
 import { getCustomer } from "@/lib/kanri/data";
 import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
+import { LOGO_DATA_URL } from "@/lib/kanri/logo";
 import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +96,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .addr{font-size:11px;color:#555;} .to{font-size:18px;margin-top:4px;}
   .company{text-align:left;font-size:11px;position:relative;display:flex;align-items:flex-start;gap:6px;} .company .nm{font-weight:bold;font-size:13px;}
   .company .cbody{flex:1;} .company .tantou{margin-top:2px;}
+  .company .clogo{width:15mm;height:auto;display:block;margin-bottom:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .company .cseal{width:18mm;height:18mm;object-fit:contain;margin-top:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .kingaku{font-size:22px;font-weight:bold;border-bottom:2px solid #333;padding-bottom:6px;margin:6px 0 16px;}
   table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #999;padding:5px 7px;}
@@ -132,6 +134,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     </div>
     <div class="company">
       <div class="cbody">
+        <img class="clogo" src="${LOGO_DATA_URL}" alt="ロゴ">
         <div class="nm">${esc(companyName)}</div>
         ${co.postcode ? `〒${esc(co.postcode)}<br>` : ""}${esc([co.prefecture, companyAddr].filter(Boolean).join(""))}<br>${co.tel ? `TEL: ${esc(telFmt(co.tel))}` : ""}
         ${staffName ? `<div class="tantou">担当：${esc(staffName)}</div>` : ""}
