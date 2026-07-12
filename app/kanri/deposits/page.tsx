@@ -38,9 +38,9 @@ export default async function DepositsPage({ searchParams }: SP) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{["請求書ID", "操作", "顧客(故人)", "請求先名", "請求日", "請求額", "入金額", "残高", "支払方法"].map((h) => <th key={h} className="px-3 py-3 font-medium">{h}</th>)}</tr></thead>
+            <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{["請求書ID", "操作", "顧客", "対象者(故人)", "請求先名", "請求日", "請求額", "入金額", "残高", "支払方法"].map((h) => <th key={h} className="px-3 py-3 font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y">
-              {rows.length === 0 ? <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">請求書がありません。</td></tr> :
+              {rows.length === 0 ? <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-400">請求書がありません。</td></tr> :
                 rows.map((iv) => (
                   <tr key={iv.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 font-mono text-xs text-[#1aa39a]">{iv.id.slice(0, 8)}</td>
@@ -50,7 +50,8 @@ export default async function DepositsPage({ searchParams }: SP) {
                         <Link href={`/kanri/billing/${iv.id}`} className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">入金管理</Link>
                       </div>
                     </td>
-                    <td className="px-3 py-2">{iv.deceasedName ?? "—"}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{iv.customerName ?? iv.mournerName ?? "—"}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{iv.deceasedName ?? "—"}</td>
                     <td className="px-3 py-2">{
                       // 実際に入力された請求先名を優先。区分に応じて 顧客名/喪主名 にフォールバック。
                       iv.invoiceTargetName
