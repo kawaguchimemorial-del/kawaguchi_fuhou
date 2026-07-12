@@ -533,19 +533,15 @@ export async function createMemorialFromEstimate(fd: FormData): Promise<void> {
 }
 
 // ===== 請求 =====
+// 見積→請求書: 既に請求書があればその編集画面へ、無ければ見積内容をプレフィルした新規作成画面へ。
+// (旧実装は合計だけの空請求書をその場でINSERTしていたため、顧客/件名/明細の無い請求書が量産されていた)
 export async function createInvoiceFromEstimate(fd: FormData): Promise<void> {
   const estimateId = s(fd, "id");
   if (!estimateId) return;
   const c = admin();
-  const { data: e } = await c.from("fk_estimates").select("total").eq("id", estimateId).single();
-  if (!e) return;
-  const today = new Date().toISOString().slice(0, 10);
-  const invoiceNo = await nextInvoiceNo(c);
-  const { data: inv, error } = await c.from("fk_invoices").insert({
-    funeral_home_id: KANRI_HOME_ID, estimate_id: estimateId, invoice_no: invoiceNo, source_id: invoiceNo, total: e.total ?? 0, status: "unpaid", billed_on: today,
-  }).select("id").single();
-  if (error || !inv) return;
-  redirect(`/kanri/billing/${inv.id}`);
+  const { data: inv } = await c.from("fk_invoices").select("id").eq("estimate_id", estimateId).is("deleted_at", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (inv) redirect(`/kanri/billing/${inv.id}/edit`);
+  redirect(`/kanri/billing/new?from_estimate=${estimateId}`);
 }
 
 export async function recordPayment(fd: FormData): Promise<void> {
@@ -777,7 +773,7 @@ export async function saveInvoiceFull(_prev: KanriResult | null, fd: FormData): 
     await c.from("fk_invoice_details").delete().eq("invoice_id", id);
   } else {
     const invoiceNo = await nextInvoiceNo(c);
-    const { data, error } = await c.from("fk_invoices").insert({ ...row, invoice_no: invoiceNo, source_id: invoiceNo, paid_total: 0, status: "unpaid" }).select("id").single();
+    const { data, error } = await c.from("fk_invoices").insert({ ...row, estimate_id: s(fd, "estimate_id") || null, invoice_no: invoiceNo, source_id: invoiceNo, paid_total: 0, status: "unpaid" }).select("id").single();
     if (error || !data) return { ok: false, error: error?.message ?? "保存に失敗しました。" };
     invoiceId = data.id;
   }

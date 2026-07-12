@@ -22,6 +22,7 @@ export interface FormInitial {
   title?: string; memo?: string; date1?: string; date2?: string;
   crematorium?: string; brand?: string;
   productSetId?: string;
+  estimateId?: string; // 請求書newを見積からプレフィルする際の紐付け元
   items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; isSetItem?: boolean; hiddenPaper?: boolean; priceIncludingTax?: number }[];
   advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 担当者(最終更新者)
@@ -366,6 +367,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       {initial?.id && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="items" value={itemsJson} />
       <input type="hidden" name="customer_id" value={customer?.id ?? ""} />
+      <input type="hidden" name="estimate_id" value={initial?.estimateId ?? ""} />
       <input type="hidden" name="product_set_id" value={chosenSet?.id ?? ""} />
       <input type="hidden" name="product_set_price" value={chosenSet ? setEffEx : 0} />
       <input type="hidden" name="advance_payment" value={advance || "0"} />
