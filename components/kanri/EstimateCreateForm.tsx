@@ -221,20 +221,41 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [ncPref, setNcPref] = useState("");
   const [ncCity, setNcCity] = useState("");
   const [zipMsg, setZipMsg] = useState("");
-  async function lookupZip() {
-    const z = ncPostcode.replace(/[^0-9]/g, "");
-    if (z.length !== 7) { setZipMsg("郵便番号は7桁で入力してください"); return; }
-    setZipMsg("検索中…");
+  async function zipToAddr(postcode: string, setPref: (v: string) => void, setCity: (v: string) => void, setMsg: (v: string) => void) {
+    const z = postcode.replace(/[^0-9]/g, "");
+    if (z.length !== 7) { setMsg("郵便番号は7桁で入力してください"); return; }
+    setMsg("検索中…");
     try {
       const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${z}`);
       const d = await res.json();
       if (d.results && d.results[0]) {
-        setNcPref(d.results[0].address1 || "");
-        setNcCity((d.results[0].address2 || "") + (d.results[0].address3 || ""));
-        setZipMsg("住所を自動入力しました");
-      } else setZipMsg("該当する住所が見つかりません");
-    } catch { setZipMsg("住所検索に失敗しました"); }
+        setPref(d.results[0].address1 || "");
+        setCity((d.results[0].address2 || "") + (d.results[0].address3 || ""));
+        setMsg("住所を自動入力しました");
+      } else setMsg("該当する住所が見つかりません");
+    } catch { setMsg("住所検索に失敗しました"); }
   }
+  // 郵便番号逆引き: 都道府県+市区町村(町域まで)から郵便番号を検索
+  async function addrToZip(pref: string, city: string, setPostcode: (v: string) => void, setMsg: (v: string) => void) {
+    const kw = (city || "").trim();
+    if (!kw) { setMsg("市区町村（町域まで）を入力してください"); return; }
+    setMsg("逆引き中…");
+    try {
+      const res = await fetch(`https://geoapi.heartrails.com/api/json?method=suggest&matching=like&keyword=${encodeURIComponent(kw)}`);
+      const d = await res.json();
+      const locs = (d.response?.location ?? []) as { prefecture: string; city: string; town: string; postal: string }[];
+      const pool = pref ? locs.filter((l) => l.prefecture === pref) : locs;
+      const hit = pool[0] ?? locs[0];
+      if (hit) { setPostcode(hit.postal); setMsg(`〒${hit.postal}（${hit.prefecture}${hit.city}${hit.town}）を設定しました`); }
+      else setMsg("該当する郵便番号が見つかりません。市区町村に町域名まで入力してください");
+    } catch { setMsg("郵便番号逆引きに失敗しました"); }
+  }
+  const lookupZip = () => zipToAddr(ncPostcode, setNcPref, setNcCity, setZipMsg);
+  // 宛名/請求先の郵便番号・住所(制御化して双方向検索に対応)
+  const [adPostcode, setAdPostcode] = useState(initial?.addresseePostcode ?? "");
+  const [adPref, setAdPref] = useState(initial?.addresseePrefecture ?? "");
+  const [adCity, setAdCity] = useState(initial?.addresseeCity ?? "");
+  const [adZipMsg, setAdZipMsg] = useState("");
 
   async function search() {
     setLoading(true);
@@ -389,8 +410,9 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
             <div>
               <label className="block text-sm text-gray-600">顧客郵便番号</label>
               <div className="mt-1 flex gap-2">
-                <input name="new_customer_postcode" value={ncPostcode} onChange={(e) => setNcPostcode(e.target.value)} onBlur={lookupZip} placeholder="ハイフン無し（例:3330833）" className={inp} />
+                <input name="new_customer_postcode" value={ncPostcode} onChange={(e) => setNcPostcode(e.target.value)} onBlur={lookupZip} placeholder="例:3330833" className={inp + " max-w-[130px]"} />
                 <button type="button" onClick={lookupZip} className="whitespace-nowrap rounded border border-[#2c8c6f] px-3 py-2 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">住所検索</button>
+                <button type="button" onClick={() => addrToZip(ncPref, ncCity, setNcPostcode, setZipMsg)} className="whitespace-nowrap rounded border border-[#4f7cff] px-3 py-2 text-xs text-[#4f7cff] hover:bg-blue-50">郵便番号逆引き</button>
               </div>
               {zipMsg && <p className="mt-1 text-xs text-[#2c8c6f]">{zipMsg}</p>}
             </div>
@@ -449,10 +471,19 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
           <F label={asInvoice ? "請求先名カナ(氏)" : "宛名カナ(氏)"}><input name="addressee_last_name_kana" defaultValue={initial?.addresseeLastNameKana ?? ""} className={inp} /></F>
           <F label={asInvoice ? "請求先名カナ(名)" : "宛名カナ(名)"}><input name="addressee_first_name_kana" defaultValue={initial?.addresseeFirstNameKana ?? ""} className={inp} /></F>
         </div>
-        <div className="mt-3"><F label="郵便番号"><input name="addressee_postcode" defaultValue={initial?.addresseePostcode ?? ""} className={inp} placeholder="ハイフン(-)無しで入力してください" /></F></div>
+        <div className="mt-3">
+          <F label="郵便番号">
+            <div className="flex items-center gap-2">
+              <input name="addressee_postcode" value={adPostcode} onChange={(e) => setAdPostcode(e.target.value)} className={inp + " max-w-[130px]"} placeholder="例:3330833" />
+              <button type="button" onClick={() => zipToAddr(adPostcode, setAdPref, setAdCity, setAdZipMsg)} className="whitespace-nowrap rounded border border-[#2c8c6f] px-3 py-2 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">住所検索</button>
+              <button type="button" onClick={() => addrToZip(adPref, adCity, setAdPostcode, setAdZipMsg)} className="whitespace-nowrap rounded border border-[#4f7cff] px-3 py-2 text-xs text-[#4f7cff] hover:bg-blue-50">郵便番号逆引き</button>
+            </div>
+            {adZipMsg && <p className="mt-1 text-xs text-gray-500">{adZipMsg}</p>}
+          </F>
+        </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <F label="都道府県"><select name="addressee_prefecture" defaultValue={initial?.addresseePrefecture ?? ""} className={inp}><option value="">選択</option>{PREFECTURES.map((p) => <option key={p}>{p}</option>)}</select></F>
-          <F label="市区町村"><input name="addressee_address_city" defaultValue={initial?.addresseeCity ?? ""} className={inp} /></F>
+          <F label="都道府県"><select name="addressee_prefecture" value={adPref} onChange={(e) => setAdPref(e.target.value)} className={inp}><option value="">選択</option>{PREFECTURES.map((p) => <option key={p}>{p}</option>)}</select></F>
+          <F label="市区町村"><input name="addressee_address_city" value={adCity} onChange={(e) => setAdCity(e.target.value)} className={inp} placeholder="町域まで入れると逆引き精度が上がります" /></F>
           <F label="番地"><input name="addressee_address_street" defaultValue={initial?.addresseeStreet ?? ""} className={inp} /></F>
           <F label="建物名など"><input name="addressee_address_building" defaultValue={initial?.addresseeBuilding ?? ""} className={inp} /></F>
         </div>
@@ -749,6 +780,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         </div>
       </Card>
 
+      {state && state.ok === false && <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">{state.error}</p>}
       <div className="flex gap-3">
         <button disabled={pending || (asInvoice && !customer && !newCustomer) || (!asInvoice && !estimateOn) || (!asInvoice && !isPre && !funeralAt)} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
         <Link href={asInvoice ? "/kanri/billing" : "/kanri/estimates"} className="rounded border bg-white px-6 py-2.5 text-sm">キャンセル</Link>

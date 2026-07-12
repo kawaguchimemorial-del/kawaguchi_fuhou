@@ -707,8 +707,8 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     if (!s(fd, "deceased_gender")) missing.push("性別");
     if (!s(fd, "deceased_birth_date")) missing.push("生年月日");
     if (!s(fd, "deceased_death_date")) missing.push("没年月日");
-    if (!s(fd, "wake_at")) missing.push("通夜日時");
-    if (!s(fd, "funeral_at")) missing.push("告別式日時");
+    // 通夜日時は一日葬対応のため必須にしない(フロントと同条件)
+    if (!s(fd, "funeral_at")) missing.push("告別式日時（火葬日時）");
   }
   if (missing.length) return { ok: false, error: `次の項目が未入力です：${missing.join("、")}` };
   const row = {
