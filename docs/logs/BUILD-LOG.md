@@ -1520,3 +1520,12 @@
 - 一覧: listCeremonies に見積→顧客のjoinで顧客名を追加。`CeremonyList`(client)で喪主名/故人名/顧客名の横断検索＋顧客名列＋ステータス絞り込みを実装(旧UIのみ検索を機能化)。
 - データ是正: 横取りされた memorial fde4ffc9 の estimate_id を解除、テスト乱立の山田太郎draft 5件をソフト削除。松澤見積のリンク0件を確認。
 - next build成功。
+
+---
+
+## 2026-07-13 — 見積↔訃報のリレーションをUNIQUE化(1見積=1訃報を保証)
+
+- 質問「見積IDと訃報はリレーションされてるか/主キーなら起きないのでは」への対応。
+- 現状: memorials.estimate_id → fk_estimates のFK(SET NULL)＋非UNIQUEインデックスは存在。ただしUNIQUEでなかったため、バグの横取り補完で重複(estimate_id 3e7a50e4に2件)が発生していた。
+- 対応: 重複していた榎原慶子のdraft1件をソフト削除。migration 0037 で部分ユニークインデックス uq_memorials_estimate_live(estimate_id where estimate_id is not null and deleted_at is null)を追加し、1見積=生存訃報1件をDBで保証。
+- ※真因は名寄せヒューリスティックの横取り(前コミットで修正済)。UNIQUE化はDBレベルの再発防止の二重ガード。
