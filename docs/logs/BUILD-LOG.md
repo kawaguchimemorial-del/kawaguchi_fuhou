@@ -1401,3 +1401,13 @@
 - 請求書メールはPDF添付をやめ、請求書印刷画面へのリンクを本文に記載(相手が印刷)。
 - オンライン供花注文の請求書印刷では喪主/施主サイン欄を非表示。
 - next build成功・設定画面/供花注文フロー確認。
+
+---
+
+## 2026-07-12 — メール送信をXserver SMTPに対応(nodemailer)
+
+- lib/kanri/mail.ts を nodemailer 併用に変更。SMTP_*設定時はXserver等のSMTPで送信、未設定時のみResendにフォールバック。465=SSL/587=STARTTLS自動判定。
+- nodemailer/@types/nodemailer を追加。
+- .env.local(gitignore)にXserver SMTP情報を設定(SMTP_HOST=sv15016.xserver.jp/465/flower@kawaguchi-memorial-hall.com/MAIL_FROM)。
+- 送信テスト: SMTP verify OK・実送信成功(250 queued)。
+- ※本番(Vercel)にも同じ環境変数の登録が必要。
