@@ -325,7 +325,8 @@ export function FlowerOrderForm({
       {phase === "confirm" && (
         <section className="rounded border border-[var(--accent)] bg-[var(--card)] p-5">
           <h2 className="mb-3 font-serif text-lg text-[var(--primary)]">ご注文内容の確認</h2>
-          <p className="mb-4 text-sm text-[var(--muted)]">以下の内容でよろしければ「この内容で注文する」を押してください。</p>
+          <p className="mb-2 text-sm text-[var(--muted)]">以下の内容でよろしければ「この内容で注文する」を押してください。</p>
+          <p className="mb-4 rounded bg-amber-50 px-4 py-3 text-left text-xs text-amber-800"><b>「この内容で注文する」ボタンを押すと、ご注文が確定します。</b>内容をご修正の場合は「修正する」を押してください。</p>
           <dl className="space-y-2 text-sm">
             {[
               ["ご注文商品", reviewProduct ? `${reviewProduct.name}（${reviewProduct.priceJpy.toLocaleString()}円）` : review.productId],
