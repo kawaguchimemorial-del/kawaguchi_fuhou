@@ -1,6 +1,7 @@
 import { sendMailWithPdf } from "@/lib/kanri/mail";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "hnd1"; // Tokyo (Xserver国外IP制限回避のテスト)
 
 // 一時的なメール送信テスト用エンドポイント(確認後に削除)。
 // ?key=kawaguchi-mailtest-9f3a &to=<宛先>
