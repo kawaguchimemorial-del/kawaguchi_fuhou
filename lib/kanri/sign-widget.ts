@@ -5,17 +5,8 @@
 
 export interface SignState { sign?: string | null; signedAt?: string | null; inherited?: boolean }
 
-function fmtd(iso?: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const s = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(d);
-  return s.replace(/-/g, "/");
-}
-
-// 署名テーブル(署名日/喪主様サイン/施主サイン)
+// 署名テーブル(喪主様サイン/施主サイン)。署名日は表示しない(要望により削除。signed_atはDB記録のみ)。
 export function signTableHtml(mourner: SignState, owner: SignState): string {
-  const dateTxt = fmtd(mourner.signedAt) || fmtd(owner.signedAt) || "　　年　　月　　日";
   const box = (role: "mourner" | "owner", st: SignState) => `
       <td class="sign-box" id="signBox-${role}" onclick="openSign('${role}')">
         <img class="sign-img" id="signImg-${role}" src="${st.sign ?? ""}" alt="" style="${st.sign ? "" : "display:none"}">
@@ -24,8 +15,7 @@ export function signTableHtml(mourner: SignState, owner: SignState): string {
       </td>`;
   return `
   <table class="sign">
-    <tr><th style="width:7em">署名日</th><td id="signDate">${dateTxt}</td></tr>
-    <tr><th>喪主様サイン</th>${box("mourner", mourner)}</tr>
+    <tr><th style="width:7em">喪主様サイン</th>${box("mourner", mourner)}</tr>
     <tr><th>施主サイン</th>${box("owner", owner)}</tr>
   </table>`;
 }
@@ -107,8 +97,6 @@ export function signWidgetHtml(target: string, id: string): string {
         var hint=document.getElementById('signHint-'+role); if(hint) hint.style.display='none';
         var box=document.getElementById('signBox-'+role);
         box.querySelectorAll('.sign-hint').forEach(function(el){ el.style.display='none'; });
-        if(d.signedAt){ var dt=new Date(d.signedAt); var f=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(dt).replace(/-/g,'/');
-          document.getElementById('signDate').textContent=f; }
         signClose();
       }catch(err){ alert('保存に失敗しました: '+err); }
       finally{ btn.disabled=false; btn.textContent='保存'; }
