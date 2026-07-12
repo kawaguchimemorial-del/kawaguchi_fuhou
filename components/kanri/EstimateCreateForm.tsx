@@ -23,6 +23,8 @@ export interface FormInitial {
   crematorium?: string; brand?: string;
   productSetId?: string;
   estimateId?: string; // 請求書newを見積からプレフィルする際の紐付け元
+  mournerLastName?: string; mournerFirstName?: string; mournerKana?: string; mournerPhone?: string;
+  mournerPostcode?: string; mournerPrefecture?: string; mournerCity?: string; mournerStreet?: string; mournerBuilding?: string;
   items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; isSetItem?: boolean; hiddenPaper?: boolean; priceIncludingTax?: number }[];
   advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 担当者(最終更新者)
@@ -257,6 +259,12 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [adPref, setAdPref] = useState(initial?.addresseePrefecture ?? "");
   const [adCity, setAdCity] = useState(initial?.addresseeCity ?? "");
   const [adZipMsg, setAdZipMsg] = useState("");
+  // 顧客と喪主が違う場合の喪主情報
+  const [mournerDiff, setMournerDiff] = useState(!!(initial?.mournerLastName || initial?.mournerFirstName));
+  const [mPostcode, setMPostcode] = useState(initial?.mournerPostcode ?? "");
+  const [mPref, setMPref] = useState(initial?.mournerPrefecture ?? "");
+  const [mCity, setMCity] = useState(initial?.mournerCity ?? "");
+  const [mZipMsg, setMZipMsg] = useState("");
 
   async function search() {
     setLoading(true);
@@ -457,6 +465,38 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
             <p className="mt-0.5 text-[11px] text-gray-400">顧客（喪主）から見た対象者との関係</p>
           </F>
         </div>
+        {/* 顧客と喪主が違う場合の喪主入力 */}
+        <label className="mt-4 flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={mournerDiff} onChange={(e) => setMournerDiff(e.target.checked)} className="h-4 w-4" />
+          顧客と喪主は違う（喪主の情報を入力する）
+        </label>
+        {mournerDiff && (
+          <div className="mt-3 rounded border border-dashed border-[#2c8c6f] bg-[#f7fcfb] p-3">
+            <p className="mb-2 text-xs font-bold text-gray-600">喪主情報</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <F label="喪主氏"><input name="mourner_last_name" defaultValue={initial?.mournerLastName ?? ""} className={inp} placeholder="姓" /></F>
+              <F label="喪主名"><input name="mourner_first_name" defaultValue={initial?.mournerFirstName ?? ""} className={inp} placeholder="名" /></F>
+              <F label="喪主カナ"><input name="mourner_kana" defaultValue={initial?.mournerKana ?? ""} className={inp} placeholder="例：カワグチ タロウ" /></F>
+              <F label="電話番号"><input name="mourner_phone" defaultValue={initial?.mournerPhone ?? ""} className={inp} placeholder="ハイフン無し" /></F>
+            </div>
+            <div className="mt-3">
+              <F label="郵便番号">
+                <div className="flex items-center gap-2">
+                  <input name="mourner_postcode" value={mPostcode} onChange={(e) => setMPostcode(e.target.value)} className={inp + " max-w-[130px]"} placeholder="例:3330833" />
+                  <button type="button" onClick={() => zipToAddr(mPostcode, setMPref, setMCity, setMZipMsg)} className="whitespace-nowrap rounded border border-[#2c8c6f] px-3 py-2 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">住所検索</button>
+                  <button type="button" onClick={() => addrToZip(mPref, mCity, setMPostcode, setMZipMsg)} className="whitespace-nowrap rounded border border-[#4f7cff] px-3 py-2 text-xs text-[#4f7cff] hover:bg-blue-50">郵便番号逆引き</button>
+                </div>
+                {mZipMsg && <p className="mt-1 text-xs text-gray-500">{mZipMsg}</p>}
+              </F>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <F label="都道府県"><select name="mourner_prefecture" value={mPref} onChange={(e) => setMPref(e.target.value)} className={inp}><option value="">選択</option>{PREFECTURES.map((p) => <option key={p}>{p}</option>)}</select></F>
+              <F label="市区町村"><input name="mourner_address_city" value={mCity} onChange={(e) => setMCity(e.target.value)} className={inp} /></F>
+              <F label="番地"><input name="mourner_address_street" defaultValue={initial?.mournerStreet ?? ""} className={inp} /></F>
+              <F label="建物名など"><input name="mourner_address_building" defaultValue={initial?.mournerBuilding ?? ""} className={inp} /></F>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* 宛名情報 / 請求先情報 */}
