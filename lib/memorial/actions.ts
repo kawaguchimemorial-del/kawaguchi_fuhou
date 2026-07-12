@@ -256,8 +256,9 @@ export async function submitOrder(
           ? `<p>下記より請求書を開き、印刷のうえお支払いをお願いいたします。<br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">▶ 請求書を表示・印刷する</a></p>`
           : `<p>後ほど請求書のご案内をお送りいたします。</p>`))
       + `<p>――――――――――<br>${company}<br>${[co.prefecture, co.address_city, co.address_street].filter(Boolean).join("")}<br>${co.tel ? "TEL: " + co.tel : ""}</p>`;
-    await sendMailWithPdf({ to: d.email, subject, html });
-  } catch { /* メール失敗でも注文は成立 */ }
+    const mailRes = await sendMailWithPdf({ to: d.email, subject, html });
+    if (!mailRes.ok) console.error("[flower-order] 確認メール送信失敗:", mailRes.error);
+  } catch (e) { console.error("[flower-order] 確認メール例外:", e instanceof Error ? e.message : e); }
   return {
     ok: true,
     message: `ご注文を承りました（${product.name} ×${d.quantity}／合計 ${total.toLocaleString()}円・税込）。葬儀社よりご連絡のうえ確定いたします。`,

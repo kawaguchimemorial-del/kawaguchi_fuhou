@@ -35,6 +35,7 @@ async function sendViaSmtp(opts: MailOpts): Promise<MailResult> {
     await transporter.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html, attachments });
     return { ok: true };
   } catch (e) {
+    console.error("[mail][smtp] 送信エラー:", e instanceof Error ? e.message : e);
     return { ok: false, error: `送信に失敗しました：${e instanceof Error ? e.message : String(e)}` };
   }
 }
@@ -42,7 +43,7 @@ async function sendViaSmtp(opts: MailOpts): Promise<MailResult> {
 async function sendViaResend(opts: MailOpts): Promise<MailResult> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.MAIL_FROM;
-  if (!key || !from) return { ok: false, error: "メール送信が未設定です（SMTP_* もしくは RESEND_API_KEY / MAIL_FROM）。管理者にご連絡ください。" };
+  if (!key || !from) { console.error("[mail] 送信未設定: SMTP_*/RESEND_API_KEY/MAIL_FROM いずれも未設定"); return { ok: false, error: "メール送信が未設定です（SMTP_* もしくは RESEND_API_KEY / MAIL_FROM）。管理者にご連絡ください。" }; }
   const attachments = opts.pdfBase64 ? [{ filename: opts.filename || "document.pdf", content: opts.pdfBase64 }] : undefined;
   try {
     const res = await fetch("https://api.resend.com/emails", {
