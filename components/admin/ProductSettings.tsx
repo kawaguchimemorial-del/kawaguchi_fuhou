@@ -187,13 +187,15 @@ function PaymentSettings({ initial }: { initial?: Record<string, unknown> }) {
   const [invoice, setInvoice] = useState(pm.invoice !== false);
   const [onsite, setOnsite] = useState(pm.onsite !== false);
   const [showOldChar, setShowOldChar] = useState((initial?.showOldChar as boolean | undefined) !== false);
+  const router = useRouter();
   const [saving, startSave] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const save = () => {
     setMsg(null);
     startSave(async () => {
       const res = await saveOrderSettings({ paymentMethods: { invoice, onsite }, showOldChar });
-      setMsg(res.ok ? "保存しました" : `保存に失敗しました：${res.error ?? ""}`);
+      if (res.ok) router.push("/admin");
+      else setMsg(`保存に失敗しました：${res.error ?? ""}`);
     });
   };
   return (

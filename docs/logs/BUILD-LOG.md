@@ -1411,3 +1411,9 @@
 - .env.local(gitignore)にXserver SMTP情報を設定(SMTP_HOST=sv15016.xserver.jp/465/flower@kawaguchi-memorial-hall.com/MAIL_FROM)。
 - 送信テスト: SMTP verify OK・実送信成功(250 queued)。
 - ※本番(Vercel)にも同じ環境変数の登録が必要。
+
+---
+
+## 2026-07-12 — 供花・供物設定: 保存後にトップへ遷移
+
+- 支払い方法/注文設定の保存成功時、「保存しました」表示をやめ /admin(管理トップ)へ遷移。失敗時のみメッセージ表示。
