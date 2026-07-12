@@ -130,7 +130,7 @@ ${SIGN_CSS}
   <div class="head">
     <div style="width:55%">
       <table style="width:auto;border:none;margin:0">
-        <tr><td style="border:none;padding:2px 20px 2px 0;font-weight:bold">件名</td><td style="border:none;padding:2px 0">${esc(e?.title ?? "")}</td></tr>
+        <tr><td style="border:none;padding:2px 20px 2px 0;font-weight:bold">件名</td><td style="border:none;padding:2px 0">${esc(iv.title ?? e?.title ?? "")}</td></tr>
         <tr><td style="border:none;padding:2px 20px 2px 0;font-weight:bold">お支払い期限</td><td style="border:none;padding:2px 0">${fmtd(iv.dueOn)}</td></tr>
       </table>
       <div class="kingaku">合計金額　${yen(iv.total)}</div>

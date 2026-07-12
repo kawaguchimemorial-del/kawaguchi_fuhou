@@ -1487,3 +1487,9 @@
 - 注文フォームの「請求書・領収書宛名(invoiceName)」が請求書の請求先に未反映だった。
 - createFlowerOrderInvoice: invoiceName入力時は invoice_target_name にそれを優先反映(会社名等)、first_nameはnull。無指定時は従来通り注文者氏名。submitOrderから invoiceName を受け渡し。
 - next build成功。
+
+---
+
+## 2026-07-12 — 請求書印刷: 件名を請求書自身のtitle優先に
+
+- 件名が連携見積(e?.title)のみ参照で、請求書自身のtitle(オンライン供花の件名等)が出ていなかった。iv.title ?? e?.title に修正。
