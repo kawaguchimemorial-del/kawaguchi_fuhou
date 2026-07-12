@@ -1457,3 +1457,16 @@
 - createFlowerOrderInvoice: 請求先名=姓/名, 郵便番号/都道府県/市区町村/番地/建物を個別マッピング。件名を「故〇〇様　御葬儀　オンライン供花注文（商品名）」に。invoice_target_kind=オンライン供花注文(既存の select にも選択肢追加済み)。
 - listAllOrders: 支払い方法を payment_method 実値表示に(固定文言を廃止)。
 - next build成功。
+
+---
+
+## 2026-07-12 — 本番メール送信の疎通確認・原因解決
+
+- 本番でオンライン供花の確認メールが届かない件を調査。一時エンドポイント /api/mailtest で切り分け。
+- 原因(3段階):
+  1. 当初 Vercel に SMTP_* 未設定 → 設定依頼。
+  2. 設定後、SMTP_USER が "lower@..."(先頭f欠落)で認証失敗(535)→修正。
+  3. 認証成功後、XserverがVercelの米国AWS IPを拒否(554 Client host rejected)。preferredRegion=hnd1はHobbyプランで無効(米国のまま)。→ Xserver「国外アクセス制限設定(メール)」をOFFにして解決。
+- 本番から syo.san33@gmail.com へ送信 result ok:true を確認。
+- 診断用 /api/mailtest は削除。
+- ※注: メール送信元がVercel(米国AWS IP)のため、Xserverの国外IP制限はOFF運用が必要。
