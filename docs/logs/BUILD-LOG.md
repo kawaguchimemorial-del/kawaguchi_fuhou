@@ -1417,3 +1417,11 @@
 ## 2026-07-12 — 供花・供物設定: 保存後にトップへ遷移
 
 - 支払い方法/注文設定の保存成功時、「保存しました」表示をやめ /admin(管理トップ)へ遷移。失敗時のみメッセージ表示。
+
+---
+
+## 2026-07-12 — 供花・供物 注文一覧に削除ボタンを追加(試運用のテスト注文削除用)
+
+- lib/admin/product-actions.ts に deleteOrder(id)(offering_ordersハード削除)追加。
+- components/admin/DeleteOrderButton.tsx: 行クリック(遷移)をstopPropagationで抑止し、確認後に削除→router.refresh。
+- app/admin/orders/page.tsx: 「操作」列を追加し各行に削除ボタン。colSpan 10。

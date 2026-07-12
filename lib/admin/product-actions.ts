@@ -85,6 +85,13 @@ export async function deleteProduct(id: string): Promise<{ ok: boolean; error?: 
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+/** 供花・供物の注文を削除（試運用のテスト注文の削除用・ハード削除） */
+export async function deleteOrder(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!enabled()) return { ok: false, error: "Supabase未設定" };
+  const { error } = await db().from("offering_orders").delete().eq("id", id);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 /** 注文設定（支払い方法等）の取得 */
 export async function getOrderSettings(): Promise<Record<string, unknown>> {
   if (!enabled()) return {};

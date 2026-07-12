@@ -1,5 +1,6 @@
 import { listAllOrders } from "@/lib/admin/data";
 import { ClickableRow } from "@/components/admin/ClickableRow";
+import { DeleteOrderButton } from "@/components/admin/DeleteOrderButton";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +26,14 @@ export default async function OrdersPage() {
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-600">
             <tr>
-              {["喪主名", "故人名", "注文日", "ステータス", "注文者", "札名", "配送先", "支払い方法", "合計金額(税込)"].map((h) => (
+              {["喪主名", "故人名", "注文日", "ステータス", "注文者", "札名", "配送先", "支払い方法", "合計金額(税込)", "操作"].map((h) => (
                 <th key={h} className="px-3 py-3 font-medium">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y">
             {rows.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">注文はまだありません。</td></tr>
+              <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-400">注文はまだありません。</td></tr>
             ) : (
               rows.map((r) => (
                 <ClickableRow key={r.id} href={`/admin/orders/${r.id}`}>
@@ -45,6 +46,7 @@ export default async function OrdersPage() {
                   <td className="px-3 py-3 max-w-[220px] truncate" title={r.address}>{r.address}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{r.payment}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{r.amountJpy.toLocaleString()}円</td>
+                  <td className="px-3 py-3 whitespace-nowrap"><DeleteOrderButton id={r.id} /></td>
                 </ClickableRow>
               ))
             )}
