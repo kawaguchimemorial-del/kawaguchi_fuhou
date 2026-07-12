@@ -218,19 +218,22 @@ export async function submitOrder(
   const total = product.priceJpy * d.quantity;
   const paymentMethod = d.paymentMethod || "請求書払い（銀行振込）";
   // 社内管理用に請求書(fk_invoices)を作成。請求先=注文者・種別=オンライン供花注文。
+  let invoiceId: string | undefined;
   if (dbEnabled()) {
     const mid = await resolveMemorialId(d.slug);
     if (mid) {
       try {
-        await createFlowerOrderInvoice({
+        const r = await createFlowerOrderInvoice({
           memorialId: mid, productName: product.name, unitPriceIncTax: product.priceJpy,
           quantity: d.quantity, paymentMethod,
           orderer: { name: d.ordererName, kana: d.ordererKana, company: d.company || undefined, postcode: d.postalCode, address: d.address, phone: d.phone, email: d.email },
         });
+        if (r.ok) invoiceId = r.invoiceId;
       } catch { /* 請求書作成失敗は注文自体は成立させる(社内で手動作成可) */ }
     }
   }
   // 注文確認メールを注文者へ送信(PDFなし)。未設定・失敗でも注文は成立。
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://kawaguchi-fuhou.vercel.app").replace(/\/$/, "");
   try {
     const co = await getCompanyInfo();
     const company = co.company_name || "株式会社 川口典礼";
@@ -238,7 +241,11 @@ export async function submitOrder(
     const html = `<p>${d.ordererName} 様</p>`
       + `<p>この度は供花・供物のご注文をいただき、誠にありがとうございます。以下の内容で承りました。</p>`
       + `<p>商品：${product.name}<br>数量：${d.quantity}<br>札名：${d.namePlateText}<br>合計：${total.toLocaleString()}円（税込）<br>お支払い方法：${paymentMethod}</p>`
-      + `<p>お支払い方法が「請求書払い（銀行振込）」の場合、後ほど請求書をお送りいたします。「当日現地払い」の場合は当日会場にてお支払いをお願いいたします。</p>`
+      + (paymentMethod === "当日現地払い"
+        ? `<p>当日、会場にてお支払いをお願いいたします。</p>`
+        : (invoiceId
+          ? `<p>下記より請求書を開き、印刷のうえお支払いをお願いいたします。<br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">▶ 請求書を表示・印刷する</a></p>`
+          : `<p>後ほど請求書のご案内をお送りいたします。</p>`))
       + `<p>――――――――――<br>${company}<br>${[co.prefecture, co.address_city, co.address_street].filter(Boolean).join("")}<br>${co.tel ? "TEL: " + co.tel : ""}</p>`;
     await sendMailWithPdf({ to: d.email, subject, html });
   } catch { /* メール失敗でも注文は成立 */ }

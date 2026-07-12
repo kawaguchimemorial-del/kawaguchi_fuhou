@@ -208,7 +208,7 @@ export function FlowerOrderForm({
                 </label>
               ))}
             </div>
-            <p className="mt-1 text-xs text-[var(--muted)]">請求書払いの場合は後日請求書をお送りします。現地払いの場合は当日会場でお支払いください。</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">{payMethod === "当日現地払い" ? "当日、会場にてお支払いください。" : "ご注文確認メールに記載の請求書リンクを開き、印刷してお支払いください。"}</p>
           </div>
         )}
 

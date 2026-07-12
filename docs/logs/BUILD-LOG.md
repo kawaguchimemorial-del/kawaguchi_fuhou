@@ -1425,3 +1425,10 @@
 - lib/admin/product-actions.ts に deleteOrder(id)(offering_ordersハード削除)追加。
 - components/admin/DeleteOrderButton.tsx: 行クリック(遷移)をstopPropagationで抑止し、確認後に削除→router.refresh。
 - app/admin/orders/page.tsx: 「操作」列を追加し各行に削除ボタン。colSpan 10。
+
+---
+
+## 2026-07-12 — 供花注文: 支払い方法の案内を請求書リンク方式に
+
+- 注文フォームの注記を支払い方法で切替: 現地払い=「当日、会場にてお支払いください。」/ 請求書払い=「ご注文確認メールに記載の請求書リンクを開き、印刷してお支払いください。」
+- 確認メール: 請求書払いは自動作成した請求書の印刷画面リンク(/kanri/billing/<id>/print)を記載し、開いて印刷→支払いを案内。現地払いは会場払い案内。baseUrlは NEXT_PUBLIC_SITE_URL(未設定時 本番URL)。
