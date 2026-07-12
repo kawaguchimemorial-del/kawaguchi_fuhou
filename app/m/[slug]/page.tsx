@@ -216,7 +216,7 @@ function PurveyorBlock({ m }: { m: Memorial }) {
 
 function OrderBar({ m }: { m: Memorial }) {
   const until = m.offeringAcceptUntil
-    ? new Date(m.offeringAcceptUntil).toLocaleString("ja-JP", {
+    ? new Date(m.offeringAcceptUntil).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo",
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",

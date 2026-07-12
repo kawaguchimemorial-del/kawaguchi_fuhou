@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getAdminMemorial, getFuneralHomeName, listOrders, getViewStats, listGuestbook, type OrderRow } from "@/lib/admin/data";
 import { getMournerAccount, getMournerContactDefaults } from "@/lib/admin/mourner-actions";
 import { MournerAccount } from "@/components/admin/MournerAccount";
+import { ConvertToVenueButton } from "@/components/admin/ConvertToVenueButton";
 import { AlbumGallery } from "@/components/guest/AlbumGallery";
 import { ClickableRow } from "@/components/admin/ClickableRow";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -98,10 +99,12 @@ export default async function CeremonyDetail({ params }: Params) {
       </Section>
 
       <Section title="供花・供物" status="登録済" editHref={`${editBase}?step=3`}>
-        <Row label="供花 受付終了">{m.offeringAcceptUntil ? new Date(m.offeringAcceptUntil).toLocaleString("ja-JP") : "—"}</Row>
+        <Row label="供花 受付終了">{m.offeringAcceptUntil ? new Date(m.offeringAcceptUntil).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "—"}</Row>
         <Row label="受付">{m.flowerDecline ? "受け付けない" : "受け付ける"}</Row>
         <p className="mt-2 text-xs text-gray-400">商品マスタは「設定 › 供花・供物の設定・商品登録」で管理。</p>
       </Section>
+
+      {!m.venue && <ConvertToVenueButton slug={id} />}
 
       {m.venue && (
         <Section title="オンライン式場" status="登録済" editHref={`${editBase}?step=4`} viewHref={`/admin/ceremonies/${id}/venue`} viewLabel="オンライン式場を表示">

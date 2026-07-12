@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { revalidatePath } from "next/cache";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 import { VENUE_MASTER } from "@/lib/admin/venues";
 
@@ -153,7 +154,7 @@ export interface CeremonyPayload {
   eventType?: string; dateAdjusting?: string; eventDate?: string; startTime?: string; endTime?: string;
   placeMode?: string; venueId?: string; venueName?: string; venuePostal?: string; venueAddress?: string;
   // 香典/供花
-  kodenOption?: string; flowerAccept?: string;
+  kodenOption?: string; flowerAccept?: string; flowerDeadline?: string; // datetime-local "2026-07-20T17:00"
   flowerProductIds?: string[]; // 表示する供花・供物のID(空=全表示)
   // オンライン式場
   venueOnlineName?: string; greetingHeading?: string; greetingBody?: string; greetingSign?: string;
@@ -167,6 +168,14 @@ export interface CeremonyPayload {
 }
 
 // フォーム状態(payload) → DB各テーブルの行へ変換（create/updateで共通利用）
+// datetime-local ("YYYY-MM-DDTHH:mm") → JST ISO。空/不正は null。
+function jstIsoFromLocal(v?: string): string | null {
+  if (!v) return null;
+  const base = v.length === 16 ? `${v}:00` : v;
+  const d = new Date(`${base}+09:00`);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function buildRows(p: CeremonyPayload) {
   let venueName = p.venueName ?? null;
   let venueAddress = p.venueAddress ?? null;
@@ -218,6 +227,7 @@ function buildRows(p: CeremonyPayload) {
     religion_type: p.religion || "仏式",
     koden_decline: p.kodenOption === "不要",
     flower_decline: p.flowerAccept === "受け付けない",
+    offering_accept_until: jstIsoFromLocal(p.flowerDeadline),
     flower_product_ids: Array.isArray(p.flowerProductIds) && p.flowerProductIds.length ? p.flowerProductIds : null,
     obituary_title: p.obituaryTitle || "訃報",
     obituary_body: p.obituaryBody || null,
@@ -365,6 +375,10 @@ function reconstructState(mem: any, dec: any, ev: any): Record<string, string> {
   if (mem.religion_type) s.religion = String(mem.religion_type);
   s.kodenOption = mem.koden_decline ? "不要" : "必要";
   s.flowerAccept = mem.flower_decline ? "受け付けない" : "受け付ける";
+  if (mem.offering_accept_until) {
+    const { date, time } = jstParts(mem.offering_accept_until as string);
+    if (date) s.flowerDeadline = `${date}T${time}`;
+  }
   // 式1
   if (ev) {
     if (ev.event_type) s.eventType = String(ev.event_type);
@@ -511,7 +525,7 @@ export async function getCeremonyFormState(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: mem, error } = await (supabase
     .from("memorials")
-    .select("id, form_state, venue, obituary_title, obituary_body, announce_mourner_name, religion_type, koden_decline, flower_decline")
+    .select("id, form_state, venue, obituary_title, obituary_body, announce_mourner_name, religion_type, koden_decline, flower_decline, offering_accept_until")
     .eq("slug", slug)
     .single() as any);
   if (error || !mem) return null;
@@ -542,4 +556,35 @@ export async function getCeremonyFormState(
     isTest: Boolean(fsRaw.isTest),
     state: merged,
   };
+}
+
+// 訃報のみ → 訃報+式場 へ変換。venue を既定JSONで初期化し form_state.withVenue=true にする(既存の訃報/故人/式は保持)。
+export async function convertToVenue(slug: string): Promise<CreateResult> {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { ok: false, error: "Supabaseが未設定です。" };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: mem } = await (supabase.from("memorials").select("id, venue, form_state").eq("slug", slug).single() as any);
+  if (!mem) return { ok: false, error: "対象の案件が見つかりません。" };
+  if (mem.venue != null) return { ok: true, slug }; // 冪等: 既に式場付き
+  const venueJson = {
+    venueName: "",
+    greetingHeading: "喪主挨拶",
+    greetingBody: "",
+    greetingSignature: "",
+    openFrom: null,
+    openDays: 60,
+    requireManagementNo: false,
+    requireAttendeeName: false,
+    showOfferings: true,
+    albumPaths: [] as string[],
+    scenePaths: [] as string[],
+    altar: { frame: "黒", sideFlower: "黒", center: "焼香(黒)", top: "黒", background: "七宝" },
+  };
+  const fs = { ...((mem.form_state ?? {}) as Record<string, unknown>), withVenue: true };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from("memorials").update({ venue: venueJson, form_state: fs }).eq("id", mem.id) as any);
+  if (error) return { ok: false, error: "変換に失敗しました: " + error.message };
+  revalidatePath(`/admin/ceremonies/${slug}`);
+  return { ok: true, slug };
 }

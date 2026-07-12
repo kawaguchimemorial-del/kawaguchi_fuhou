@@ -89,7 +89,7 @@ export function CeremonyWizard({
       obituaryTitle: g("obituaryTitle"), obituaryBody: g("obituaryBody"), announceMourner: announce, religion: g("religion"),
       eventType: g("eventType"), dateAdjusting: g("dateAdjusting"), eventDate: g("eventDate"), startTime: g("startTime"), endTime: g("endTime"),
       placeMode: g("placeMode"), venueId: g("venueId"), venueName: g("venueName"), venuePostal: g("venuePostal"), venueAddress: g("venueAddress"),
-      kodenOption: g("kodenOption"), flowerAccept: g("flowerAccept"),
+      kodenOption: g("kodenOption"), flowerAccept: g("flowerAccept"), flowerDeadline: g("flowerDeadline"),
       flowerProductIds: Array.isArray(s.flowerProductIds) ? (s.flowerProductIds as unknown as string[]) : undefined,
       venueOnlineName: g("venueOnlineName") || defaultVenueName(deceasedFull),
       greetingHeading: g("greetingHeading") || "喪主挨拶", greetingBody: g("greetingBody"),

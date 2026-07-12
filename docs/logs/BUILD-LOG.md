@@ -1565,3 +1565,20 @@
 ## 2026-07-13 — 喪主アカウント初期パスワードを電話番号の下6桁に
 
 - 電話番号発行の初期パスワードを「電話番号の下6桁」に変更(喪主が覚えやすく案内も簡単に)。メール発行は電話が無いため従来のランダム生成を維持。
+
+---
+
+## 2026-07-13 — 供花受付終了の保存/表示 と 訃報→訃報+式場 変換(6専門家)
+
+### 課題1: 供花受付終了(flowerDeadline)が保存されない
+- 原因: handleSaveのpayloadにflowerDeadlineが無く、buildRowsもoffering_accept_until未マッピング、reconstructも未復元。
+- 修正(5箇所貫通): CeremonyPayloadにflowerDeadline追加 / CeremonyWizard handleSave payloadに追加 / buildRowsで jstIsoFromLocal(datetime-local→JST ISO)→offering_accept_until / getCeremonyFormState SELECTにoffering_accept_until追加 / reconstructStateで列→datetime-local復元。空はnull化(設定解除も反映)。
+
+### 課題2: 訃報案内に受付終了が表示されない
+- 課題1の列保存で公開の表示/締切(isPast)が自動で動作(data.tsは既にoffering_accept_until→offeringAcceptUntilをマップ済)。
+- 表示のTZ明示漏れを修正: 公開ページ/管理詳細の toLocaleString に timeZone:"Asia/Tokyo" を追加(Vercel UTCで9時間ずれ防止)。
+
+### 課題3: 訃報のみ→訃報+式場 変換ボタン
+- サーバアクション convertToVenue(slug): venueを既定JSON(祭壇/挨拶/公開設定=buildRowsのwithVenue分岐と一致)で初期化し form_state.withVenue=true に。冪等(既に式場付きなら何もしない)。既存の訃報/故人/式は保持(venueとform_stateのみ更新)。
+- 詳細ページに ConvertToVenueButton(訃報のみ時のみ表示)。変換後は /edit?step=4(オンライン式場ステップ)へ遷移。
+- next build成功。ローカルで変更ボタン表示・受付終了欄・編集を確認。
