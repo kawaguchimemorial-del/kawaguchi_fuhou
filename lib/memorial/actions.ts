@@ -234,7 +234,7 @@ export async function submitOrder(
       try {
         const r = await createFlowerOrderInvoice({
           memorialId: mid, productName: product.name, unitPriceIncTax: product.priceJpy,
-          quantity: d.quantity, paymentMethod,
+          quantity: d.quantity, paymentMethod, invoiceName: d.invoiceName || undefined,
           orderer: { lastName: d.ordererName, firstName: d.ordererFirstName, kana: fullKana, company: d.company || undefined, postcode: d.postalCode, prefecture: d.prefecture, city: d.city, street: d.street, building: d.building || undefined, phone: d.phone, email: d.email },
         });
         if (r.ok) invoiceId = r.invoiceId;

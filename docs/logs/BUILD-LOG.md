@@ -1479,3 +1479,11 @@
 - 葬儀社への注文通知メール(flower@kawaguchi-memorial-hall.com / ORDER_NOTIFY_TO): 対象(故人/喪主)・注文内容・注文者情報・請求書リンクを記載。
 - 送信専用注記と電話問い合わせ文面を共通化。会社情報(社名/住所/TEL)は会社情報マスタから。
 - next build成功。
+
+---
+
+## 2026-07-12 — オンライン供花: 請求書・領収書宛名を請求先名に反映
+
+- 注文フォームの「請求書・領収書宛名(invoiceName)」が請求書の請求先に未反映だった。
+- createFlowerOrderInvoice: invoiceName入力時は invoice_target_name にそれを優先反映(会社名等)、first_nameはnull。無指定時は従来通り注文者氏名。submitOrderから invoiceName を受け渡し。
+- next build成功。

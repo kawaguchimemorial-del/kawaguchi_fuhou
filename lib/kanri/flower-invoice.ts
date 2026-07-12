@@ -15,6 +15,7 @@ export interface FlowerOrderInvoiceInput {
   unitPriceIncTax: number; // 供花商品の税込単価
   quantity: number;
   paymentMethod: string; // 請求書払い（銀行振込） / 当日現地払い
+  invoiceName?: string; // 請求書・領収書宛名(指定時は請求先名に優先反映)
   orderer: { lastName: string; firstName?: string; kana?: string; company?: string; postcode?: string; prefecture?: string; city?: string; street?: string; building?: string; phone?: string; email?: string };
 }
 
@@ -50,6 +51,10 @@ export async function createFlowerOrderInvoice(input: FlowerOrderInvoiceInput): 
   const invoiceNo = typeof no === "string" ? no : `F${Date.now()}`;
 
   const o = input.orderer;
+  // 請求先名: 「請求書・領収書宛名」が入力されていればそれを優先(会社名等)。無ければ注文者氏名。
+  const invName = (input.invoiceName || "").trim();
+  const targetName = invName || o.lastName || null;
+  const targetFirst = invName ? null : (o.firstName || null);
   const deceasedForTitle = deceasedName ? `故${deceasedName}様　御葬儀　` : "";
   const title = `${deceasedForTitle}オンライン供花注文（${input.productName}）`;
 
@@ -63,8 +68,8 @@ export async function createFlowerOrderInvoice(input: FlowerOrderInvoiceInput): 
     construction_no: constructionNo,
     deceased_name: deceasedName, mourner_name: mournerName,
     invoice_target_kind: "オンライン供花注文",
-    invoice_target_name: o.lastName || null,
-    invoice_target_first_name: o.firstName || null,
+    invoice_target_name: targetName,
+    invoice_target_first_name: targetFirst,
     invoice_target_postcode: o.postcode || null,
     invoice_target_prefecture: o.prefecture || null,
     invoice_target_address_city: o.city || null,
