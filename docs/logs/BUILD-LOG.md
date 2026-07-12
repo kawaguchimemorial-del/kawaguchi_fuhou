@@ -1125,3 +1125,13 @@
 - 見積 `app/kanri/estimates/[id]/print/route.ts`: 同ヘルパで税率別内訳・割引小計・●・条件付脚注に統一。税込は行確定 lineIncTax。
 - 検証: 8%+割引を含む請求書(14f48456…)を実レンダリング。●返礼品表示/内訳に10%対象計+8%対象計/割引小計▲320,911・▲353,001 を確認。商品小計税込−割引小計税込=最終グランド(1,769,917−353,001=1,416,916)一致。見積印刷もHTTP200・従来通り。
 - next build 成功。
+
+---
+
+## 2026-07-12 — スマート葬儀取込のCRM取引データを全削除(ユーザー依頼)
+
+- 仕様変更を重ねた結果、取込データが表示上おかしくなっていたため、まっさらから運用開始する方針で削除。
+- 削除前に `tmp/db-backup-2026-07-12/`(gitignore対象)へ全行JSONバックアップ。
+- 削除(トランザクション内・依存順): fk_payments(2), fk_payment_slips(6), fk_invoice_details(15,624), fk_invoices(1,203), fk_estimate_items(46), fk_estimates(1,342), fk_customer_notes(0), fk_related_customers(0), fk_customers(1,058)。
+- 残置: 商品マスタ(fk_products/fk_product_sets/fk_master_items)、会社情報、訃報/祭壇(memorials 215件)、司会台本(7件, customer_idはSET NULLで残る)、AI遺影(2件)。
+- 削除後カウント全て0を確認。
