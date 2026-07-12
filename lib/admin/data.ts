@@ -161,7 +161,7 @@ export async function listAllOrders(): Promise<AllOrderRow[]> {
   const { data } = await c
     .from("offering_orders")
     .select(
-      "id,product_name,quantity,unit_price_jpy,orderer_name,company,address,name_plate_text,status,created_at,memorials!inner(funeral_home_id,announce_mourner_name,deceased(name_kanji))"
+      "id,product_name,quantity,unit_price_jpy,orderer_name,company,address,name_plate_text,status,payment_method,created_at,memorials!inner(funeral_home_id,announce_mourner_name,deceased(name_kanji))"
     )
     .eq("memorials.funeral_home_id", DEMO_FUNERAL_HOME_ID)
     .neq("status", "error") // 決済未成立(error)は除外
@@ -179,7 +179,7 @@ export async function listAllOrders(): Promise<AllOrderRow[]> {
       ordererName: [r.company, r.orderer_name].filter(Boolean).join(" ") || "—",
       namePlate: r.name_plate_text ?? "",
       address: r.address ?? "",
-      payment: "オンラインカード決済",
+      payment: r.payment_method || "—",
       amountJpy: (r.unit_price_jpy ?? 0) * (r.quantity ?? 1),
     };
   });

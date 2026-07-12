@@ -135,9 +135,14 @@ const orderSchema = z
     quantity: z.coerce.number().int().min(1).max(20),
     ordererName: z.string().trim().min(1, "お名前をご入力ください"),
     ordererKana: z.string().trim().min(1, "フリガナをご入力ください"),
+    ordererFirstName: z.string().trim().min(1, "名をご入力ください"),
+    ordererKanaMei: z.string().trim().optional().or(z.literal("")),
     company: z.string().trim().optional().or(z.literal("")),
     postalCode: z.string().trim().regex(/^\d{7}$/, "郵便番号は7桁（ハイフン不要）"),
-    address: z.string().trim().min(1, "住所をご入力ください"),
+    prefecture: z.string().trim().min(1, "都道府県をお選びください"),
+    city: z.string().trim().min(1, "市区町村をご入力ください"),
+    street: z.string().trim().min(1, "番地をご入力ください"),
+    building: z.string().trim().optional().or(z.literal("")),
     phone: z.string().trim().regex(/^\d{10,11}$/, "電話番号は10〜11桁の数字"),
     email: z.string().trim().email("メールアドレスの形式が正しくありません"),
     emailConfirm: z.string().trim(),
@@ -161,6 +166,9 @@ export async function submitOrder(
     return { ok: false, errors: fieldErrors(parsed.error) };
   }
   const d = parsed.data;
+  const fullName = [d.ordererName, d.ordererFirstName].filter(Boolean).join(" ");
+  const fullKana = [d.ordererKana, d.ordererKanaMei].filter(Boolean).join(" ");
+  const fullAddress = [d.prefecture, d.city, d.street, d.building].filter(Boolean).join("");
   const m = await getPublicMemorial(d.slug);
   if (!m || m.flowerDecline) {
     return { ok: false, errors: { _form: "現在この式場では供花のご注文を受け付けておりません。" } };
@@ -181,17 +189,18 @@ export async function submitOrder(
         product_name: product.name,
         quantity: d.quantity,
         unit_price_jpy: product.priceJpy,
-        orderer_name: d.ordererName,
-        orderer_kana: d.ordererKana,
+        orderer_name: fullName,
+        orderer_kana: fullKana,
         company: d.company || null,
         postal_code: d.postalCode,
-        address: d.address,
+        address: fullAddress,
         phone: d.phone,
         email: d.email,
         name_plate_text: d.namePlateText,
         old_char: d.oldChar === "on",
         invoice_name: d.invoiceName || null,
         memo: d.memo || null,
+        payment_method: d.paymentMethod || "請求書払い（銀行振込）",
         status: "pending_confirm",
       });
   }
@@ -201,11 +210,11 @@ export async function submitOrder(
     productId: d.productId,
     quantity: d.quantity,
     unitPriceAtOrder: product.priceJpy, // 注文時価格をスナップショット
-    ordererName: d.ordererName,
-    ordererKana: d.ordererKana,
+    ordererName: fullName,
+    ordererKana: fullKana,
     company: d.company || null,
     postalCode: d.postalCode,
-    address: d.address,
+    address: fullAddress,
     phone: d.phone,
     email: d.email,
     namePlateText: d.namePlateText,
@@ -226,7 +235,7 @@ export async function submitOrder(
         const r = await createFlowerOrderInvoice({
           memorialId: mid, productName: product.name, unitPriceIncTax: product.priceJpy,
           quantity: d.quantity, paymentMethod,
-          orderer: { name: d.ordererName, kana: d.ordererKana, company: d.company || undefined, postcode: d.postalCode, address: d.address, phone: d.phone, email: d.email },
+          orderer: { lastName: d.ordererName, firstName: d.ordererFirstName, kana: fullKana, company: d.company || undefined, postcode: d.postalCode, prefecture: d.prefecture, city: d.city, street: d.street, building: d.building || undefined, phone: d.phone, email: d.email },
         });
         if (r.ok) invoiceId = r.invoiceId;
       } catch { /* 請求書作成失敗は注文自体は成立させる(社内で手動作成可) */ }
@@ -238,7 +247,7 @@ export async function submitOrder(
     const co = await getCompanyInfo();
     const company = co.company_name || "株式会社 川口典礼";
     const subject = `【${company}】供花・供物ご注文ありがとうございます`;
-    const html = `<p>${d.ordererName} 様</p>`
+    const html = `<p>${fullName} 様</p>`
       + `<p>この度は供花・供物のご注文をいただき、誠にありがとうございます。以下の内容で承りました。</p>`
       + `<p>商品：${product.name}<br>数量：${d.quantity}<br>札名：${d.namePlateText}<br>合計：${total.toLocaleString()}円（税込）<br>お支払い方法：${paymentMethod}</p>`
       + (paymentMethod === "当日現地払い"

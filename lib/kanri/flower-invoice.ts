@@ -15,7 +15,7 @@ export interface FlowerOrderInvoiceInput {
   unitPriceIncTax: number; // 供花商品の税込単価
   quantity: number;
   paymentMethod: string; // 請求書払い（銀行振込） / 当日現地払い
-  orderer: { name: string; kana?: string; company?: string; postcode?: string; address?: string; phone?: string; email?: string };
+  orderer: { lastName: string; firstName?: string; kana?: string; company?: string; postcode?: string; prefecture?: string; city?: string; street?: string; building?: string; phone?: string; email?: string };
 }
 
 // オンライン供花注文 → 社内管理用の請求書(fk_invoices)を作成。
@@ -49,23 +49,27 @@ export async function createFlowerOrderInvoice(input: FlowerOrderInvoiceInput): 
   const { data: no } = await c.rpc("next_invoice_no");
   const invoiceNo = typeof no === "string" ? no : `F${Date.now()}`;
 
-  const [ordLast, ...ordRest] = (input.orderer.name || "").trim().split(/\s+/);
-  const ordFirst = ordRest.join(" ") || null;
+  const o = input.orderer;
+  const deceasedForTitle = deceasedName ? `故${deceasedName}様　御葬儀　` : "";
+  const title = `${deceasedForTitle}オンライン供花注文（${input.productName}）`;
 
   const { data: inv, error } = await c.from("fk_invoices").insert({
     funeral_home_id: KANRI_HOME_ID,
     invoice_no: invoiceNo, source_id: invoiceNo,
     customer_id: customerId,
     estimate_id: mem?.estimate_id ?? null,
-    title: `オンライン供花注文（${input.productName}）`,
+    title,
     sale_category: "供花・供物",
     construction_no: constructionNo,
     deceased_name: deceasedName, mourner_name: mournerName,
     invoice_target_kind: "オンライン供花注文",
-    invoice_target_name: ordLast || input.orderer.name || null,
-    invoice_target_first_name: ordFirst,
-    invoice_target_postcode: input.orderer.postcode || null,
-    invoice_target_address_city: input.orderer.address || null,
+    invoice_target_name: o.lastName || null,
+    invoice_target_first_name: o.firstName || null,
+    invoice_target_postcode: o.postcode || null,
+    invoice_target_prefecture: o.prefecture || null,
+    invoice_target_address_city: o.city || null,
+    invoice_target_address_street: o.street || null,
+    invoice_target_address_building: o.building || null,
     billed_on: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10),
     total: inc, paid_total: 0, status: "unpaid",
     due_note: `お支払い方法：${input.paymentMethod}`,

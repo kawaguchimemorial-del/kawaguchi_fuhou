@@ -30,6 +30,24 @@ export function FlowerOrderForm({
   const [phase, setPhase] = useState<"input" | "confirm">("input");
   const [review, setReview] = useState<Record<string, string>>({});
   const [cerr, setCerr] = useState<Record<string, string>>({});
+  const [postal, setPostal] = useState("");
+  const [pref, setPref] = useState("");
+  const [city, setCity] = useState("");
+  const [zipMsg, setZipMsg] = useState("");
+  async function zipLookup() {
+    const z = postal.replace(/[^0-9]/g, "");
+    if (z.length !== 7) { setZipMsg("郵便番号は7桁で入力してください"); return; }
+    setZipMsg("検索中…");
+    try {
+      const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${z}`);
+      const d = await res.json();
+      if (d.results && d.results[0]) {
+        setPref(d.results[0].address1 || "");
+        setCity((d.results[0].address2 || "") + (d.results[0].address3 || ""));
+        setZipMsg("住所を自動入力しました");
+      } else setZipMsg("該当する住所が見つかりません");
+    } catch { setZipMsg("住所検索に失敗しました"); }
+  }
   const [qty, setQty] = useState(1);
   // 拡大表示（ライトボックス）対象の画像。null で非表示。
   const [zoom, setZoom] = useState<{ src: string; alt: string } | null>(null);
@@ -72,9 +90,12 @@ export function FlowerOrderForm({
     const q = Number(g("quantity"));
     if (!(q >= 1 && q <= 20)) e.quantity = "数量は1〜20でご入力ください";
     if (!g("ordererName")) e.ordererName = "お名前をご入力ください";
+    if (!g("ordererFirstName")) e.ordererFirstName = "名をご入力ください";
     if (!g("ordererKana")) e.ordererKana = "フリガナをご入力ください";
     if (!/^\d{7}$/.test(g("postalCode"))) e.postalCode = "郵便番号は7桁（ハイフン不要）";
-    if (!g("address")) e.address = "住所をご入力ください";
+    if (!g("prefecture")) e.prefecture = "都道府県をお選びください";
+    if (!g("city")) e.city = "市区町村をご入力ください";
+    if (!g("street")) e.street = "番地をご入力ください";
     if (!/^\d{10,11}$/.test(g("phone"))) e.phone = "電話番号は10〜11桁の数字";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g("email"))) e.email = "メールアドレスの形式が正しくありません";
     if (g("email") !== g("emailConfirm")) e.emailConfirm = "確認用メールアドレスが一致しません";
@@ -193,21 +214,43 @@ export function FlowerOrderForm({
       <section className="space-y-5" style={hideInput}>
         <h2 className="font-serif text-lg text-[var(--primary)]">ご注文者様の情報</h2>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="姓" name="ordererName" error={err.ordererName} required>
+          <Field label="姓" name="ordererName" error={err.ordererName || cerr.ordererName} required>
             <Input name="ordererName" autoComplete="family-name" />
           </Field>
-          <Field label="セイ（フリガナ）" name="ordererKana" error={err.ordererKana} required>
+          <Field label="名" name="ordererFirstName" error={err.ordererFirstName || cerr.ordererFirstName} required>
+            <Input name="ordererFirstName" autoComplete="given-name" />
+          </Field>
+          <Field label="セイ（フリガナ）" name="ordererKana" error={err.ordererKana || cerr.ordererKana} required>
             <Input name="ordererKana" />
+          </Field>
+          <Field label="メイ（フリガナ・任意）" name="ordererKanaMei">
+            <Input name="ordererKanaMei" />
           </Field>
         </div>
         <Field label="法人・団体名（任意）" name="company">
           <Input name="company" />
         </Field>
-        <Field label="郵便番号（ハイフン不要）" name="postalCode" error={err.postalCode} required>
-          <Input name="postalCode" inputMode="numeric" placeholder="3330833" />
+        <Field label="郵便番号（ハイフン不要）" name="postalCode" error={err.postalCode || cerr.postalCode} required>
+          <div className="mt-1 flex items-center gap-2">
+            <input id="postalCode" name="postalCode" inputMode="numeric" placeholder="3330833" value={postal} onChange={(e) => setPostal(e.target.value)} className="w-40 border-b border-[var(--border)] bg-transparent py-2 focus:border-[var(--accent)] focus:outline-none" />
+            <button type="button" onClick={zipLookup} className="rounded border border-[var(--accent)] px-3 py-1.5 text-xs text-[var(--accent)]">住所検索</button>
+          </div>
+          {zipMsg && <p className="mt-1 text-xs text-[var(--muted)]">{zipMsg}</p>}
         </Field>
-        <Field label="住所" name="address" error={err.address} required>
-          <Input name="address" autoComplete="street-address" />
+        <Field label="都道府県" name="prefecture" error={err.prefecture || cerr.prefecture} required>
+          <select id="prefecture" name="prefecture" value={pref} onChange={(e) => setPref(e.target.value)} className="mt-1 w-full border-b border-[var(--border)] bg-transparent py-2 focus:border-[var(--accent)] focus:outline-none">
+            <option value="">選択してください</option>
+            {PREFECTURES.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </Field>
+        <Field label="市区町村" name="city" error={err.city || cerr.city} required>
+          <input id="city" name="city" value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" className="mt-1 w-full border-b border-[var(--border)] bg-transparent py-2 focus:border-[var(--accent)] focus:outline-none" />
+        </Field>
+        <Field label="番地" name="street" error={err.street || cerr.street} required>
+          <Input name="street" />
+        </Field>
+        <Field label="建物名・部屋番号（任意）" name="building">
+          <Input name="building" />
         </Field>
         <Field label="電話番号" name="phone" error={err.phone} required>
           <Input name="phone" inputMode="tel" placeholder="09012345678" />
@@ -284,9 +327,9 @@ export function FlowerOrderForm({
               ["ご注文商品", reviewProduct ? `${reviewProduct.name}（${reviewProduct.priceJpy.toLocaleString()}円）` : review.productId],
               ["数量", review.quantity],
               ["合計金額", reviewProduct ? `${(reviewProduct.priceJpy * Number(review.quantity || 1)).toLocaleString()}円（税込）` : ""],
-              ["お名前", `${review.ordererName ?? ""} 様${review.ordererKana ? `（${review.ordererKana}）` : ""}`],
+              ["お名前", `${review.ordererName ?? ""} ${review.ordererFirstName ?? ""} 様${review.ordererKana ? `（${review.ordererKana} ${review.ordererKanaMei ?? ""}）` : ""}`],
               ["法人・団体名", review.company || "—"],
-              ["ご住所", `〒${review.postalCode ?? ""} ${review.address ?? ""}`],
+              ["ご住所", `〒${review.postalCode ?? ""} ${review.prefecture ?? ""}${review.city ?? ""}${review.street ?? ""}${review.building ?? ""}`],
               ["電話番号", review.phone],
               ["メールアドレス", review.email],
               ["札名", review.namePlateText],
@@ -364,6 +407,8 @@ export function FlowerOrderForm({
     </>
   );
 }
+
+const PREFECTURES = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement> & { name: string }) {
   return (
