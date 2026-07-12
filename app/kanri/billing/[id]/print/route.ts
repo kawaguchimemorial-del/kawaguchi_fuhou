@@ -173,11 +173,10 @@ ${SIGN_CSS}
     <tbody>${breakdownRows([...items, ...discounts], yen)}</tbody>
   </table>` : ""}
   ${reduced ? `<div class="note" style="margin-top:8px">● 軽減税率(8%)対象</div>` : ""}
-  ${signTableHtml(
+  ${iv.invoiceTargetKind === "オンライン供花注文" ? "" : signTableHtml(
     { sign: iv.mournerSign ?? e?.mournerSign, signedAt: iv.mournerSign ? iv.mournerSignedAt : e?.mournerSignedAt, inherited: !iv.mournerSign && !!e?.mournerSign },
     { sign: iv.ownerSign ?? e?.ownerSign, signedAt: iv.ownerSign ? iv.ownerSignedAt : e?.ownerSignedAt, inherited: !iv.ownerSign && !!e?.ownerSign },
-  )}
-  ${signWidgetHtml("invoice", iv.id)}
+  ) + signWidgetHtml("invoice", iv.id)}
   <script src="/vendor/html2canvas.min.js"></script>
   <script src="/vendor/jspdf.umd.min.js"></script>
   <script>

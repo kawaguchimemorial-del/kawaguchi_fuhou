@@ -25,12 +25,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const company = co.company_name || "株式会社 川口典礼";
   const subject = `【${company}】ご請求書${iv.invoiceNo ? `（No.${iv.invoiceNo}）` : ""}のご送付`;
   const html = `<p>${cust?.lastName ?? ""}${cust?.firstName ?? ""} 様</p>`
-    + `<p>いつもお世話になっております。${company}でございます。<br>ご請求書を添付にてお送りいたします。ご確認のほどよろしくお願い申し上げます。</p>`
+    + `<p>いつもお世話になっております。${company}でございます。<br>ご請求書を下記リンクよりご確認・ご印刷いただけます。</p>`
+    + `<p><a href="${new URL(req.url).origin}/kanri/billing/${id}/print">▶ ご請求書を表示・印刷する</a></p>`
     + (iv.title ? `<p>件名：${iv.title}</p>` : "")
     + `<p>ご請求金額：${iv.total.toLocaleString()}円（税込）</p>`
     + `<p>――――――――――<br>${company}<br>${[co.prefecture, co.address_city, co.address_street].filter(Boolean).join("")}<br>${co.tel ? "TEL: " + co.tel : ""}</p>`;
 
-  const r = await sendMailWithPdf({ to, subject, html, pdfBase64, filename: `請求書_${iv.invoiceNo || id.slice(0, 6)}.pdf` });
+  // PDFは添付せず、印刷画面リンクで相手に印刷してもらう(要望)。
+  void pdfBase64;
+  const r = await sendMailWithPdf({ to, subject, html });
   if (!r.ok) return Response.json(r, { status: 400 });
   return Response.json({ ok: true, to });
 }

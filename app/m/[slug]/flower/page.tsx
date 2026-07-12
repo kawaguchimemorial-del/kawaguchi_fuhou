@@ -3,6 +3,7 @@ import { getPublicMemorial } from "@/lib/memorial/data";
 import { isPast } from "@/lib/format";
 import { OFFERING_PRODUCTS } from "@/lib/memorial/products";
 import { getPublicProducts, getMemorialFlowerSelection } from "@/lib/memorial/db";
+import { getOrderSettings } from "@/lib/admin/product-actions";
 import { TestBanner, SiteFooter } from "@/components/guest/parts";
 import { FlowerOrderForm } from "@/components/guest/forms/FlowerOrderForm";
 
@@ -21,6 +22,10 @@ export default async function FlowerPage({ params }: Params) {
   const dbProducts = await getPublicProducts();
   // 訃報ごとに「表示する供花・供物」が選択されていれば、それだけに絞る(未選択=全表示)。
   const selectedIds = await getMemorialFlowerSelection(slug);
+  const settings = await getOrderSettings();
+  const pm = (settings.paymentMethods ?? {}) as { invoice?: boolean; onsite?: boolean };
+  const acceptInvoice = pm.invoice !== false;
+  const acceptOnsite = pm.onsite !== false;
   const filtered = selectedIds ? dbProducts.filter((p) => selectedIds.includes(p.id)) : dbProducts;
   const products = filtered.length > 0 ? filtered : (dbProducts.length > 0 ? dbProducts : OFFERING_PRODUCTS);
 
@@ -37,7 +42,7 @@ export default async function FlowerPage({ params }: Params) {
             申し訳ございません。供花・供物のご注文受付は終了いたしました。
           </p>
         ) : (
-          <FlowerOrderForm slug={slug} products={products} />
+          <FlowerOrderForm slug={slug} products={products} acceptInvoice={acceptInvoice} acceptOnsite={acceptOnsite} />
         )}
       </main>
       <SiteFooter />

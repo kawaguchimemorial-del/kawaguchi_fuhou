@@ -6,11 +6,12 @@ import {
   saveProduct,
   deleteProduct,
   uploadProductImage,
+  saveOrderSettings,
   type Product,
 } from "@/lib/admin/product-actions";
 
 // 設定 供花・供物（実画面準拠）。商品グリッド＋画像アップロード＋支払い方法設定。
-export function ProductSettings({ flowers, offerings }: { flowers: Product[]; offerings: Product[] }) {
+export function ProductSettings({ flowers, offerings, orderSettings }: { flowers: Product[]; offerings: Product[]; orderSettings?: Record<string, unknown> }) {
   const [orderMode, setOrderMode] = useState("form"); // form | external
   const [editing, setEditing] = useState<{ type: "供花" | "供物"; product?: Product } | null>(null);
 
@@ -34,7 +35,7 @@ export function ProductSettings({ flowers, offerings }: { flowers: Product[]; of
       <ProductGroup title="供物" type="供物" items={offerings} onAdd={() => setEditing({ type: "供物" })} onEdit={(p) => setEditing({ type: "供物", product: p })} />
 
       {/* 支払い方法／注文設定 */}
-      <PaymentSettings />
+      <PaymentSettings initial={orderSettings} />
 
       {editing && (
         <ProductModal type={editing.type} product={editing.product} onClose={() => setEditing(null)} />
@@ -180,73 +181,43 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
   );
 }
 
-// 支払い方法／注文設定（実画面準拠の静的UI・保存は今後）
-function PaymentSettings() {
-  const methods = ["オンラインカード決済", "銀行振込", "請求書払い", "現地払い", "その他支払い方法"];
+// 支払い方法／注文設定（保存対応）。カード決済は現状非対応、銀行振込=請求書払いに統合。
+function PaymentSettings({ initial }: { initial?: Record<string, unknown> }) {
+  const pm = ((initial?.paymentMethods ?? {}) as { invoice?: boolean; onsite?: boolean });
+  const [invoice, setInvoice] = useState(pm.invoice !== false);
+  const [onsite, setOnsite] = useState(pm.onsite !== false);
+  const [showOldChar, setShowOldChar] = useState((initial?.showOldChar as boolean | undefined) !== false);
+  const [saving, startSave] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const save = () => {
+    setMsg(null);
+    startSave(async () => {
+      const res = await saveOrderSettings({ paymentMethods: { invoice, onsite }, showOldChar });
+      setMsg(res.ok ? "保存しました" : `保存に失敗しました：${res.error ?? ""}`);
+    });
+  };
   return (
     <div className="rounded-lg bg-white p-5 shadow-sm">
-      <h2 className="mb-3 font-bold">支払い方法／注文設定</h2>
-      <p className="mb-4 text-xs text-gray-500">
-        各支払い方法で、注文詳細から請求書/領収書のダウンロードや控えの確認・再発行が行えます。
-      </p>
-      <div className="overflow-x-auto">
-        <table className="min-w-[560px] text-center text-xs">
-          <thead>
-            <tr className="text-gray-600">
-              <th className="px-2 py-2"></th>
-              <th className="bg-pink-50 px-2 py-2" colSpan={2}>請求書</th>
-              <th className="bg-green-50 px-2 py-2" colSpan={2}>領収書</th>
-            </tr>
-            <tr className="text-[10px] text-gray-500">
-              <th></th><th className="px-2 py-1">注文詳細から出力</th><th className="px-2 py-1">メールで自動送付</th>
-              <th className="px-2 py-1">注文詳細から出力</th><th className="px-2 py-1">メールで自動送付</th>
-            </tr>
-          </thead>
-          <tbody>
-            {methods.map((mth) => (
-              <tr key={mth} className="border-t">
-                <td className="px-2 py-2 text-left text-gray-700">{mth}</td>
-                {[0, 1, 2, 3].map((c) => <td key={c} className="px-2 py-2"><input type="radio" name={`${mth}-${c}`} /></td>)}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <h2 className="mb-1 font-bold">支払い方法／注文設定</h2>
+      <p className="mb-4 text-xs text-gray-500">オンライン供花注文で受け付ける支払い方法を設定します。いずれの方法でも社内管理用の請求書が自動作成されます。</p>
+      <div className="space-y-3">
+        <label className="flex items-start gap-3 rounded border p-3 text-sm">
+          <input type="checkbox" checked={invoice} onChange={(e) => setInvoice(e.target.checked)} className="mt-1 h-4 w-4" />
+          <span><b>請求書払い（銀行振込）</b><br /><span className="text-xs text-gray-500">後日、請求書をお送りしお振込みいただきます。</span></span>
+        </label>
+        <label className="flex items-start gap-3 rounded border p-3 text-sm">
+          <input type="checkbox" checked={onsite} onChange={(e) => setOnsite(e.target.checked)} className="mt-1 h-4 w-4" />
+          <span><b>当日現地払い</b><br /><span className="text-xs text-gray-500">当日、会場にてお支払いいただきます。</span></span>
+        </label>
+        <p className="text-xs text-gray-400">※ オンラインカード決済は現在受け付けていません（今後対応予定）。</p>
       </div>
-
-      {/* 各支払い方法の受付設定（代表例） */}
-      <div className="mt-5 space-y-4">
-        <MethodCard title="オンラインカード決済" note="利用可能ブランド：VISA / MASTER / American Express / Diners / Discover" />
-        <MethodCard title="銀行振り込み" />
-        <MethodCard title="請求書払い" />
-        <MethodCard title="現地払い" simple />
-      </div>
-
-      <label className="mt-5 flex items-center gap-2 text-sm">
-        <input type="checkbox" defaultChecked /> 札名の旧字体使用有無チェックボックスを表示する
+      <label className="mt-4 flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={showOldChar} onChange={(e) => setShowOldChar(e.target.checked)} /> 札名の旧字体使用有無チェックボックスを表示する
       </label>
-
-      <div className="mt-5">
-        <button className="rounded bg-[#9b2fae] px-8 py-2.5 text-sm text-white">保存（準備中）</button>
+      <div className="mt-5 flex items-center gap-3">
+        <button onClick={save} disabled={saving} className="rounded bg-[#9b2fae] px-8 py-2.5 text-sm text-white disabled:opacity-50">{saving ? "保存中…" : "保存"}</button>
+        {msg && <span className="text-sm text-gray-600">{msg}</span>}
       </div>
     </div>
-  );
-}
-
-function MethodCard({ title, note, simple }: { title: string; note?: string; simple?: boolean }) {
-  return (
-    <fieldset className="rounded border p-4">
-      <legend className="px-1 text-sm text-gray-600">{title}</legend>
-      {note && <p className="mb-2 text-xs text-gray-500">{note}</p>}
-      <div className="flex gap-4 text-sm">
-        <label className="flex items-center gap-1"><input type="radio" name={`accept-${title}`} defaultChecked /> 受け付けない</label>
-        <label className="flex items-center gap-1"><input type="radio" name={`accept-${title}`} /> 受け付ける</label>
-      </div>
-      {!simple && (
-        <div className="mt-2 space-y-1 text-sm text-gray-600">
-          <label className="flex items-center gap-2"><input type="checkbox" /> 注文受付メールからお客様自身で請求書をダウンロードできるようにする</label>
-          <label className="flex items-center gap-2"><input type="checkbox" /> 売上計上メールからお客様自身で領収書をダウンロードできるようにする</label>
-        </div>
-      )}
-    </fieldset>
   );
 }

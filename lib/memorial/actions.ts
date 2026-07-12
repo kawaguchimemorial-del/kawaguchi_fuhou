@@ -6,6 +6,9 @@ import { religionVocab } from "./religion";
 import { store, nextId } from "./store";
 import { OFFERING_PRODUCTS } from "./products";
 import { dbEnabled, resolveMemorialId, insertRow, getPublicProducts } from "./db";
+import { createFlowerOrderInvoice } from "@/lib/kanri/flower-invoice";
+import { sendMailWithPdf } from "@/lib/kanri/mail";
+import { getCompanyInfo } from "@/lib/kanri/masters";
 
 // 共通の戻り値型
 export type ActionResult =
@@ -140,6 +143,7 @@ const orderSchema = z
     emailConfirm: z.string().trim(),
     namePlateText: z.string().trim().min(1, "札名をご入力ください").max(100),
     oldChar: z.enum(["on", ""]).optional(),
+    paymentMethod: z.enum(["請求書払い（銀行振込）", "当日現地払い"]).optional(),
     invoiceName: z.string().trim().optional().or(z.literal("")),
     memo: z.string().trim().max(500).optional().or(z.literal("")),
   })
@@ -211,8 +215,33 @@ export async function submitOrder(
     status: "pending_confirm",
     createdAt: new Date().toISOString(),
   });
-  // TODO(stripe/supabase): フェーズ3で決済（オンラインカード・確認→与信→葬儀社確認で確定）。
   const total = product.priceJpy * d.quantity;
+  const paymentMethod = d.paymentMethod || "請求書払い（銀行振込）";
+  // 社内管理用に請求書(fk_invoices)を作成。請求先=注文者・種別=オンライン供花注文。
+  if (dbEnabled()) {
+    const mid = await resolveMemorialId(d.slug);
+    if (mid) {
+      try {
+        await createFlowerOrderInvoice({
+          memorialId: mid, productName: product.name, unitPriceIncTax: product.priceJpy,
+          quantity: d.quantity, paymentMethod,
+          orderer: { name: d.ordererName, kana: d.ordererKana, company: d.company || undefined, postcode: d.postalCode, address: d.address, phone: d.phone, email: d.email },
+        });
+      } catch { /* 請求書作成失敗は注文自体は成立させる(社内で手動作成可) */ }
+    }
+  }
+  // 注文確認メールを注文者へ送信(PDFなし)。未設定・失敗でも注文は成立。
+  try {
+    const co = await getCompanyInfo();
+    const company = co.company_name || "株式会社 川口典礼";
+    const subject = `【${company}】供花・供物ご注文ありがとうございます`;
+    const html = `<p>${d.ordererName} 様</p>`
+      + `<p>この度は供花・供物のご注文をいただき、誠にありがとうございます。以下の内容で承りました。</p>`
+      + `<p>商品：${product.name}<br>数量：${d.quantity}<br>札名：${d.namePlateText}<br>合計：${total.toLocaleString()}円（税込）<br>お支払い方法：${paymentMethod}</p>`
+      + `<p>お支払い方法が「請求書払い（銀行振込）」の場合、後ほど請求書をお送りいたします。「当日現地払い」の場合は当日会場にてお支払いをお願いいたします。</p>`
+      + `<p>――――――――――<br>${company}<br>${[co.prefecture, co.address_city, co.address_street].filter(Boolean).join("")}<br>${co.tel ? "TEL: " + co.tel : ""}</p>`;
+    await sendMailWithPdf({ to: d.email, subject, html });
+  } catch { /* メール失敗でも注文は成立 */ }
   return {
     ok: true,
     message: `ご注文を承りました（${product.name} ×${d.quantity}／合計 ${total.toLocaleString()}円・税込）。葬儀社よりご連絡のうえ確定いたします。`,

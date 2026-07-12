@@ -534,7 +534,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       {/* 宛名情報 / 請求先情報 */}
       <Card title={label}>
         <F label={label}>
-          <select name="addressee_kind" defaultValue={initial?.addresseeKind ?? "喪主"} className={inp}><option>喪主</option><option>顧客</option><option>その他</option></select>
+          <select name="addressee_kind" defaultValue={initial?.addresseeKind ?? "喪主"} className={inp}><option>喪主</option><option>顧客</option><option>その他</option><option>オンライン供花注文</option></select>
         </F>
         <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_90px]">
           <F label={asInvoice ? "請求先名(氏)" : "宛名(氏)"}><input name="addressee_last_name" defaultValue={initial?.addresseeLastName ?? ""} className={inp} /><p className="mt-0.5 text-[11px] text-gray-400">企業名などはこちらに入力してください</p></F>

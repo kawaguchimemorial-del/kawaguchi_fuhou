@@ -8,14 +8,23 @@ import type { OfferingProduct } from "@/lib/memorial/products";
 export function FlowerOrderForm({
   slug,
   products,
+  acceptInvoice = true,
+  acceptOnsite = true,
 }: {
   slug: string;
   products: OfferingProduct[];
+  acceptInvoice?: boolean;
+  acceptOnsite?: boolean;
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(
     submitOrder,
     null
   );
+  const payOptions = [
+    ...(acceptInvoice ? ["請求書払い（銀行振込）"] : []),
+    ...(acceptOnsite ? ["当日現地払い"] : []),
+  ];
+  const [payMethod, setPayMethod] = useState(payOptions[0] ?? "請求書払い（銀行振込）");
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [qty, setQty] = useState(1);
   // 拡大表示（ライトボックス）対象の画像。null で非表示。
@@ -188,6 +197,21 @@ export function FlowerOrderForm({
         <Field label="請求書・領収書宛名（任意）" name="invoiceName">
           <Input name="invoiceName" />
         </Field>
+        {payOptions.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm text-[var(--primary)]">お支払い方法</p>
+            <div className="flex flex-col gap-2">
+              {payOptions.map((m) => (
+                <label key={m} className="flex items-center gap-2 text-sm">
+                  <input type="radio" name="paymentMethod" value={m} checked={payMethod === m} onChange={() => setPayMethod(m)} className="h-4 w-4 accent-[var(--accent)]" />
+                  {m}
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">請求書払いの場合は後日請求書をお送りします。現地払いの場合は当日会場でお支払いください。</p>
+          </div>
+        )}
+
         <Field label="備考（任意）" name="memo">
           <textarea
             id="memo"
@@ -205,7 +229,6 @@ export function FlowerOrderForm({
           <Link href="/privacy" className="text-[var(--accent)] underline">プライバシーポリシー</Link>
           をご確認・ご同意のうえ、お進みください。
         </p>
-        <p>※ お支払い（オンラインカード決済）は次の確認画面でご入力いただきます（準備中）。</p>
       </div>
 
       {err._form && (

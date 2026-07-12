@@ -85,6 +85,13 @@ export async function deleteProduct(id: string): Promise<{ ok: boolean; error?: 
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+/** 注文設定（支払い方法等）の取得 */
+export async function getOrderSettings(): Promise<Record<string, unknown>> {
+  if (!enabled()) return {};
+  const { data } = await db().from("funeral_homes").select("order_settings").eq("id", DEMO_FUNERAL_HOME_ID).maybeSingle();
+  return ((data?.order_settings as Record<string, unknown>) ?? {});
+}
+
 /** 注文設定（支払い方法等）の保存 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function saveOrderSettings(settings: any): Promise<{ ok: boolean; error?: string }> {
