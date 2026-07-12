@@ -1,6 +1,7 @@
 import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
 import { getCustomer } from "@/lib/kanri/data";
+import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
 
 export const dynamic = "force-dynamic";
 
@@ -19,20 +20,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const companyName = co.company_name || "株式会社 川口典礼";
   const companyAddr = [co.prefecture, co.address_city, co.address_street, co.address_building].filter(Boolean).join("");
   // 「請求書に非表示」はセット内訳・オプションを問わず印刷から除外。セット内訳は数値なしでグループ表示。
+  // 割引・返品の分類は lineKind で行う(符号判定はしない)。各行の税率を保持し税率別内訳へ反映。
   const items = (e.items ?? []).filter((it) => it.lineKind === "item" && !it.hiddenPaper);
   const discounts = (e.items ?? []).filter((it) => it.lineKind === "discount");
   const on = fmtd(e.estimateOn) || fmtd(e.createdAt);
-  const withTax = (amt: number, rate: number) => Math.round(amt * (1 + rate));
+  const withTax = (amt: number, rate: number) => lineIncTax(amt, rate);
   const mournerAddr = [e.mourner.prefecture, e.mourner.addressCity, e.mourner.addressStreet, e.mourner.addressBuilding].filter(Boolean).join("");
 
-  // 内訳（10%対象計）: items 側
+  // 税率別内訳用の行データ(税抜=amount, 税込=行確定値)
+  const toBd = (it: { taxRate: number; amount: number }) => ({ taxRate: it.taxRate, amount: it.amount, incTax: lineIncTax(it.amount, it.taxRate) });
+  const itemBd = items.map(toBd);
+  const discBd = discounts.map(toBd);
+  const reduced = hasReduced([...itemBd, ...discBd]); // 8%(軽減税率)の有無
   const itemsExTax = items.reduce((a, it) => a + it.amount, 0);
-  const itemsIncTax = items.reduce((a, it) => a + withTax(it.amount, it.taxRate), 0);
-  const itemsTax = itemsIncTax - itemsExTax;
+  const itemsIncTax = itemBd.reduce((a, it) => a + it.incTax, 0);
   const discExTax = discounts.reduce((a, it) => a + it.amount, 0); // 負
-  const discIncTax = discounts.reduce((a, it) => a + withTax(it.amount, it.taxRate), 0);
-  const grandIncTax = itemsIncTax + discIncTax;
-  const grandTax = (itemsTax) + (discIncTax - discExTax);
+  const discIncTax = discBd.reduce((a, it) => a + it.incTax, 0);
 
   // セット内訳グループ書式: セット行→【セットに含まれるもの】→内訳(数値なし)→【ここまでセットに含まれる】→以降オプション
   let itemRows = "";
@@ -44,14 +47,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       continue;
     }
     if (inSetGroup) { itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`; inSetGroup = false; }
+    const mk = Math.abs(it.taxRate - 0.08) < 0.005 ? "● " : "";
     itemRows += `<tr>
-    <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
+    <td>${on}</td><td class="l">${mk}${esc(it.name)}</td><td class="c">${it.quantity}</td>
     <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(withTax(it.amount, it.taxRate))}</td></tr>`;
   }
   if (inSetGroup) itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`;
-  const discRows = discounts.map((it) => `<tr>
-    <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(withTax(it.amount, it.taxRate))}</td></tr>`).join("");
+  const discRows = discounts.map((it) => {
+    const mk = Math.abs(it.taxRate - 0.08) < 0.005 ? "●" : "";
+    return `<tr>
+    <td>${on}</td><td class="l">▲${mk}${esc(it.name)}</td><td class="c">${it.quantity}</td>
+    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(withTax(it.amount, it.taxRate))}</td></tr>`;
+  }).join("");
+  const discSubtotal = `<tr><td colspan="4" class="r" style="font-weight:bold">小計</td><td class="r">${neg(discExTax)}</td><td class="r">${neg(discIncTax)}</td></tr>`;
 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>お見積書 ${esc(mournerFullName(e))}</title>
 <style>
@@ -110,20 +118,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   <table class="breakdown">
     <thead><tr><th>内訳</th><th>税込金額</th><th>消費税額</th></tr></thead>
-    <tbody><tr><td class="c">10%対象計</td><td class="r">${yen(itemsIncTax)}</td><td class="r">${yen(itemsTax)}</td></tr></tbody>
+    <tbody>${breakdownRows(itemBd, yen)}</tbody>
   </table>
 
   ${discounts.length ? `
   <table>
     <thead><tr><th>取引日</th><th>割引・返品項目名</th><th>数量</th><th>単価</th><th>税抜金額</th><th>税込金額</th></tr></thead>
-    <tbody>${discRows}</tbody>
+    <tbody>${discRows}${discSubtotal}</tbody>
   </table>
   <table class="breakdown">
     <thead><tr><th>内訳</th><th>税込金額</th><th>消費税額</th></tr></thead>
-    <tbody><tr><td class="c">10%対象計</td><td class="r">${yen(grandIncTax)}</td><td class="r">${yen(grandTax)}</td></tr></tbody>
+    <tbody>${breakdownRows([...itemBd, ...discBd], yen)}</tbody>
   </table>` : ""}
 
-  <div class="note">＊ 軽減税率対象</div>
+  ${reduced ? `<div class="note">● 軽減税率(8%)対象</div>` : ""}
   <div style="text-align:center;margin-top:8px;font-weight:bold">摘要</div>
   <div style="min-height:24px;border-bottom:1px solid #ccc">${esc(e.memo ?? "")}</div>
 

@@ -3,6 +3,7 @@ import { mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
 import { getCustomer } from "@/lib/kanri/data";
 import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
+import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
 
 export const dynamic = "force-dynamic";
 
@@ -32,26 +33,25 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 明細: 請求書明細(実データ)があればそれを優先。無ければ見積明細。
   // セット内訳(isSetItem)は「表示しない」チェック(hiddenPaper)を除き、数値なしでセット直下にグループ表示する。
   const fromDetails = details.length > 0;
-  type Row = { name: string; unitPrice: number; quantity: number; taxRate: number; amount: number; incTax: number; isSetItem?: boolean; divideTitle?: string };
+  type Row = { name: string; unitPrice: number; quantity: number; taxRate: number; amount: number; incTax: number; isSetItem?: boolean; divideTitle?: string; saleKind?: string; lineKind?: string };
   // 「請求書に非表示」はセット内訳・オプションを問わず印刷から除外
   const allRows: Row[] = fromDetails
-    ? details.filter((d) => !d.hiddenPaper).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: d.tax, amount: d.amount, incTax: d.amountIncludingTax, isSetItem: d.isSetItem, divideTitle: d.divideTitle }))
-    : (e?.items ?? []).filter((it) => !it.hiddenPaper).map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: Math.round(it.amount * (1 + it.taxRate)), isSetItem: it.isSetItem, lineKind: it.lineKind })) as (Row & { lineKind?: string })[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const items = allRows.filter((r: any) => (fromDetails ? r.amount >= 0 : r.lineKind !== "discount") || r.isSetItem);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const discounts = allRows.filter((r: any) => (fromDetails ? r.amount < 0 : r.lineKind === "discount") && !r.isSetItem);
+    ? details.filter((d) => !d.hiddenPaper).map((d) => ({ name: d.title, unitPrice: d.price, quantity: d.quantity, taxRate: Number(d.tax), amount: d.amount, incTax: d.amountIncludingTax, isSetItem: d.isSetItem, divideTitle: d.divideTitle, saleKind: d.saleKind }))
+    : (e?.items ?? []).filter((it) => !it.hiddenPaper).map((it) => ({ name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, taxRate: it.taxRate, amount: it.amount, incTax: lineIncTax(it.amount, it.taxRate), isSetItem: it.isSetItem, lineKind: it.lineKind }));
+  // 割引・返品の分類は「符号」ではなく区分(sale_kind / lineKind)で行う。
+  // マイナスでも一般商品(返品・数量減)は商品テーブルに残し、各行の税率を保持する。
+  const isDiscountRow = (r: Row) => fromDetails ? r.saleKind === "返金・値引" : r.lineKind === "discount";
+  const items = allRows.filter((r) => !isDiscountRow(r) || r.isSetItem);
+  const discounts = allRows.filter((r) => isDiscountRow(r) && !r.isSetItem);
+  const reduced = hasReduced(allRows); // 8%(軽減税率)の有無
   const on = fmtd(iv.billedOn) || fmtd(iv.createdAt);
   const mournerName = iv.invoiceTargetName || iv.mournerName || iv.customerName || (e ? mournerFullName(e) : "");
   const mournerAddr = e ? [e.mourner.prefecture, e.mourner.addressCity, e.mourner.addressStreet, e.mourner.addressBuilding].filter(Boolean).join("") : "";
 
   const itemsExTax = items.reduce((a, it) => a + it.amount, 0);
   const itemsIncTax = items.reduce((a, it) => a + it.incTax, 0);
-  const itemsTax = itemsIncTax - itemsExTax;
   const discExTax = discounts.reduce((a, it) => a + it.amount, 0);
   const discIncTax = discounts.reduce((a, it) => a + it.incTax, 0);
-  const grandIncTax = itemsIncTax + discIncTax;
-  const grandTax = itemsTax + (discIncTax - discExTax);
 
   // セット内訳グループ書式: セット行→【セットに含まれるもの】→内訳(数値なし)→【ここまでセットに含まれる】→以降オプション
   let itemRows = "";
@@ -63,16 +63,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       continue;
     }
     if (inSetGroup) { itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`; inSetGroup = false; }
+    const mk = Math.abs(it.taxRate - 0.08) < 0.005 ? "● " : "";
     itemRows += `<tr>
-    <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
+    <td>${on}</td><td class="l">${mk}${esc(it.name)}</td><td class="c">${it.quantity}</td>
     <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(it.incTax)}</td></tr>`;
     // 区切りタイトル: 行の後に差し込む
     if (it.divideTitle) itemRows += `<tr class="sep"><td colspan="6">${esc(it.divideTitle)}</td></tr>`;
   }
   if (inSetGroup) itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`;
-  const discRows = discounts.map((it) => `<tr>
-    <td>${on}</td><td class="l">${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(it.incTax)}</td></tr>`).join("");
+  const discRows = discounts.map((it) => {
+    const mk = Math.abs(it.taxRate - 0.08) < 0.005 ? "●" : "";
+    return `<tr>
+    <td>${on}</td><td class="l">▲${mk}${esc(it.name)}</td><td class="c">${it.quantity}</td>
+    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(it.incTax)}</td></tr>`;
+  }).join("");
+  // 割引・返品テーブルの小計行(税抜/税込, ▲表記)
+  const discSubtotal = `<tr><td colspan="4" class="r" style="font-weight:bold">小計</td><td class="r">${neg(discExTax)}</td><td class="r">${neg(discIncTax)}</td></tr>`;
 
   const bankType = co.bank_account_type || "普通";
   const bankLine = [co.bank_name, co.bank_branch, [bankType, co.bank_account_no].filter(Boolean).join(" "), co.bank_account_name].filter(Boolean);
@@ -148,18 +154,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   <table class="breakdown">
     <thead><tr><th>内訳</th><th>税込金額</th><th>消費税額</th></tr></thead>
-    <tbody><tr><td class="c">10%対象計</td><td class="r">${yen(itemsIncTax)}</td><td class="r">${yen(itemsTax)}</td></tr></tbody>
+    <tbody>${breakdownRows(items, yen)}</tbody>
   </table>
 
   ${discounts.length ? `
   <table>
     <thead><tr><th>取引日</th><th>割引・返品項目名</th><th>数量</th><th>単価</th><th>税抜金額</th><th>税込金額</th></tr></thead>
-    <tbody>${discRows}</tbody>
+    <tbody>${discRows}${discSubtotal}</tbody>
   </table>
   <table class="breakdown">
     <thead><tr><th>内訳</th><th>税込金額</th><th>消費税額</th></tr></thead>
-    <tbody><tr><td class="c">10%対象計</td><td class="r">${yen(grandIncTax)}</td><td class="r">${yen(grandTax)}</td></tr></tbody>
+    <tbody>${breakdownRows([...items, ...discounts], yen)}</tbody>
   </table>` : ""}
+  ${reduced ? `<div class="note" style="margin-top:8px">● 軽減税率(8%)対象</div>` : ""}
   <script src="/vendor/html2canvas.min.js"></script>
   <script src="/vendor/jspdf.umd.min.js"></script>
   <script>
