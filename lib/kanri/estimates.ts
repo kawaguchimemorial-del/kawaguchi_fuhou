@@ -44,6 +44,7 @@ export interface Estimate {
   addresseeLastNameKana?: string; addresseeFirstNameKana?: string;
   addresseePostcode?: string; addresseePrefecture?: string; addresseeCity?: string; addresseeStreet?: string; addresseeBuilding?: string;
   productSetId?: string; brand?: string; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
+  wakeMealCount?: number; funeralMealCount?: number; imibaraiFee?: number;
   staffName?: string; // 最終更新者(葬儀担当者)
   isPreConsultation?: boolean; // 事前相談
 }
@@ -67,6 +68,7 @@ function mapEstimate(r: any): Estimate {
     addresseePostcode: r.addressee_postcode ?? undefined, addresseePrefecture: r.addressee_prefecture ?? undefined,
     addresseeCity: r.addressee_address_city ?? undefined, addresseeStreet: r.addressee_address_street ?? undefined, addresseeBuilding: r.addressee_address_building ?? undefined,
     productSetId: r.product_set_id ?? undefined, brand: r.brand ?? undefined,
+    wakeMealCount: r.wake_meal_count ?? undefined, funeralMealCount: r.funeral_meal_count ?? undefined, imibaraiFee: r.imibarai_fee ?? undefined,
     issuerCompany: r.issuer_company ?? undefined, chargedOrg: r.charged_org ?? undefined, chargedUser: r.charged_user ?? undefined,
     staffName: r.staff_name ?? undefined,
     mournerSign: r.mourner_sign ?? undefined, mournerSignedAt: r.mourner_signed_at ?? undefined,

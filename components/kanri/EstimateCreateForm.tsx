@@ -25,6 +25,7 @@ export interface FormInitial {
   estimateId?: string; // 請求書newを見積からプレフィルする際の紐付け元
   mournerLastName?: string; mournerFirstName?: string; mournerKana?: string; mournerPhone?: string;
   mournerPostcode?: string; mournerPrefecture?: string; mournerCity?: string; mournerStreet?: string; mournerBuilding?: string;
+  wakeMealCount?: number | null; funeralMealCount?: number | null; imibaraiFee?: number | null;
   items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; isSetItem?: boolean; hiddenPaper?: boolean; priceIncludingTax?: number }[];
   advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 担当者(最終更新者)
@@ -56,6 +57,10 @@ interface OptRow {
   tradedOn: string; returnedQty: number; remarks: string;
   divideTitle: string;          // 区切りタイトル(カードの下に挿入)
 }
+// 料理の配膳人(15人に1名, 15,000円税抜)・忌中払会場費 の自動明細名
+const MEAL_SERVER_UNIT = 15000;
+const AUTO_MEAL_NAMES = new Set(["通夜料理配膳人", "告別料理配膳人", "忌中払会場費"]);
+
 function newOpt(p?: Product): OptRow {
   return { key: seq++, productId: p?.id ?? "", productName: p?.name, name: p?.name ?? "", tagName: "",
     unitPrice: p?.unitPrice ?? 0, priceInclTax: "", cost: p?.costPrice ?? 0, taxRate: p?.taxRate ?? 0.1,
@@ -135,7 +140,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     it.lineKind === "item" && !it.productId && osonaeIdByName.has(it.name);
   const [opts, setOpts] = useState<OptRow[]>(
     initItems
-      .filter((it) => it.lineKind === "item" && !it.isSetItem && it.name !== initSetName && !isOsonaeLine(it))
+      .filter((it) => it.lineKind === "item" && !it.isSetItem && it.name !== initSetName && !isOsonaeLine(it) && !(!asInvoice && AUTO_MEAL_NAMES.has(it.name)))
       .map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
   );
   // 旧データ救済: セット選択済みなのに保存済みセット内訳が無い場合のみ、セット定義から内訳を読み込む。
@@ -192,6 +197,10 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [dRelation, setDRelation] = useState(initial?.deceasedRelation ?? "");
   // 見積日（必須）・通夜日時・告別式日時
   const [estimateOn, setEstimateOn] = useState(initial?.date1 ?? "");
+  // 料理: 通夜/告別式の料理人数 → 配膳人自動計算、告別式は忌中払会場費入力
+  const [wakeMealCount, setWakeMealCount] = useState(initial?.wakeMealCount != null ? String(initial.wakeMealCount) : "");
+  const [funeralMealCount, setFuneralMealCount] = useState(initial?.funeralMealCount != null ? String(initial.funeralMealCount) : "");
+  const [imibaraiFee, setImibaraiFee] = useState(initial?.imibaraiFee != null ? String(initial.imibaraiFee) : "");
   const [wakeAt, setWakeAt] = useState(toLocal(initial?.wakeAt));
   const [funeralAt, setFuneralAt] = useState(toLocal(initial?.funeralAt));
   // 事前相談・担当者(バリデーション用に制御化)
@@ -292,15 +301,30 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     setOpts((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
+  // 料理商品(種別が「料理」で始まる)が選択されているか
+  const cuisineIds = useMemo(() => new Set(products.filter((p) => (p.productKind ?? "").startsWith("料理")).map((p) => p.id)), [products]);
+  const hasCuisine = !asInvoice && opts.some((r) => r.productId && cuisineIds.has(r.productId));
+  const wCount = Number(wakeMealCount) || 0;
+  const fCount = Number(funeralMealCount) || 0;
+  const wServers = wCount > 0 ? Math.ceil(wCount / 15) : 0;
+  const fServers = fCount > 0 ? Math.ceil(fCount / 15) : 0;
+  const imibarai = Number(imibaraiFee) || 0;
+  const cuisineLines = hasCuisine ? [
+    ...(wServers > 0 ? [{ lineKind: "item", name: "通夜料理配膳人", unitPrice: MEAL_SERVER_UNIT, quantity: wServers, taxRate: 0.1 }] : []),
+    ...(fServers > 0 ? [{ lineKind: "item", name: "告別料理配膳人", unitPrice: MEAL_SERVER_UNIT, quantity: fServers, taxRate: 0.1 }] : []),
+    ...(fCount > 0 && imibarai > 0 ? [{ lineKind: "item", name: "忌中払会場費", unitPrice: imibarai, quantity: 1, taxRate: 0.1 }] : []),
+  ] : [];
+
   const totals = useMemo(() => {
     // 税込合計 = セット税込 + 各オプションの税込金額 + お供え税込 - 値引(税込換算)
     let inc = 0;
     if (chosenSet) inc += setEffInc;
     for (const r of opts) inc += optInclTotal(r);
     for (const m of osonae) inc += Math.round((m.price ?? 0) * (osonaeQty[m.id] ?? 0) * 1.1);
+    for (const l of cuisineLines) inc += Math.round(l.unitPrice * l.quantity * 1.1);
     let disc = 0; for (const d of discRows) disc += Math.round(Math.abs(d.amount) * 1.1);
     return { total: inc - disc };
-  }, [chosenSet, setEffInc, opts, osonae, osonaeQty, discRows]);
+  }, [chosenSet, setEffInc, opts, osonae, osonaeQty, discRows, hasCuisine, wakeMealCount, funeralMealCount, imibaraiFee]);
 
   const itemsJson = JSON.stringify([
     ...(chosenSet ? [{ lineKind: "item", name: chosenSet.name, unitPrice: setEffEx, quantity: 1, taxRate: chosenSet.tax, isSet: true }] : []),
@@ -314,6 +338,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       tradedOn: r.tradedOn || null, returnedQty: r.returnedQty, remarks: r.remarks || null, divideTitle: r.divideTitle || null,
     })),
     ...osonae.filter((m) => (osonaeQty[m.id] ?? 0) > 0).map((m) => ({ lineKind: "item", name: m.name, unitPrice: m.price ?? 0, quantity: osonaeQty[m.id], taxRate: 0.1, isOsonae: true })),
+    ...cuisineLines,
     ...discRows.filter((d) => d.name).map((d) => ({ lineKind: "discount", name: d.name, unitPrice: Math.abs(d.amount), quantity: 1, taxRate: 0.1 })),
   ]);
 
@@ -374,6 +399,10 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       )}
       {initial?.id && <input type="hidden" name="id" value={initial.id} />}
       <input type="hidden" name="items" value={itemsJson} />
+      <input type="hidden" name="has_cuisine" value={hasCuisine ? "1" : ""} />
+      <input type="hidden" name="wake_meal_count" value={hasCuisine ? wakeMealCount : ""} />
+      <input type="hidden" name="funeral_meal_count" value={hasCuisine ? funeralMealCount : ""} />
+      <input type="hidden" name="imibarai_fee" value={hasCuisine ? imibaraiFee : ""} />
       <input type="hidden" name="customer_id" value={customer?.id ?? ""} />
       <input type="hidden" name="estimate_id" value={initial?.estimateId ?? ""} />
       <input type="hidden" name="product_set_id" value={chosenSet?.id ?? ""} />
@@ -738,6 +767,36 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         </Modal>
       )}
 
+      {/* 料理(配膳人・忌中払会場費) — 料理商品を選んだ時のみ */}
+      {hasCuisine && (
+        <Card title="料理（配膳人・忌中払会場費）">
+          <p className="mb-3 text-xs text-gray-500">配膳人は15名につき1名（16名で2名）・1名 {MEAL_SERVER_UNIT.toLocaleString()}円（税抜）が自動で計上されます。通夜がない場合は通夜料理人数を空欄にしてください。</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <F label="通夜料理人数">
+              <div className="flex items-center gap-2">
+                <input inputMode="numeric" type="text" value={wakeMealCount} onChange={(e) => setWakeMealCount(e.target.value.replace(/[^0-9]/g, ""))} className={inp + " max-w-[120px]"} placeholder="人数" />
+                <span className="text-xs text-gray-500">→ 配膳人 {wServers} 名 / {(wServers * MEAL_SERVER_UNIT).toLocaleString()}円（税抜）</span>
+              </div>
+            </F>
+            <F label="告別式料理人数" required>
+              <div className="flex items-center gap-2">
+                <input inputMode="numeric" type="text" value={funeralMealCount} onChange={(e) => setFuneralMealCount(e.target.value.replace(/[^0-9]/g, ""))} className={inp + " max-w-[120px]"} placeholder="人数（必須）" />
+                <span className="text-xs text-gray-500">→ 配膳人 {fServers} 名 / {(fServers * MEAL_SERVER_UNIT).toLocaleString()}円（税抜）</span>
+              </div>
+              {!funeralMealCount && <p className="mt-0.5 text-[11px] text-red-500">料理を選択した場合、告別式料理人数は必須です。</p>}
+            </F>
+          </div>
+          {fCount > 0 && (
+            <div className="mt-3 sm:max-w-xs">
+              <F label="忌中払会場費（税抜・10%）">
+                <input inputMode="numeric" type="text" value={imibaraiFee} onChange={(e) => setImibaraiFee(e.target.value.replace(/[^0-9]/g, ""))} className={inp} placeholder="金額（税抜）" />
+                <p className="mt-0.5 text-[11px] text-gray-400">告別式の忌中払会場費（税込 {imibarai > 0 ? Math.round(imibarai * 1.1).toLocaleString() : 0}円）</p>
+              </F>
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* その他オプション、お供えにかかる費用 */}
       <Card title="その他オプション、お供えにかかる費用">
         {osonae.length === 0 ? <p className="text-sm text-gray-400">マスタが未登録です（設定 &gt; その他オプション、お供えにかかる費用）。</p> : (
@@ -824,7 +883,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
 
       {state && state.ok === false && <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">{state.error}</p>}
       <div className="flex gap-3">
-        <button disabled={pending || (asInvoice && !customer && !newCustomer) || (!asInvoice && !estimateOn) || (!asInvoice && !isPre && !funeralAt)} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
+        <button disabled={pending || (asInvoice && !customer && !newCustomer) || (!asInvoice && !estimateOn) || (!asInvoice && !isPre && !funeralAt) || (hasCuisine && !funeralMealCount)} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-50">{pending ? "保存中…" : "登録する"}</button>
         <Link href={asInvoice ? "/kanri/billing" : "/kanri/estimates"} className="rounded border bg-white px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
 

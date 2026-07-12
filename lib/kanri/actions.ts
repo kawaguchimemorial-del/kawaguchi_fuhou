@@ -707,6 +707,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     // 通夜日時は一日葬対応のため必須にしない(フロントと同条件)
     if (!s(fd, "funeral_at")) missing.push("告別式日時（火葬日時）");
   }
+  if (bool(fd, "has_cuisine") && !s(fd, "funeral_meal_count")) missing.push("告別式料理人数");
   if (missing.length) return { ok: false, error: `次の項目が未入力です：${missing.join("、")}` };
   const row = {
     funeral_home_id: KANRI_HOME_ID, customer_id: customerId, kind: isPre ? "pre" : "funeral", status: "confirmed",
@@ -727,6 +728,7 @@ export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData):
     venue_name: s(fd, "venue_name"),
     crematorium_name: s(fd, "crematorium_name"), brand: s(fd, "brand"),
     product_set_id: s(fd, "product_set_id"), product_set_price: num(fd, "product_set_price") ?? 0,
+    wake_meal_count: num(fd, "wake_meal_count"), funeral_meal_count: num(fd, "funeral_meal_count"), imibarai_fee: num(fd, "imibarai_fee"),
     issuer_company: s(fd, "issuer_company"), charged_org: s(fd, "charged_org"), charged_user: s(fd, "charged_user"),
     staff_name: s(fd, "staff_name"),
     advance_payment: num(fd, "advance_payment") ?? 0,

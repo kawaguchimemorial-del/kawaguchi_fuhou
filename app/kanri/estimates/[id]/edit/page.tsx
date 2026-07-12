@@ -35,6 +35,7 @@ export default async function EditEstimate({ params }: Params) {
     addresseeCity: e.addresseeCity, addresseeStreet: e.addresseeStreet, addresseeBuilding: e.addresseeBuilding,
     title: e.title, memo: e.memo, date1: e.estimateOn, date2: e.estimateLimitOn,
     crematorium: e.crematoriumName, brand: e.brand, productSetId: e.productSetId,
+    wakeMealCount: e.wakeMealCount, funeralMealCount: e.funeralMealCount, imibaraiFee: e.imibaraiFee,
     items: (e.items ?? []).map((it) => ({ lineKind: it.lineKind, productId: it.productId, name: it.name, unitPrice: it.unitPrice, quantity: it.quantity, isSetItem: it.isSetItem, hiddenPaper: it.hiddenPaper, priceIncludingTax: it.priceIncludingTax })),
     advance: e.advancePayment, issuerCompany: e.issuerCompany, chargedOrg: e.chargedOrg, chargedUser: e.chargedUser,
     staffName: e.staffName,
