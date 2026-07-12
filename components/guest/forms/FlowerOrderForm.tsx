@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { submitOrder, type ActionResult } from "@/lib/memorial/actions";
 import type { OfferingProduct } from "@/lib/memorial/products";
@@ -26,6 +26,10 @@ export function FlowerOrderForm({
   ];
   const [payMethod, setPayMethod] = useState(payOptions[0] ?? "請求書払い（銀行振込）");
   const [productId, setProductId] = useState(products[0]?.id ?? "");
+  const formRef = useRef<HTMLFormElement>(null);
+  const [phase, setPhase] = useState<"input" | "confirm">("input");
+  const [review, setReview] = useState<Record<string, string>>({});
+  const [cerr, setCerr] = useState<Record<string, string>>({});
   const [qty, setQty] = useState(1);
   // 拡大表示（ライトボックス）対象の画像。null で非表示。
   const [zoom, setZoom] = useState<{ src: string; alt: string } | null>(null);
@@ -58,13 +62,48 @@ export function FlowerOrderForm({
   }
   const err = state?.ok === false ? state.errors : {};
 
+  function goConfirm() {
+    const el = formRef.current;
+    if (!el) return;
+    const fd = new FormData(el);
+    const g = (k: string) => String(fd.get(k) ?? "").trim();
+    const e: Record<string, string> = {};
+    if (!g("productId")) e.productId = "商品をお選びください";
+    const q = Number(g("quantity"));
+    if (!(q >= 1 && q <= 20)) e.quantity = "数量は1〜20でご入力ください";
+    if (!g("ordererName")) e.ordererName = "お名前をご入力ください";
+    if (!g("ordererKana")) e.ordererKana = "フリガナをご入力ください";
+    if (!/^\d{7}$/.test(g("postalCode"))) e.postalCode = "郵便番号は7桁（ハイフン不要）";
+    if (!g("address")) e.address = "住所をご入力ください";
+    if (!/^\d{10,11}$/.test(g("phone"))) e.phone = "電話番号は10〜11桁の数字";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g("email"))) e.email = "メールアドレスの形式が正しくありません";
+    if (g("email") !== g("emailConfirm")) e.emailConfirm = "確認用メールアドレスが一致しません";
+    if (!g("namePlateText")) e.namePlateText = "札名をご入力ください";
+    if (payOptions.length > 0 && !g("paymentMethod")) e.paymentMethod = "お支払い方法をお選びください";
+    setCerr(e);
+    if (Object.keys(e).length > 0) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    const obj: Record<string, string> = {};
+    fd.forEach((v, k) => { obj[k] = String(v); });
+    setReview(obj);
+    setPhase("confirm");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  const hideInput = phase === "confirm" ? { display: "none" } : undefined;
+  const reviewProduct = products.find((p) => p.id === review.productId);
+
   return (
     <>
-    <form action={action} className="space-y-8">
+    <form ref={formRef} action={action} className="space-y-8">
       <input type="hidden" name="slug" value={slug} />
+      {phase === "input" && Object.keys(cerr).length > 0 && (
+        <div className="rounded bg-red-50 px-4 py-3 text-sm text-[var(--danger)]">
+          <p className="mb-1 font-medium">入力内容をご確認ください：</p>
+          <ul className="list-disc pl-5">{Object.values(cerr).map((m, i) => <li key={i}>{m}</li>)}</ul>
+        </div>
+      )}
 
       {/* 商品選択 */}
-      <section>
+      <section style={hideInput}>
         <h2 className="mb-3 font-serif text-lg text-[var(--primary)]">ご注文商品</h2>
         <p className="mb-3 text-xs text-[var(--muted)]">画像をタップ／クリックすると拡大表示できます。</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -151,7 +190,7 @@ export function FlowerOrderForm({
       </section>
 
       {/* 注文者情報 */}
-      <section className="space-y-5">
+      <section className="space-y-5" style={hideInput}>
         <h2 className="font-serif text-lg text-[var(--primary)]">ご注文者様の情報</h2>
         <div className="grid grid-cols-2 gap-3">
           <Field label="姓" name="ordererName" error={err.ordererName} required>
@@ -222,7 +261,7 @@ export function FlowerOrderForm({
         </Field>
       </section>
 
-      <div className="space-y-3 text-xs text-[var(--muted)]">
+      <div className="space-y-3 text-xs text-[var(--muted)]" style={hideInput}>
         <p>
           <Link href="/legal/tokushoho" className="text-[var(--accent)] underline">特定商取引法に基づく表記</Link>
           ／
@@ -235,13 +274,62 @@ export function FlowerOrderForm({
         <p className="rounded bg-red-50 px-4 py-2 text-sm text-[var(--danger)]">{err._form}</p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-sm bg-[var(--accent)] py-3.5 text-white transition-colors hover:bg-[var(--accent-strong)] disabled:opacity-60"
-      >
-        {pending ? "送信中…" : "入力内容を確認する"}
-      </button>
+      {/* 注文確認 */}
+      {phase === "confirm" && (
+        <section className="rounded border border-[var(--accent)] bg-[var(--card)] p-5">
+          <h2 className="mb-3 font-serif text-lg text-[var(--primary)]">ご注文内容の確認</h2>
+          <p className="mb-4 text-sm text-[var(--muted)]">以下の内容でよろしければ「この内容で注文する」を押してください。</p>
+          <dl className="space-y-2 text-sm">
+            {[
+              ["ご注文商品", reviewProduct ? `${reviewProduct.name}（${reviewProduct.priceJpy.toLocaleString()}円）` : review.productId],
+              ["数量", review.quantity],
+              ["合計金額", reviewProduct ? `${(reviewProduct.priceJpy * Number(review.quantity || 1)).toLocaleString()}円（税込）` : ""],
+              ["お名前", `${review.ordererName ?? ""} 様${review.ordererKana ? `（${review.ordererKana}）` : ""}`],
+              ["法人・団体名", review.company || "—"],
+              ["ご住所", `〒${review.postalCode ?? ""} ${review.address ?? ""}`],
+              ["電話番号", review.phone],
+              ["メールアドレス", review.email],
+              ["札名", review.namePlateText],
+              ["旧字体希望", review.oldChar === "on" ? "希望する" : "—"],
+              ["お支払い方法", review.paymentMethod || "—"],
+              ["請求書・領収書宛名", review.invoiceName || "—"],
+              ["備考", review.memo || "—"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex gap-3 border-b border-[var(--border)] pb-2">
+                <dt className="w-32 flex-none text-[var(--muted)]">{k}</dt>
+                <dd className="flex-1 whitespace-pre-wrap break-words">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {phase === "input" ? (
+        <button
+          type="button"
+          onClick={goConfirm}
+          className="w-full rounded-sm bg-[var(--accent)] py-3.5 text-white transition-colors hover:bg-[var(--accent-strong)]"
+        >
+          入力内容を確認する
+        </button>
+      ) : (
+        <div className="flex flex-col gap-3 sm:flex-row-reverse">
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full rounded-sm bg-[var(--accent)] py-3.5 text-white transition-colors hover:bg-[var(--accent-strong)] disabled:opacity-60"
+          >
+            {pending ? "送信中…" : "この内容で注文する"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setPhase("input"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="w-full rounded-sm border border-[var(--border)] py-3.5 text-[var(--primary)] sm:w-48"
+          >
+            修正する
+          </button>
+        </div>
+      )}
     </form>
 
     {/* 画像拡大ライトボックス（背景／✕／元画像クリックで閉じる） */}
