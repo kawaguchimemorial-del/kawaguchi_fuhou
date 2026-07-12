@@ -68,23 +68,19 @@ export function ProductForm({ product, kinds, suppliers, subKinds }: { product?:
 
       <F label="商品説明"><textarea name="description" rows={3} defaultValue={product?.description ?? ""} className={inp} /></F>
 
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Check name="available_ec" label="ECに表示する" checked={product?.availableEc} />
-        <Check name="available_homepage" label="ホームページ内販売に表示する" checked={product?.availableHomepage} />
-        <Check name="available_attendant" label="参列者のECに表示する" checked={product?.availableAttendant} />
-        <Check name="available_returned_item" label="返礼品のECに表示する" checked={product?.availableReturnedItem} />
-        <Check name="available_item" label="一般販売品のECに表示する" checked={product?.availableItem} />
-        <Check name="grouped" label="グループ商品として登録" checked={product?.grouped} />
-        <Check name="not_ordering" label="発注しない" checked={product?.notOrdering} />
-        <Check name="order_only" label="発注のみに利用する" checked={product?.orderOnly} />
-      </div>
+      {/* EC表示/グループ/発注/非表示系チェックは現状不要のため非表示(既存値は編集時も維持されるようhiddenで送信) */}
+      <input type="hidden" name="available_ec" value={product?.availableEc ? "1" : ""} />
+      <input type="hidden" name="available_homepage" value={product?.availableHomepage ? "1" : ""} />
+      <input type="hidden" name="available_attendant" value={product?.availableAttendant ? "1" : ""} />
+      <input type="hidden" name="available_returned_item" value={product?.availableReturnedItem ? "1" : ""} />
+      <input type="hidden" name="available_item" value={product?.availableItem ? "1" : ""} />
+      <input type="hidden" name="grouped" value={product?.grouped ? "1" : ""} />
+      <input type="hidden" name="not_ordering" value={product?.notOrdering ? "1" : ""} />
+      <input type="hidden" name="order_only" value={product?.orderOnly ? "1" : ""} />
+      <input type="hidden" name="hidden_picking" value={product?.hiddenPicking ? "1" : ""} />
+      <input type="hidden" name="hidden" value={product?.hidden ? "1" : ""} />
 
       <F label="補足説明"><textarea name="remarks" rows={2} defaultValue={product?.remarks ?? ""} className={inp} /></F>
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Check name="hidden_picking" label="ピッキングリストに非表示" checked={product?.hiddenPicking} />
-        <Check name="hidden" label="非表示" checked={product?.hidden} />
-      </div>
 
       <div className="flex gap-3">
         <button disabled={pending} className="rounded bg-[#2c8c6f] px-6 py-2.5 text-sm text-white disabled:opacity-60">{pending ? "保存中…" : "登録する"}</button>
