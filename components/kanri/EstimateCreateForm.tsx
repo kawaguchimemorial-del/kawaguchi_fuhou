@@ -22,7 +22,7 @@ export interface FormInitial {
   title?: string; memo?: string; date1?: string; date2?: string;
   crematorium?: string; brand?: string;
   productSetId?: string;
-  items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; isSetItem?: boolean; hiddenPaper?: boolean }[];
+  items?: { lineKind: "item" | "discount"; productId?: string | null; name: string; unitPrice: number; quantity: number; isSetItem?: boolean; hiddenPaper?: boolean; priceIncludingTax?: number }[];
   advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 担当者(最終更新者)
   preConsultation?: boolean; // 事前相談
@@ -95,6 +95,19 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [q, setQ] = useState(""); const [hits, setHits] = useState<Hit[]>([]); const [loading, setLoading] = useState(false);
   const [setOpen, setSetOpen] = useState(false);
   const [chosenSet, setChosenSet] = useState<ProductSet | null>(initial?.productSetId ? (productSets.find((s) => s.id === initial.productSetId) ?? null) : null);
+  // 個別セット価格(会員価格等)の復元: 保存済みのセット価格行(セット名一致)がマスタ価格と異なる場合はそちらを優先。
+  // 新しいセットを選び直したら解除(マスタ価格に戻る)。
+  const [setPriceOv, setSetPriceOv] = useState<{ ex: number; inc: number } | null>(() => {
+    if (!initial?.productSetId) return null;
+    const master = productSets.find((ps) => ps.id === initial.productSetId);
+    const parent = master ? initial.items?.find((it) => it.lineKind === "item" && !it.isSetItem && it.name === master.name) : null;
+    if (!master || !parent) return null;
+    const inc = parent.priceIncludingTax ?? Math.round(parent.unitPrice * (1 + (master.tax || 0.1)));
+    if (parent.unitPrice !== master.price) return { ex: parent.unitPrice, inc };
+    return null;
+  });
+  const setEffEx = setPriceOv?.ex ?? chosenSet?.price ?? 0;
+  const setEffInc = setPriceOv?.inc ?? (chosenSet ? (chosenSet.taxIncludedPrice || Math.round(chosenSet.price * (1 + chosenSet.tax))) : 0);
   // セット内訳（選択時に全展開・行ごとに「表示しない」チェック）
   // 編集時: 保存済みのセット内訳(is_set_item)を復元し、非表示チェック(hidden_paper)も引き継ぐ。
   const initSetItems = (initial?.items ?? [])
@@ -252,15 +265,15 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const totals = useMemo(() => {
     // 税込合計 = セット税込 + 各オプションの税込金額 + お供え税込 - 値引(税込換算)
     let inc = 0;
-    if (chosenSet) inc += chosenSet.taxIncludedPrice || Math.round(chosenSet.price * (1 + chosenSet.tax));
+    if (chosenSet) inc += setEffInc;
     for (const r of opts) inc += optInclTotal(r);
     for (const m of osonae) inc += Math.round((m.price ?? 0) * (osonaeQty[m.id] ?? 0) * 1.1);
     let disc = 0; for (const d of discRows) disc += Math.round(Math.abs(d.amount) * 1.1);
     return { total: inc - disc };
-  }, [chosenSet, opts, osonae, osonaeQty, discRows]);
+  }, [chosenSet, setEffInc, opts, osonae, osonaeQty, discRows]);
 
   const itemsJson = JSON.stringify([
-    ...(chosenSet ? [{ lineKind: "item", name: chosenSet.name, unitPrice: chosenSet.price, quantity: 1, taxRate: chosenSet.tax, isSet: true }] : []),
+    ...(chosenSet ? [{ lineKind: "item", name: chosenSet.name, unitPrice: setEffEx, quantity: 1, taxRate: chosenSet.tax, isSet: true }] : []),
     // セット内訳（金額0・isSetItem、非表示チェックはhiddenで保持 → 印刷で除外）
     ...(chosenSet ? setItems.map((it) => ({ lineKind: "item", name: it.name, unitPrice: 0, quantity: it.quantity, taxRate: 0, isSetItem: true, hidden: it.hidden })) : []),
     ...opts.filter((r) => r.name).map((r) => ({
@@ -333,7 +346,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
       <input type="hidden" name="items" value={itemsJson} />
       <input type="hidden" name="customer_id" value={customer?.id ?? ""} />
       <input type="hidden" name="product_set_id" value={chosenSet?.id ?? ""} />
-      <input type="hidden" name="product_set_price" value={chosenSet?.price ?? 0} />
+      <input type="hidden" name="product_set_price" value={chosenSet ? setEffEx : 0} />
       <input type="hidden" name="advance_payment" value={advance || "0"} />
 
       {/* 事前相談（見積のみ・一番上） */}
@@ -479,7 +492,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         {chosenSet ? (
           <div className="rounded border border-[#2c8c6f] bg-[#f0faf8] px-4 py-3 text-sm">
             <div className="flex items-center justify-between">
-              <div><p className="font-bold">{chosenSet.name}</p><p className="text-xs text-gray-500">セット価格(税抜) {chosenSet.price.toLocaleString()}円 / (税込) {chosenSet.taxIncludedPrice.toLocaleString()}円</p></div>
+              <div><p className="font-bold">{chosenSet.name}</p><p className="text-xs text-gray-500">セット価格(税抜) {setEffEx.toLocaleString()}円 / (税込) {setEffInc.toLocaleString()}円{setPriceOv ? "（個別価格）" : ""}</p></div>
               <button type="button" onClick={() => { setChosenSet(null); setSetItems([]); }} className="rounded border border-red-400 px-3 py-1 text-xs text-red-500">解除</button>
             </div>
             {/* セット内訳の全展開＋「表示しない」チェック */}
@@ -786,7 +799,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
               <tbody className="divide-y">
                 {productSets.filter((s) => !s.hidden).map((s) => (
                   <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2"><button type="button" onClick={() => { setChosenSet(s); setSetOpen(false); loadSetItems(s.id); }} className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">選択</button></td>
+                    <td className="px-3 py-2"><button type="button" onClick={() => { setChosenSet(s); setSetPriceOv(null); setSetOpen(false); loadSetItems(s.id); }} className="rounded border border-blue-400 px-3 py-1 text-xs text-blue-500">選択</button></td>
                     <td className="px-3 py-2">{s.name}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right">{s.price.toLocaleString()}円</td>
                     <td className="px-3 py-2 whitespace-nowrap text-right">{s.taxIncludedPrice.toLocaleString()}円</td>

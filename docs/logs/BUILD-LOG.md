@@ -1180,3 +1180,19 @@
 - DB清掃(SQL, トランザクション): 携帯1,043/自宅91/FAX2/メール1,031件からバッジ文字・数字以外を除去。番号なし→null(実携帯125件・実メール18件)。@なしメールnull。配信フラグ全1,063件をfalseに。
 - 恒久対応: parse-crawl.py にバッジ文字除去を追加、transform.mjs で配信フラグを明示false。
 - 検証: 汚染0件・フラグON 0件を確認。
+
+---
+
+## 2026-07-12 — 編集画面でセットプランがオプションに落ちる問題を修正
+
+### 原因
+1. 移行時に product_set_id を未設定 → フォームがセット未選択と判断し、セット価格行がオプション欄へ。
+2. 請求編集ページの items マッピングが isSetItem/hiddenPaper を渡しておらず、値引き判定も符号ベースだった。
+3. フォームがセット価格をマスタ価格でしか扱えず、会員価格等の個別セット価格を復元できなかった。
+
+### 修正
+- DBバックフィル: セット名一致で product_set_id を設定(見積848/932・請求604/1227。残りはセット無し案件)。
+- `app/kanri/billing/[id]/edit/page.tsx`: items に isSetItem/hiddenPaper/priceIncludingTax を追加、値引はsale_kind("返金・値引")で分類。
+- `lib/kanri/estimates.ts`: EstimateItem に priceIncludingTax を追加(明細のprice_including_taxをマップ)。
+- `components/kanri/EstimateCreateForm.tsx`: 保存済みセット価格行がマスタ価格と異なる場合は個別価格として復元(表示に「（個別価格）」)。合計計算・itemsJson・product_set_price も個別価格を使用。新しいセットを選び直すと解除。
+- 検証: 会員価格見積(125,455円 vs マスタ171,819円)と請求で、セット欄表示+個別価格復元をローカル実確認。next build成功。

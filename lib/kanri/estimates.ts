@@ -9,7 +9,7 @@ function db(): { from: (t: string) => any } | null {
   return createAdminClient() as unknown as { from: (t: string) => any };
 }
 
-export interface EstimateItem { id?: string; productId?: string | null; lineKind: "item" | "discount"; name: string; unitPrice: number; quantity: number; taxRate: number; amount: number; isSetItem?: boolean; hiddenPaper?: boolean }
+export interface EstimateItem { id?: string; productId?: string | null; lineKind: "item" | "discount"; name: string; unitPrice: number; quantity: number; taxRate: number; amount: number; isSetItem?: boolean; hiddenPaper?: boolean; priceIncludingTax?: number }
 export interface Estimate {
   id: string;
   estimateNo?: string;
@@ -96,7 +96,7 @@ export async function getEstimate(id: string): Promise<Estimate | null> {
   const est = mapEstimate(data);
   const { data: items } = await c.from("fk_estimate_items").select("*").eq("estimate_id", id).order("sort_order", { ascending: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  est.items = ((items ?? []) as any[]).map((r) => ({ id: r.id, productId: r.product_id ?? undefined, lineKind: r.line_kind, name: r.name, unitPrice: r.unit_price, quantity: r.quantity, taxRate: Number(r.tax_rate), amount: r.amount, isSetItem: !!r.is_set_item, hiddenPaper: !!r.hidden_paper }));
+  est.items = ((items ?? []) as any[]).map((r) => ({ id: r.id, productId: r.product_id ?? undefined, lineKind: r.line_kind, name: r.name, unitPrice: r.unit_price, quantity: r.quantity, taxRate: Number(r.tax_rate), amount: r.amount, isSetItem: !!r.is_set_item, hiddenPaper: !!r.hidden_paper, priceIncludingTax: r.price_including_tax ?? undefined }));
   return est;
 }
 
