@@ -100,8 +100,8 @@ export default async function EstimatesPage({ searchParams }: SP) {
                       <ConfirmSubmit action={createInvoiceFromEstimate} id={e.id} confirm="この見積から請求書を作成します。よろしいですか？" className="flex min-h-[44px] w-full items-center px-4 text-base text-[#4f7cff]">請求書を作成</ConfirmSubmit>
                       <ConfirmSubmit action={createPurchaseOrdersFromEstimate} id={e.id} confirm="この見積から発注書を作成します。よろしいですか？" className="flex min-h-[44px] w-full items-center px-4 text-base text-[#e8613c]">発注書を作成</ConfirmSubmit>
                       <div className="px-4 pt-2 pb-1 text-xs text-gray-400">訃報案内</div>
-                      <Link href={`/admin/ceremonies/new?type=obituary&from_estimate=${e.id}`} className="flex min-h-[44px] items-center px-4 text-base text-[#9b2fae]">訃報を作成</Link>
-                      <Link href={`/admin/ceremonies/new?type=obituary_venue&from_estimate=${e.id}`} className="flex min-h-[44px] items-center px-4 text-base text-[#9b2fae]">訃報＋オンライン式場</Link>
+                      <Link href={`/fuhou/ceremonies/new?type=obituary&from_estimate=${e.id}`} className="flex min-h-[44px] items-center px-4 text-base text-[#9b2fae]">訃報を作成</Link>
+                      <Link href={`/fuhou/ceremonies/new?type=obituary_venue&from_estimate=${e.id}`} className="flex min-h-[44px] items-center px-4 text-base text-[#9b2fae]">訃報＋オンライン式場</Link>
                       <div className="mt-1 border-t pt-1">
                         <ConfirmSubmit action={deleteEstimate} id={e.id} confirm="この見積を削除します。取り消せません。よろしいですか？" className="flex min-h-[44px] w-full items-center px-4 text-base text-red-600">この見積を削除</ConfirmSubmit>
                       </div>
@@ -136,8 +136,8 @@ export default async function EstimatesPage({ searchParams }: SP) {
                         <details className="relative inline-block">
                           <summary className="cursor-pointer list-none rounded bg-[#f3e8ff] px-2 py-1 text-[11px] text-[#9b2fae] [&::-webkit-details-marker]:hidden">訃報案内 ▾</summary>
                           <div className="absolute left-0 z-20 mt-1 w-64 rounded border bg-white py-1 shadow-lg">
-                            <Link href={`/admin/ceremonies/new?type=obituary&from_estimate=${e.id}`} className="block px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50">訃報を作成する</Link>
-                            <Link href={`/admin/ceremonies/new?type=obituary_venue&from_estimate=${e.id}`} className="block px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50">訃報＋オンライン式場を作成する</Link>
+                            <Link href={`/fuhou/ceremonies/new?type=obituary&from_estimate=${e.id}`} className="block px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50">訃報を作成する</Link>
+                            <Link href={`/fuhou/ceremonies/new?type=obituary_venue&from_estimate=${e.id}`} className="block px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50">訃報＋オンライン式場を作成する</Link>
                           </div>
                         </details>
                         <form action={deleteEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>

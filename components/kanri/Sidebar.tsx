@@ -77,7 +77,7 @@ export function KanriSidebar() {
       {CRM_NAV.map((n) => <Section key={n.label} node={n} path={path} depth={0} />)}
       <div className="my-2 border-t" />
       <Link href="/kanri" className="flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50"><Lightbulb size={18} className="text-gray-400" />ヘルプ / トップ</Link>
-      <Link href="/admin/ceremonies" className="flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50"><LogOut size={18} className="text-gray-400" />訃報案内へ</Link>
+      <Link href="/fuhou/ceremonies" className="flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50"><LogOut size={18} className="text-gray-400" />訃報案内へ</Link>
     </nav>
   );
 
@@ -85,7 +85,7 @@ export function KanriSidebar() {
     <div className="flex flex-col items-center py-2">
       {CRM_NAV.map((n) => <RailItem key={n.label} node={n} path={path} onExpand={() => setOverlay(true)} />)}
       <div className="my-2 w-8 border-t" />
-      <Link href="/admin/ceremonies" aria-label="訃報案内へ" title="訃報案内へ" className="flex justify-center py-1">
+      <Link href="/fuhou/ceremonies" aria-label="訃報案内へ" title="訃報案内へ" className="flex justify-center py-1">
         <span className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"><LogOut size={20} /></span>
       </Link>
     </div>

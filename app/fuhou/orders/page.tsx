@@ -36,7 +36,7 @@ export default async function OrdersPage() {
               <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-400">注文はまだありません。</td></tr>
             ) : (
               rows.map((r) => (
-                <ClickableRow key={r.id} href={`/admin/orders/${r.id}`}>
+                <ClickableRow key={r.id} href={`/fuhou/orders/${r.id}`}>
                   <td className="px-3 py-3">{r.mournerName}</td>
                   <td className="px-3 py-3">{r.deceasedName}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{fmt(r.createdAt)}</td>

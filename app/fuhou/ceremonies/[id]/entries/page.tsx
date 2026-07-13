@@ -21,7 +21,7 @@ export default async function EntriesPage({ params }: Params) {
     <div className="mx-auto max-w-4xl">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">訃報案内 閲覧一覧</h1>
-        <Link href={`/admin/ceremonies/${id}`} className="rounded border px-3 py-1.5 text-sm">葬儀詳細へ</Link>
+        <Link href={`/fuhou/ceremonies/${id}`} className="rounded border px-3 py-1.5 text-sm">葬儀詳細へ</Link>
       </div>
 
       <div className="mb-4 grid grid-cols-3 gap-3">

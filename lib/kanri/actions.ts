@@ -530,7 +530,7 @@ export async function createMemorialFromEstimate(fd: FormData): Promise<void> {
   if (events.length) await c.from("funeral_events").insert(events);
 
   await c.from("fk_estimates").update({ memorial_id: mid }).eq("id", estimateId);
-  redirect(`/admin/ceremonies/${slug}`);
+  redirect(`/fuhou/ceremonies/${slug}`);
 }
 
 // ===== 請求 =====

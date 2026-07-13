@@ -107,7 +107,7 @@ export function CeremonyWizard({
       const res = editSlug
         ? await updateCeremony(editSlug, payload)
         : await createCeremony(payload);
-      if (res.ok) router.push(`/admin/ceremonies/${res.slug}`);
+      if (res.ok) router.push(`/fuhou/ceremonies/${res.slug}`);
       else setSaveError(res.error);
     });
   }
@@ -160,7 +160,7 @@ export function CeremonyWizard({
       <div className="mt-6 flex justify-between">
         {singleStep ? (
           <>
-            <a href={editSlug ? `/admin/ceremonies/${editSlug}` : "/admin/ceremonies"} className="rounded border px-6 py-2.5 text-sm">← 戻る</a>
+            <a href={editSlug ? `/fuhou/ceremonies/${editSlug}` : "/fuhou/ceremonies"} className="rounded border px-6 py-2.5 text-sm">← 戻る</a>
             <button onClick={handleSave} disabled={saving} className="rounded bg-[#9b2fae] px-6 py-2.5 text-sm text-white disabled:opacity-60">
               {saving ? "保存中…" : "この内容で更新"}
             </button>

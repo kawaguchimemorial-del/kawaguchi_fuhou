@@ -22,7 +22,7 @@ export default async function OrderDetailPage({ params }: Params) {
     <div className="mx-auto max-w-3xl pb-16">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">供花・供物 注文詳細</h1>
-        <Link href="/admin/orders" className="rounded border px-3 py-1.5 text-sm">一覧へ</Link>
+        <Link href="/fuhou/orders" className="rounded border px-3 py-1.5 text-sm">一覧へ</Link>
       </div>
 
       {/* 注文商品 */}
@@ -54,7 +54,7 @@ export default async function OrderDetailPage({ params }: Params) {
         <Field label="ステータス">{o.status}</Field>
         <Field label="注文日時">{fmt(o.createdAt)}</Field>
         <Field label="お支払い方法">{o.payment}</Field>
-        <Field label="対象葬儀">故 {o.deceasedName} 儀（喪主 {o.mournerName}）{o.ceremonySlug && <Link href={`/admin/ceremonies/${o.ceremonySlug}`} className="ml-2 text-[#9b2fae] underline">葬儀詳細 ›</Link>}</Field>
+        <Field label="対象葬儀">故 {o.deceasedName} 儀（喪主 {o.mournerName}）{o.ceremonySlug && <Link href={`/fuhou/ceremonies/${o.ceremonySlug}`} className="ml-2 text-[#9b2fae] underline">葬儀詳細 ›</Link>}</Field>
       </div>
 
       {/* 注文者情報 */}

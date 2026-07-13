@@ -76,7 +76,7 @@ export function KanriMobileNav() {
                 <Section key={n.label} node={n} path={path} depth={0} />
               ))}
               <div className="my-2 border-t" />
-              <Link href="/admin" className="flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-sm text-[#9b2fae] hover:bg-gray-50">
+              <Link href="/fuhou" className="flex min-h-[44px] items-center gap-3 px-5 py-2.5 text-sm text-[#9b2fae] hover:bg-gray-50">
                 <Megaphone size={18} className="text-[#9b2fae]" />訃報案内へ
               </Link>
             </nav>

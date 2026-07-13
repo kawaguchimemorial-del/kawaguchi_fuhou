@@ -29,7 +29,7 @@ export default async function EstimateDetail({ params }: Params) {
           <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">請求書を作成</button></form>
           <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">発注書を作成</button></form>
           {e.memorialId ? (
-            <Link href={`/admin/ceremonies/${e.memorialId}`} className="rounded bg-green-600 px-3 py-1.5 text-white">訃報案内を開く</Link>
+            <Link href={`/fuhou/ceremonies/${e.memorialId}`} className="rounded bg-green-600 px-3 py-1.5 text-white">訃報案内を開く</Link>
           ) : (
             <form action={createMemorialFromEstimate}>
               <input type="hidden" name="id" value={id} />

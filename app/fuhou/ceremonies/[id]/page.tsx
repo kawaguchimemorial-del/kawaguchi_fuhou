@@ -33,9 +33,9 @@ export default async function CeremonyDetail({ params }: Params) {
   const appUrl = await getSiteOrigin();
   const obituaryUrl = `${appUrl}/m/${id}`;
   const venueUrl = `${appUrl}/m/${id}/venue`;
-  const editBase = `/admin/ceremonies/${id}/edit`;
-  const albumHref = `/admin/ceremonies/${id}/album`;
-  const sceneHref = `/admin/ceremonies/${id}/scene`;
+  const editBase = `/fuhou/ceremonies/${id}/edit`;
+  const albumHref = `/fuhou/ceremonies/${id}/album`;
+  const sceneHref = `/fuhou/ceremonies/${id}/scene`;
   const sceneCount = m.venue?.scenePaths?.length ?? (m.venue?.ceremonyPhotoPath ? 1 : 0);
 
   return (
@@ -47,7 +47,7 @@ export default async function CeremonyDetail({ params }: Params) {
           故 {m.deceased.nameKanji} 儀　葬儀詳細
         </h1>
         <div className="flex gap-2 text-sm">
-          <Link href="/admin/ceremonies" className="rounded border px-3 py-1.5">一覧へ</Link>
+          <Link href="/fuhou/ceremonies" className="rounded border px-3 py-1.5">一覧へ</Link>
           <button className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">テスト/本番 切替</button>
         </div>
       </div>
@@ -69,12 +69,12 @@ export default async function CeremonyDetail({ params }: Params) {
         <Row label="訃報プレビュー"><a href={obituaryUrl} target="_blank" className="text-[#9b2fae] underline">プレビューを表示する ↗</a></Row>
         <Row label="訃報URL"><span className="break-all text-xs">{obituaryUrl}</span></Row>
         <Row label="訃報QR">
-          <a href={`/admin/ceremonies/${id}/qr?url=${encodeURIComponent(obituaryUrl)}&dl=1`} className="text-[#9b2fae] underline">QRコードダウンロード</a>
+          <a href={`/fuhou/ceremonies/${id}/qr?url=${encodeURIComponent(obituaryUrl)}&dl=1`} className="text-[#9b2fae] underline">QRコードダウンロード</a>
         </Row>
         <Row label="印刷ダウンロード">
           <span className="flex flex-wrap gap-3">
-            <a href={`/admin/ceremonies/${id}/obituary?fmt=pdf`} target="_blank" rel="noopener noreferrer" className="text-[#9b2fae] underline">PDFダウンロード</a>
-            <a href={`/admin/ceremonies/${id}/obituary?fmt=doc`} className="text-[#9b2fae] underline">Wordダウンロード</a>
+            <a href={`/fuhou/ceremonies/${id}/obituary?fmt=pdf`} target="_blank" rel="noopener noreferrer" className="text-[#9b2fae] underline">PDFダウンロード</a>
+            <a href={`/fuhou/ceremonies/${id}/obituary?fmt=doc`} className="text-[#9b2fae] underline">Wordダウンロード</a>
           </span>
         </Row>
         <Row label="訃報タイトル">{m.obituaryTitle}</Row>
@@ -107,10 +107,10 @@ export default async function CeremonyDetail({ params }: Params) {
       {!m.venue && <ConvertToVenueButton slug={id} />}
 
       {m.venue && (
-        <Section title="オンライン式場" status="登録済" editHref={`${editBase}?step=4`} viewHref={`/admin/ceremonies/${id}/venue`} viewLabel="オンライン式場を表示">
+        <Section title="オンライン式場" status="登録済" editHref={`${editBase}?step=4`} viewHref={`/fuhou/ceremonies/${id}/venue`} viewLabel="オンライン式場を表示">
           <Row label="プレビュー"><a href={venueUrl} target="_blank" className="text-[#9b2fae] underline">プレビューを表示する ↗</a></Row>
           <Row label="式場URL"><span className="break-all text-xs">{venueUrl}</span></Row>
-          <Row label="式場QR"><a href={`/admin/ceremonies/${id}/qr?url=${encodeURIComponent(venueUrl)}&dl=1`} className="text-[#9b2fae] underline">QRコードダウンロード</a></Row>
+          <Row label="式場QR"><a href={`/fuhou/ceremonies/${id}/qr?url=${encodeURIComponent(venueUrl)}&dl=1`} className="text-[#9b2fae] underline">QRコードダウンロード</a></Row>
           <Row label="オンライン式名">{m.venue.venueName}</Row>
           <Row label="挨拶文見出し">{m.venue.greetingHeading}</Row>
           <Row label="挨拶文"><span className="whitespace-pre-wrap text-xs">{m.venue.greetingBody}</span></Row>
@@ -152,8 +152,8 @@ export default async function CeremonyDetail({ params }: Params) {
           </div>
         </div>
         <div className="flex gap-2 text-sm">
-          <Link href={`/admin/ceremonies/${id}/entries`} className="rounded border px-4 py-2">閲覧一覧（{views.uniqueTotal}）</Link>
-          <Link href={`/admin/ceremonies/${id}/guestbook`} className="rounded border px-4 py-2">芳名録（{guestbook.length}）</Link>
+          <Link href={`/fuhou/ceremonies/${id}/entries`} className="rounded border px-4 py-2">閲覧一覧（{views.uniqueTotal}）</Link>
+          <Link href={`/fuhou/ceremonies/${id}/guestbook`} className="rounded border px-4 py-2">芳名録（{guestbook.length}）</Link>
         </div>
       </div>
 
@@ -226,8 +226,8 @@ function OrderListBlock({ title, id, kind, rows }: { title: string; id: string; 
       <div className="mb-3 flex items-center justify-between">
         <p className="font-bold">{title}</p>
         <div className="flex gap-2 text-sm">
-          <a href={`/admin/ceremonies/${id}/orders/export?kind=${kind}&fmt=csv`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">CSVダウンロード</a>
-          <a href={`/admin/ceremonies/${id}/orders/export?kind=${kind}&fmt=excel`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">EXCELダウンロード</a>
+          <a href={`/fuhou/ceremonies/${id}/orders/export?kind=${kind}&fmt=csv`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">CSVダウンロード</a>
+          <a href={`/fuhou/ceremonies/${id}/orders/export?kind=${kind}&fmt=excel`} className="rounded border border-[#9b2fae] px-3 py-1.5 text-[#9b2fae]">EXCELダウンロード</a>
         </div>
       </div>
       <p className="text-xs text-gray-500">合計 {rows.length}件 {total.toLocaleString()}円{rows.length > 0 && <span className="ml-2 text-gray-400">（行をクリックで詳細）</span>}</p>
@@ -241,7 +241,7 @@ function OrderListBlock({ title, id, kind, rows }: { title: string; id: string; 
               <tr><td colSpan={8} className="px-2 py-6 text-center text-gray-400">注文はまだありません。</td></tr>
             ) : (
               rows.map((r) => (
-                <ClickableRow key={r.id} href={`/admin/orders/${r.id}`}>
+                <ClickableRow key={r.id} href={`/fuhou/orders/${r.id}`}>
                   <td className="px-2 py-2">{r.productName}</td>
                   <td className="px-2 py-2">{r.quantity}</td>
                   <td className="px-2 py-2">{r.amountJpy.toLocaleString()}円</td>

@@ -7,10 +7,10 @@ import { Home, List, Flower2, Settings } from "lucide-react";
 
 // 香典決済・贈答品・お悔やみ品（おくりもの）は今回実装しないため非表示。
 const NAV = [
-  { href: "/admin", label: "トップ", Icon: Home },
-  { href: "/admin/ceremonies", label: "葬儀一覧", Icon: List },
-  { href: "/admin/orders", label: "供花・供物 注文一覧", Icon: Flower2 },
-  { href: "/admin/settings", label: "設定", Icon: Settings },
+  { href: "/fuhou", label: "トップ", Icon: Home },
+  { href: "/fuhou/ceremonies", label: "葬儀一覧", Icon: List },
+  { href: "/fuhou/orders", label: "供花・供物 注文一覧", Icon: Flower2 },
+  { href: "/fuhou/settings", label: "設定", Icon: Settings },
 ];
 
 const ADMIN = "#9b2fae";

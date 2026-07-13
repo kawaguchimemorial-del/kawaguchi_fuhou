@@ -26,7 +26,7 @@ export default async function ScenePage({ params }: Params) {
     <div className="mx-auto max-w-4xl pb-16">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold">故 {m.deceased.nameKanji} 儀　葬儀の様子</h1>
-        <Link href={`/admin/ceremonies/${id}`} className="rounded border px-4 py-2 text-sm">
+        <Link href={`/fuhou/ceremonies/${id}`} className="rounded border px-4 py-2 text-sm">
           ← 葬儀詳細へ
         </Link>
       </div>

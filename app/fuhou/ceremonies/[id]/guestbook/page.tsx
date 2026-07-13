@@ -13,7 +13,7 @@ export default async function GuestbookPage({ params }: Params) {
     <div className="mx-auto max-w-4xl">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">芳名録（{rows.length}件）</h1>
-        <Link href={`/admin/ceremonies/${id}`} className="rounded border px-3 py-1.5 text-sm">葬儀詳細へ</Link>
+        <Link href={`/fuhou/ceremonies/${id}`} className="rounded border px-3 py-1.5 text-sm">葬儀詳細へ</Link>
       </div>
       {rows.length === 0 ? (
         <div className="rounded-lg bg-white p-10 text-center text-gray-400 shadow-sm">

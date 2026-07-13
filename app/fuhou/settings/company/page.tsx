@@ -30,5 +30,5 @@ function Field({ label, defaultValue }: { label: string; defaultValue?: string }
   );
 }
 function Back() {
-  return <Link href="/admin/settings" className="mb-4 inline-block text-sm text-[#9b2fae] underline">← 設定へ戻る</Link>;
+  return <Link href="/fuhou/settings" className="mb-4 inline-block text-sm text-[#9b2fae] underline">← 設定へ戻る</Link>;
 }

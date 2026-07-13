@@ -16,7 +16,7 @@ export function ConvertToVenueButton({ slug }: { slug: string }) {
           if (!confirm("この訃報を「訃報＋オンライン式場」に変更します。よろしいですか？")) return;
           start(async () => {
             const r = await convertToVenue(slug);
-            if (r.ok) router.push(`/admin/ceremonies/${slug}/edit?step=4`);
+            if (r.ok) router.push(`/fuhou/ceremonies/${slug}/edit?step=4`);
             else alert(`変換に失敗しました：${r.error ?? ""}`);
           });
         }}

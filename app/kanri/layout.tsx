@@ -31,7 +31,7 @@ export default function KanriLayout({ children }: { children: React.ReactNode })
           <button className="rounded bg-[#4f7cff] px-3 py-1.5 text-sm text-white">検索</button>
         </form>
         <div className="ml-auto flex items-center gap-3 text-white/80">
-          <Link href="/admin" className="flex items-center gap-1.5 rounded border border-white/50 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/10"><Megaphone size={15} />訃報案内へ</Link>
+          <Link href="/fuhou" className="flex items-center gap-1.5 rounded border border-white/50 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/10"><Megaphone size={15} />訃報案内へ</Link>
           <Link href="/kanri/customers/new" className="flex items-center gap-1 rounded bg-[#4f7cff] px-3 py-1.5 text-sm text-white"><Phone size={15} />起動</Link>
           <Bell size={18} className="hidden sm:block" />
           <HelpCircle size={18} className="hidden sm:block" />

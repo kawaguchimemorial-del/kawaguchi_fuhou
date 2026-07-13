@@ -6,7 +6,7 @@ import type { CeremonyListItem } from "@/lib/admin/data";
 // 葬儀一覧の行。行全体をクリックすると葬儀詳細（編集）へ遷移する（アット葬儀の実仕様に準拠）。
 export function CeremonyRow({ r }: { r: CeremonyListItem }) {
   const router = useRouter();
-  const href = `/admin/ceremonies/${r.id}`;
+  const href = `/fuhou/ceremonies/${r.id}`;
   return (
     <tr
       onClick={() => router.push(href)}

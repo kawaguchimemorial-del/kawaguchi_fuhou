@@ -29,7 +29,7 @@ export default async function DeceasedPage() {
                   <td className="px-3 py-2.5 text-gray-500">{r.name_kana ?? ""}</td>
                   <td className="px-3 py-2.5 text-gray-500">{fmt(r.death_date)}</td>
                   <td className="px-3 py-2.5 text-gray-500">{r.age_kazoe ?? r.age_full ?? ""}</td>
-                  <td className="px-3 py-2.5">{r.memorials?.slug ? <a href={`/admin/ceremonies/${r.memorials.slug}`} className="text-[#2c8c6f] underline">葬儀詳細</a> : "—"}</td>
+                  <td className="px-3 py-2.5">{r.memorials?.slug ? <a href={`/fuhou/ceremonies/${r.memorials.slug}`} className="text-[#2c8c6f] underline">葬儀詳細</a> : "—"}</td>
                 </tr>
               ))}
           </tbody>

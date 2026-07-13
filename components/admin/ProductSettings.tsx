@@ -194,7 +194,7 @@ function PaymentSettings({ initial }: { initial?: Record<string, unknown> }) {
     setMsg(null);
     startSave(async () => {
       const res = await saveOrderSettings({ paymentMethods: { invoice, onsite }, showOldChar });
-      if (res.ok) router.push("/admin");
+      if (res.ok) router.push("/fuhou");
       else setMsg(`保存に失敗しました：${res.error ?? ""}`);
     });
   };

@@ -23,7 +23,7 @@ export default async function AdminVenueView({ params }: Params) {
       {/* 管理バー */}
       <div className="sticky top-0 z-10 flex items-center justify-between bg-[#9b2fae] px-4 py-3 text-sm text-white">
         <span>オンライン式場（管理プレビュー）／{statusLabel}</span>
-        <Link href={`/admin/ceremonies/${id}`} className="rounded border border-white/60 px-3 py-1">← 葬儀詳細へ</Link>
+        <Link href={`/fuhou/ceremonies/${id}`} className="rounded border border-white/60 px-3 py-1">← 葬儀詳細へ</Link>
       </div>
 
       <main className="mx-auto max-w-xl px-5 pt-8 pb-16">

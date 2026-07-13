@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function MailSettings() {
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/admin/settings" className="mb-4 inline-block text-sm text-[#9b2fae] underline">← 設定へ戻る</Link>
+      <Link href="/fuhou/settings" className="mb-4 inline-block text-sm text-[#9b2fae] underline">← 設定へ戻る</Link>
       <h1 className="mb-6 text-xl font-bold">メール設定</h1>
       <div className="space-y-6">
         <section className="rounded-lg bg-white p-6 shadow-sm">

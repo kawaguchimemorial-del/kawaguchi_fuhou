@@ -2,9 +2,9 @@ import Link from "next/link";
 
 // 贈答品の設定は今回非対応のため除外。
 const ITEMS = [
-  { href: "/admin/settings/company", title: "葬儀社管理", desc: "ご登録いただいている葬儀社情報の参照・編集ができます。" },
-  { href: "/admin/settings/products", title: "供花・供物の設定・商品登録", desc: "支払い方法の設定や、商品の登録を行います。" },
-  { href: "/admin/settings/mail", title: "メール設定", desc: "注文通知先や、自動送信メールの文言を設定します。" },
+  { href: "/fuhou/settings/company", title: "葬儀社管理", desc: "ご登録いただいている葬儀社情報の参照・編集ができます。" },
+  { href: "/fuhou/settings/products", title: "供花・供物の設定・商品登録", desc: "支払い方法の設定や、商品の登録を行います。" },
+  { href: "/fuhou/settings/mail", title: "メール設定", desc: "注文通知先や、自動送信メールの文言を設定します。" },
 ];
 
 export default function SettingsPage() {

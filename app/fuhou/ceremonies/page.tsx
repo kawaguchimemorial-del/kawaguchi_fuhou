@@ -12,7 +12,7 @@ export default async function CeremoniesPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold">葬儀一覧</h1>
         <Link
-          href="/admin/ceremonies/new?type=obituary_venue"
+          href="/fuhou/ceremonies/new?type=obituary_venue"
           className="rounded-md bg-[#9b2fae] px-4 py-2 text-sm text-white"
         >
           ＋ 新しい葬儀を作成する

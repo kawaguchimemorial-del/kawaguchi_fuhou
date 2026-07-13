@@ -585,6 +585,6 @@ export async function convertToVenue(slug: string): Promise<CreateResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("memorials").update({ venue: venueJson, form_state: fs }).eq("id", mem.id) as any);
   if (error) return { ok: false, error: "変換に失敗しました: " + error.message };
-  revalidatePath(`/admin/ceremonies/${slug}`);
+  revalidatePath(`/fuhou/ceremonies/${slug}`);
   return { ok: true, slug };
 }

@@ -27,7 +27,7 @@ export default async function AttendeesPage() {
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2.5">{r.sender_name}</td>
                   <td className="px-3 py-2.5 text-gray-500">{fmt(r.created_at)}</td>
-                  <td className="px-3 py-2.5">{r.memorials?.slug ? <a href={`/admin/ceremonies/${r.memorials.slug}`} className="text-[#2c8c6f] underline">葬儀詳細</a> : "—"}</td>
+                  <td className="px-3 py-2.5">{r.memorials?.slug ? <a href={`/fuhou/ceremonies/${r.memorials.slug}`} className="text-[#2c8c6f] underline">葬儀詳細</a> : "—"}</td>
                 </tr>
               ))}
           </tbody>

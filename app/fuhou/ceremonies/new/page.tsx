@@ -25,7 +25,7 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
   // 見積もりから作成: 既に同じ施行(見積)で訃報を作成済みなら、新規でなく編集(上書き)へ回す。
   if (sp.from_estimate) {
     const existingSlug = await findMemorialSlugByEstimate(sp.from_estimate);
-    if (existingSlug) redirect(`/admin/ceremonies/${existingSlug}/edit`);
+    if (existingSlug) redirect(`/fuhou/ceremonies/${existingSlug}/edit`);
   }
 
   // 見積もりから作成: 喪主・故人・式日を初期入力
@@ -46,7 +46,7 @@ export default async function NewCeremonyPage({ searchParams }: Search) {
         { deceasedName: deceasedFullName(e), deathDate: e.deceased.deathDate ?? undefined, mournerName },
         sp.from_estimate
       );
-      if (byName) redirect(`/admin/ceremonies/${byName}/edit`);
+      if (byName) redirect(`/fuhou/ceremonies/${byName}/edit`);
       initialState = {
         estimateId: sp.from_estimate, // 施行(見積)IDを永続化しAI遺影と一意照合
         // 喪主（見積の宛名=喪主 → 喪主 → 顧客情報 の順で参照）
