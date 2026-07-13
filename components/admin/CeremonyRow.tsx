@@ -18,9 +18,11 @@ export function CeremonyRow({ r }: { r: CeremonyListItem }) {
     e.stopPropagation();
     const who = [r.deceasedName, r.mournerName].filter(Boolean).join(" / ") || "この葬儀";
     if (!window.confirm(`「${who}」の訃報案内を削除します。よろしいですか？\n（一覧から消え、公開ページも開けなくなります）`)) return;
+    const pw = window.prompt("削除するにはパスワードを入力してください。");
+    if (pw === null) return; // キャンセル
     setErr(null);
     start(async () => {
-      const res = await deleteCeremony(r.id);
+      const res = await deleteCeremony(r.id, pw);
       if (res.ok) router.refresh();
       else setErr(res.error ?? "削除に失敗しました");
     });

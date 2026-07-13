@@ -593,8 +593,12 @@ export async function convertToVenue(slug: string): Promise<CreateResult> {
 // soft-delete: memorials.deleted_at をセット。詳細/一覧/検出関数は全て
 // deleted_at is null で除外するため、削除後は一覧から消え開けなくなる。
 // 見積との紐付け(fk_estimates.memorial_id)も解除し、見積側は「作成」導線へ戻す。
-export async function deleteCeremony(slug: string): Promise<{ ok: boolean; error?: string }> {
+// 削除パスワード。誤操作/不正削除の抑止用。環境変数で上書き可(既定 sat118)。
+const CEREMONY_DELETE_PASSWORD = process.env.CEREMONY_DELETE_PASSWORD || "sat118";
+
+export async function deleteCeremony(slug: string, password?: string): Promise<{ ok: boolean; error?: string }> {
   if (!slug) return { ok: false, error: "対象が指定されていません。" };
+  if ((password ?? "") !== CEREMONY_DELETE_PASSWORD) return { ok: false, error: "パスワードが違います。" };
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { ok: false, error: "Supabase未設定" };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as unknown as { from: (t: string) => any };
