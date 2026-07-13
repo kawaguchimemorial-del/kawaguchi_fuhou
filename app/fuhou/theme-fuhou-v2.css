@@ -1,0 +1,48 @@
+/* =============================================================================
+   訃報管理(/fuhou) UIテーマ v2（10専門家会議 2026-07-13 確定仕様）
+   - [data-fuhou-v2] スコープ内のみ有効。/kanri・公開ページ(/m)・印刷には無影響。
+   - ロールバック: Vercel環境変数 NEXT_PUBLIC_FUHOU_V2=0 で即時OFF、またはコミットrevert。
+   - 配色: アット葬儀の原色紫(#9b2fae)から、落ち着いた古代紫(#6d2f80)へトーン調整。
+     金ヘアライン(#b08d3f)はkanriと共通でブランド統一。
+   ========================================================================== */
+
+[data-fuhou-v2] {
+  --fh-primary:      #6d2f80;  /* 白文字 7.0:1 AA。旧 #9b2fae の統合先 */
+  --fh-primary-dark: #4e2260;  /* ヘッダー帯。白文字 11:1 */
+  --fh-tint:         #f2edf5;  /* 淡背景(旧 #f3e9f6/#faf5fc/#faf5fb) */
+  --fh-bg:           #faf8fb;  /* ページ背景 */
+  --fh-line:         #e5dce9;
+  --fh-accent-hairline: #b08d3f; /* kanriと共通の金(ヘッダー専用) */
+  --fh-radius: 8px;
+  --fh-shadow-card: 0 1px 3px rgb(0 0 0 / .08);
+}
+
+/* ===== 第1層: ハードコード色の写像 ===== */
+[data-fuhou-v2] .bg-\[\#9b2fae\] { background-color: var(--fh-primary) !important; }
+[data-fuhou-v2] .text-\[\#9b2fae\] { color: var(--fh-primary) !important; }
+[data-fuhou-v2] .border-\[\#9b2fae\] { border-color: var(--fh-primary) !important; }
+[data-fuhou-v2] .bg-\[\#f3e9f6\],
+[data-fuhou-v2] .bg-\[\#faf5fc\],
+[data-fuhou-v2] .bg-\[\#faf5fb\] { background-color: var(--fh-tint) !important; }
+[data-fuhou-v2] .bg-\[\#f7f5f8\],
+[data-fuhou-v2] .bg-\[\#faf8f3\] { background-color: var(--fh-bg) !important; }
+[data-fuhou-v2] .focus\:border-\[\#9b2fae\]:focus { border-color: var(--fh-primary) !important; }
+@media (hover: hover) {
+  [data-fuhou-v2] .hover\:bg-\[\#f3e9f6\]:hover,
+  [data-fuhou-v2] .hover\:bg-\[\#faf5fc\]:hover,
+  [data-fuhou-v2] .hover\:bg-\[\#faf5fb\]:hover { background-color: var(--fh-tint) !important; }
+  [data-fuhou-v2] .hover\:border-\[\#9b2fae\]:hover { border-color: var(--fh-primary) !important; }
+}
+
+/* ===== 第2層: 質感 ===== */
+[data-fuhou-v2] table { font-variant-numeric: tabular-nums; }
+[data-fuhou-v2] th { font-size: 12px; font-weight: 600; white-space: nowrap; }
+[data-fuhou-v2] td { font-size: 14px; }
+[data-fuhou-v2] input:not([type="checkbox"]):not([type="radio"]),
+[data-fuhou-v2] select,
+[data-fuhou-v2] textarea { font-size: 16px; min-height: 44px; border-radius: 6px; }
+@media (pointer: coarse) {
+  [data-fuhou-v2] button, [data-fuhou-v2] a[class*="rounded"] { min-height: 44px; }
+}
+[data-fuhou-v2] .rounded-lg.bg-white,
+[data-fuhou-v2] .rounded.bg-white { box-shadow: var(--fh-shadow-card); }

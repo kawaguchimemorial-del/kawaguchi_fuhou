@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getFuneralHomeName } from "@/lib/admin/data";
 import { Home, List, Flower2, Settings } from "lucide-react";
+import "./theme-fuhou-v2.css";
 
 // 管理画面（葬儀社/operator）レイアウト。実物に倣い紫テーマ。
 // TODO(auth): middleware＋Supabase Authでセッション保護。未ログインは /account/sign-in へ。
@@ -17,12 +18,14 @@ const ADMIN = "#9b2fae";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const homeName = await getFuneralHomeName();
+  // UIテーマv2。NEXT_PUBLIC_FUHOU_V2=0 で旧デザインへ即時切替(キルスイッチ)。
+  const v2 = process.env.NEXT_PUBLIC_FUHOU_V2 !== "0";
   return (
-    <div className="min-h-screen bg-[#f7f5f8]">
+    <div className="min-h-screen bg-[#f7f5f8]" {...(v2 ? { "data-fuhou-v2": "" } : {})}>
       {/* ヘッダー */}
       <header
-        className="flex items-center justify-between px-6 py-4 text-white"
-        style={{ background: ADMIN }}
+        className="sticky top-0 z-20 flex items-center justify-between px-6 py-3 text-white"
+        style={{ background: "var(--fh-primary-dark, #9b2fae)", borderBottom: "2px solid var(--fh-accent-hairline, transparent)" }}
       >
         <span className="font-bold">訃報管理</span>
         <div className="flex items-center gap-3">
