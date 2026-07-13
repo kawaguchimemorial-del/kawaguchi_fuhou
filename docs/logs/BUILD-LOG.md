@@ -1601,3 +1601,18 @@
 - 全戻し: 3コミットをgit revert(またはタグから layout/Sidebar/MobileNav/page/theme-v2.css を復元)。
 - デプロイなし即OFF: Vercel環境変数 NEXT_PUBLIC_KANRI_V2=0 で旧配色へ(シェル構造は残るが配色は失効)。
 - 検証: PC(1440)/スマホ(390)/見積一覧(色数最多)をスクリーンショットで確認。next build成功。
+
+---
+
+## 2026-07-13 — 訃報管理(/admin)刷新+/fuhou改名(10専門家×相互批判会議)
+
+### 会議の裁定(不採用: 308恒久リダイレクト/無条件一括置換/order_settings相乗り/全文フリー編集テンプレ 等)
+### 実装(C1〜C5、各コミット独立revert可)
+- C1: テスト作成2項目・お知らせ・資料DL・各種問い合わせ・ユーザー管理を削除。トップは本番2ボタン+主要導線カード。ナビ4項目。sign-in後は/kanriへ。
+- C2: /admin→/fuhou改名。git mv+正規表現限定置換(60箇所、importパス非対象)+next.config 307リダイレクト(クエリ保持・恒久維持)。タグfuhou-rename。検証: 307転送/深いパス/404/build。
+- C3: 葬儀社管理を読み取り専用化(kanri getCompanyInfo参照、編集は/kanri/settings/companyへ誘導)。
+- C4: メール設定を保存可能に。段落スロット方式(件名/挨拶/支払3種/末尾注記)+{{会社名}}{{TEL}}のみ許可(保存時検証/送信時フォールバック)。通知先はapp_setting order_notify.to→ORDER_NOTIFY_TO→既定。設定画面に現行文言+プレビュー表示。既定値運用(空保存)でコード改善に自動追従。
+- C5: theme-fuhou-v2.css([data-fuhou-v2]スコープ、#6d2f80系+金ヘアライン)+NEXT_PUBLIC_FUHOU_V2キルスイッチ。タグfuhou-ui-v1。
+### ロールバック
+- 全体: タグ admin-ui-v1(aacb73fe)。UIのみ: NEXT_PUBLIC_FUHOU_V2=0。改名のみ: C2をrevert。
+- 旧URL https://.../admin は307で/fuhouへ転送されるため既存ブックマークは壊れない。
