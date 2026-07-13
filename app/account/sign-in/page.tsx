@@ -6,7 +6,7 @@ import Link from "next/link";
 
 // ログイン画面。
 // ※現在はSupabaseのAuth未接続のため「デモログイン」。入力内容に関わらず管理画面へ進みます。
-// TODO(supabase): supabase.auth.signInWithPassword で実認証し、成功時のみ /admin へ。
+// TODO(supabase): supabase.auth.signInWithPassword で実認証し、成功時のみ /kanri へ。
 //   失敗時はエラー表示。middleware で /admin を保護。
 export default function SignInPage() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function SignInPage() {
     e.preventDefault();
     setPending(true);
     // デモ: 認証せず管理画面へ
-    router.push("/admin");
+    router.push("/kanri");
   }
 
   return (
@@ -61,10 +61,10 @@ export default function SignInPage() {
           ※ 現在はデモ版です。認証は未接続のため、どなたでも管理画面をご覧いただけます。
         </p>
         <Link
-          href="/admin"
+          href="/kanri"
           className="mt-3 inline-block rounded-sm border border-[var(--accent)] px-6 py-2.5 text-[var(--accent)]"
         >
-          管理画面（マイページ）を見る →
+          葬儀管理を開く →
         </Link>
       </div>
 
