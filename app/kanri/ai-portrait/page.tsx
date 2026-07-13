@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ImageIcon, Plus } from "lucide-react";
 import { listAiPortraits } from "@/lib/kanri/ai-portraits";
+import { listEstimates } from "@/lib/kanri/estimates";
+import { PortraitRelinkButton, type EstimateOption } from "@/components/kanri/PortraitRelinkButton";
 
 export const metadata = { title: "AI遺影写真" };
 export const dynamic = "force-dynamic";
@@ -19,7 +21,15 @@ function fmtDate(iso?: string): string {
 }
 
 export default async function AiPortraitPage() {
-  const portraits = await listAiPortraits();
+  const [portraits, estimates] = await Promise.all([listAiPortraits(), listEstimates()]);
+  // 紐付け修正モーダル用の見積候補(軽量化のため必要項目のみ)
+  const estimateOptions: EstimateOption[] = estimates.map((e) => ({
+    id: e.id,
+    no: e.estimateNo,
+    customer: e.customerName,
+    deceased: [e.deceased.lastName, e.deceased.firstName].filter(Boolean).join(" "),
+    date: fmtDate(e.funeralAt || e.wakeAt || e.deceased.deathDate),
+  }));
 
   return (
     <div className="space-y-5">
@@ -58,7 +68,7 @@ export default async function AiPortraitPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b bg-gray-50 text-xs text-gray-500">
-                <tr>{["写真", "対象者", "顧客", "葬儀日", "作成", "ダウンロード", "編集"].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}</tr>
+                <tr>{["写真", "対象者", "顧客", "葬儀日", "作成", "ダウンロード", "見積の紐付け", "編集"].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y">
                 {portraits.map((p) => (
@@ -87,6 +97,14 @@ export default async function AiPortraitPage() {
                         {p.tefudaUrl && <a href={`${p.tefudaUrl}?download=遺影手札_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">手札</a>}
                         {p.monitorUrl && <a href={`${p.monitorUrl}?download=遺影モニター_${encodeURIComponent(p.deceasedName || "portrait")}.png`} className="text-[#1aa39a] underline">モニター</a>}
                       </div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs">
+                      <PortraitRelinkButton
+                        portraitId={p.id}
+                        currentEstimateId={p.estimateId}
+                        deceasedName={p.deceasedName}
+                        estimates={estimateOptions}
+                      />
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs">
                       <a

@@ -987,3 +987,20 @@ export async function sendSms(_prev: KanriResult | null, fd: FormData): Promise<
   if (error) return { ok: false, error: error.message };
   redirect("/kanri/sms?sent=1");
 }
+
+// ===== AI遺影の見積(施行)紐付けを修正 =====
+// 一覧で誤紐付けを見つけたとき、正しい見積へ張り替える。見積側の顧客も引き継ぐ。
+export async function relinkAiPortraitEstimate(portraitId: string, estimateId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!portraitId) return { ok: false, error: "対象の遺影が指定されていません。" };
+  if (!estimateId) return { ok: false, error: "紐付ける見積を選択してください。" };
+  const c = admin();
+  // 見積の存在確認＋顧客IDを取得して引き継ぐ
+  const { data: est } = await c.from("fk_estimates").select("id,customer_id").eq("id", estimateId).is("deleted_at", null).maybeSingle();
+  if (!est) return { ok: false, error: "選択した見積が見つかりません。" };
+  const { error } = await c.from("fk_ai_portraits")
+    .update({ estimate_id: estimateId, customer_id: est.customer_id ?? null })
+    .eq("id", portraitId).eq("funeral_home_id", KANRI_HOME_ID);
+  if (error) return { ok: false, error: "紐付けの更新に失敗しました: " + error.message };
+  revalidatePath("/kanri/ai-portrait");
+  return { ok: true };
+}
