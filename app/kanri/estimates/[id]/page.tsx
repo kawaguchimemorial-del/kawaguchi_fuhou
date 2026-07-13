@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/kanri/PageHeader";
 import { notFound } from "next/navigation";
 import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
-import { createMemorialFromEstimate, createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
+import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ id: string }> };
@@ -28,13 +28,17 @@ export default async function EstimateDetail({ params }: Params) {
           <form action={deleteEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-red-400 px-3 py-1.5 text-red-500">削除</button></form>
           <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">請求書を作成</button></form>
           <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">発注書を作成</button></form>
-          {e.memorialId ? (
-            <Link href={`/fuhou/ceremonies/${e.memorialId}`} className="rounded bg-green-600 px-3 py-1.5 text-white">訃報案内を開く</Link>
+          {e.memorialId && e.memorialSlug ? (
+            <Link href={`/fuhou/ceremonies/${e.memorialSlug}`} className="rounded bg-green-600 px-3 py-1.5 text-white">訃報案内を開く</Link>
           ) : (
-            <form action={createMemorialFromEstimate}>
-              <input type="hidden" name="id" value={id} />
-              <button className="rounded bg-[#1aa39a] px-3 py-1.5 text-white">訃報案内を作成</button>
-            </form>
+            // 未作成: 訃報のみ / 訃報＋オンライン式場 を選択して作成(見積情報を初期入力)
+            <details className="relative">
+              <summary className="cursor-pointer list-none rounded bg-[#1aa39a] px-3 py-1.5 text-white [&::-webkit-details-marker]:hidden">訃報案内を作成 ▾</summary>
+              <div className="absolute right-0 z-10 mt-1 w-56 rounded border bg-white py-1 shadow-lg">
+                <Link href={`/fuhou/ceremonies/new?type=obituary&from_estimate=${id}`} className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">訃報を作成する</Link>
+                <Link href={`/fuhou/ceremonies/new?type=obituary_venue&from_estimate=${id}`} className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">訃報＋オンライン式場を作成する</Link>
+              </div>
+            </details>
           )}
         </div>
       </div>

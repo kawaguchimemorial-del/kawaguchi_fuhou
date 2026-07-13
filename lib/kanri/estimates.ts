@@ -34,6 +34,7 @@ export interface Estimate {
   advancePayment: number;
   status: string;
   memorialId?: string | null;
+  memorialSlug?: string; // 訃報案内の詳細ルートはslugで解決するため保持
   createdAt: string;
   items?: EstimateItem[];
   customerName?: string;
@@ -99,6 +100,12 @@ export async function getEstimate(id: string): Promise<Estimate | null> {
   const { data } = await c.from("fk_estimates").select("*,fk_customers(last_name,first_name)").eq("id", id).is("deleted_at", null).single();
   if (!data) return null;
   const est = mapEstimate(data);
+  // 訃報案内の詳細ルート(/fuhou/ceremonies/[id])は slug で解決するため、
+  // memorial_id(UUID)から slug を引き直す(UUIDをそのままリンクすると404になる)。
+  if (est.memorialId) {
+    const { data: mem } = await c.from("memorials").select("slug").eq("id", est.memorialId).maybeSingle();
+    est.memorialSlug = mem?.slug ?? undefined;
+  }
   const { data: items } = await c.from("fk_estimate_items").select("*").eq("estimate_id", id).order("sort_order", { ascending: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   est.items = ((items ?? []) as any[]).map((r) => ({ id: r.id, productId: r.product_id ?? undefined, lineKind: r.line_kind, name: r.name, unitPrice: r.unit_price, quantity: r.quantity, taxRate: Number(r.tax_rate), amount: r.amount, isSetItem: !!r.is_set_item, hiddenPaper: !!r.hidden_paper, priceIncludingTax: r.price_including_tax ?? undefined }));
