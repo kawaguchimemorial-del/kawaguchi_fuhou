@@ -88,7 +88,13 @@ export default async function KanriDashboard() {
   // KPI
   const monthKey = today.slice(0, 7);
   const funeralsThisMonth = estimates.filter((e) => e.funeralAt && jstYmd(new Date(e.funeralAt)).startsWith(monthKey)).length;
-  const customersThisMonth = monthly.length ? monthly[monthly.length - 1].count : 0;
+  // 「今月の新規顧客」: 顧客のcreated_atは一括取込で全件が取込月に寄るため実態を表さない。
+  // 実際の稼働(請求)を基準に、今月請求(billed_on)のあった顧客の実数で判断する。
+  const customersThisMonth = new Set(
+    invoices
+      .filter((iv) => iv.billedOn && jstYmd(new Date(iv.billedOn)).startsWith(monthKey))
+      .map((iv) => iv.customerId ?? `inv:${iv.id}`)
+  ).size;
   const outstanding = invoices.reduce((a, iv) => a + Math.max(0, iv.total - iv.paidTotal), 0);
 
   return (
@@ -178,7 +184,7 @@ export default async function KanriDashboard() {
       <section className="grid gap-4 sm:grid-cols-3">
         {[
           { label: "今月の葬儀件数", value: `${funeralsThisMonth} 件`, href: "/kanri/estimates" },
-          { label: "今月の顧客登録", value: `${customersThisMonth} 件`, href: "/kanri/customers" },
+          { label: "今月の請求顧客数", value: `${customersThisMonth} 件`, href: "/kanri/billing" },
           { label: "未回収残高", value: `${outstanding.toLocaleString()} 円`, href: "/kanri/receivables" },
         ].map((k) => (
           <Link key={k.label} href={k.href} className="rounded-lg bg-white p-4 shadow-sm transition hover:shadow-md">
