@@ -102,9 +102,13 @@ export async function getEstimate(id: string): Promise<Estimate | null> {
   const est = mapEstimate(data);
   // 訃報案内の詳細ルート(/fuhou/ceremonies/[id])は slug で解決するため、
   // memorial_id(UUID)から slug を引き直す(UUIDをそのままリンクすると404になる)。
+  // 削除済み(deleted_at)訃報は「存在しない」扱い。slugを返さず作成導線へ戻す
+  // (詳細ルート getAdminMemorial も deleted_at is null で除外するため、
+  //  削除済みslugをリンクすると404になる。見積のmemorial_idが残存していても無視)。
   if (est.memorialId) {
-    const { data: mem } = await c.from("memorials").select("slug").eq("id", est.memorialId).maybeSingle();
+    const { data: mem } = await c.from("memorials").select("slug").eq("id", est.memorialId).is("deleted_at", null).maybeSingle();
     est.memorialSlug = mem?.slug ?? undefined;
+    if (!mem) est.memorialId = null; // 孤立参照を実質クリアし「訃報案内を作成」を表示
   }
   const { data: items } = await c.from("fk_estimate_items").select("*").eq("estimate_id", id).order("sort_order", { ascending: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
