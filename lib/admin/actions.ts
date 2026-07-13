@@ -139,7 +139,7 @@ export async function saveVenuePhotos(
 }
 
 export type CreateResult =
-  | { ok: true; slug: string }
+  | { ok: true; slug: string; notice?: string }
   | { ok: false; error: string };
 
 export interface CeremonyPayload {
@@ -255,6 +255,17 @@ function buildRows(p: CeremonyPayload) {
   return { memorial, deceased, event };
 }
 
+// 見積(施行)IDの検証。form_stateに削除済み見積IDが残ると保存時にFK違反(memorials_estimate)で
+// 更新全体が失敗するため、書込前に必ず通す。実在(有効)なら維持、不在ならnull、照会失敗時は
+// 既存値を保持(接続断/RLS等で健全な紐付けを破壊しない)。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolveEstimateId(supabase: any, id?: string): Promise<string | null> {
+  if (!id) return null;
+  const { data, error } = await supabase.from("fk_estimates").select("id").eq("id", id).is("deleted_at", null).maybeSingle();
+  if (error) return id; // 照会失敗は「不在」と区別し保持
+  return data ? id : null;
+}
+
 function guard(p: CeremonyPayload): string | null {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
     return "Supabaseが未設定です（環境変数を確認してください）。";
@@ -282,6 +293,8 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
   const supabase = createAdminClient() as unknown as { from: (t: string) => any };
   const slug = randomUUID().replace(/-/g, "");
   const memorialId = randomUUID();
+  // 削除済み見積IDによるFK違反を防止(form_stateも同時に自己修復)
+  p.estimateId = (await resolveEstimateId(supabase, p.estimateId)) ?? undefined;
   const { memorial, deceased, event } = buildRows(p);
   await fillMournerFromCustomer(supabase, memorial);
 
@@ -341,6 +354,10 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
   const { data: mem, error: findErr } = await (supabase.from("memorials").select("id,status,published_at,deleted_at").eq("slug", slug).single() as any);
   if (findErr || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
   const memorialId = mem.id as string;
+  // 削除済み見積IDによるFK違反を防止(form_stateも同時に自己修復)
+  const hadEstimate = !!p.estimateId;
+  p.estimateId = (await resolveEstimateId(supabase, p.estimateId)) ?? undefined;
+  const estimateUnlinked = hadEstimate && !p.estimateId;
   const { memorial, deceased, event } = buildRows(p);
   await fillMournerFromCustomer(supabase, memorial);
 
@@ -361,11 +378,13 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
   if (mErr) return { ok: false, error: "更新に失敗しました: " + mErr.message };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("deceased").update(deceased as any).eq("memorial_id", memorialId) as any);
+  const { error: dErr } = await (supabase.from("deceased").update(deceased as any).eq("memorial_id", memorialId) as any);
+  if (dErr) return { ok: false, error: "故人情報の更新に失敗しました: " + dErr.message };
   // 式は単純化のため一旦削除して入れ直し（式1のみ管理）
   await supabase.from("funeral_events").delete().eq("memorial_id", memorialId);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await supabase.from("funeral_events").insert({ memorial_id: memorialId, ...event } as any);
+  const { error: eErr } = await supabase.from("funeral_events").insert({ memorial_id: memorialId, ...event } as any);
+  if (eErr) return { ok: false, error: "式情報の更新に失敗しました: " + eErr.message };
 
   // status/内容の変更を公開ページ・管理一覧へ即時反映(revalidate漏れによる「反映されない」再燃防止)
   revalidatePath(`/m/${slug}`);
@@ -374,7 +393,7 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
   revalidatePath(`/fuhou/ceremonies/${slug}`);
   revalidatePath("/fuhou/ceremonies");
 
-  return { ok: true, slug };
+  return { ok: true, slug, notice: estimateUnlinked ? "紐づいていた見積が削除されていたため、見積の紐付けを解除して保存しました。" : undefined };
 }
 
 // ISO日時 → JSTの日付(YYYY-MM-DD)・時刻(HH:MM)

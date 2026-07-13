@@ -111,8 +111,13 @@ export function CeremonyWizard({
       const res = editSlug
         ? await updateCeremony(editSlug, payload)
         : await createCeremony(payload);
-      if (res.ok) router.push(`/fuhou/ceremonies/${res.slug}`);
-      else setSaveError(res.error);
+      if (res.ok) {
+        router.push(`/fuhou/ceremonies/${res.slug}`);
+      } else {
+        setSaveError(res.error);
+        // 失敗が画面外だと「押しても無反応」に見えるため最上部へスクロールして明示
+        try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch { /* noop */ }
+      }
     });
   }
 
@@ -151,6 +156,12 @@ export function CeremonyWizard({
       )}
       {singleStep && (
         <p className="mb-4 text-sm text-gray-500">「{STEPS[focusStep!]}」を編集しています。</p>
+      )}
+
+      {saveError && (
+        <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <b>保存できませんでした。</b> {saveError}
+        </div>
       )}
 
       {/* 終了(closed)状態の訃報は、保存しても既定では公開に戻らない(移行データの一斉再公開防止)。
