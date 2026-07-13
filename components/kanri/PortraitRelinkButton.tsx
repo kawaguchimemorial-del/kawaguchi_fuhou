@@ -27,7 +27,7 @@ export function PortraitRelinkButton({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState(deceasedName ?? "");
+  const [q, setQ] = useState("");
   const [sel, setSel] = useState<string>(currentEstimateId ?? "");
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -36,7 +36,7 @@ export function PortraitRelinkButton({
   const filtered = useMemo(() => {
     const k = norm(q);
     const list = !k ? estimates : estimates.filter((e) => [e.customer, e.deceased, e.no].some((v) => norm(v).includes(k)));
-    return list.slice(0, 50);
+    return list.slice(0, 100);
   }, [q, estimates]);
 
   function submit() {
@@ -53,7 +53,7 @@ export function PortraitRelinkButton({
     <>
       <button
         type="button"
-        onClick={() => { setOpen(true); setQ(deceasedName ?? ""); setSel(currentEstimateId ?? ""); setErr(null); }}
+        onClick={() => { setOpen(true); setQ(""); setSel(currentEstimateId ?? ""); setErr(null); }}
         className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 font-medium text-gray-600 hover:bg-gray-50"
         title="この遺影を紐付ける見積を修正する"
       >
@@ -70,12 +70,12 @@ export function PortraitRelinkButton({
             </div>
             <div className="border-b p-3">
               <input
-                autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="顧客名・故人名・見積Noで検索"
+                placeholder="絞り込み（任意）: 顧客名・故人名・見積No"
                 className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#2c8c6f] focus:outline-none"
               />
+              <p className="mt-1 text-[11px] text-gray-400">一覧から見積を選んでください（{estimates.length}件）。多い場合は上で絞り込めます。</p>
             </div>
             <div className="flex-1 overflow-y-auto">
               {filtered.length === 0 ? (
