@@ -26,6 +26,7 @@ export default async function EditCeremonyPage({ params, searchParams }: Params)
         withVenue={fs.withVenue}
         isTest={fs.isTest}
         editSlug={id}
+        currentStatus={fs.status}
         initialState={fs.state}
         focusStep={Number.isFinite(focusStep) ? focusStep : undefined}
         flowerProducts={flowerProducts}

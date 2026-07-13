@@ -159,6 +159,7 @@ export interface CeremonyPayload {
   // オンライン式場
   venueOnlineName?: string; greetingHeading?: string; greetingBody?: string; greetingSign?: string;
   publishImmediately?: string; openFrom?: string; openDays?: string;
+  republishClosed?: string; // "1"=終了(closed)状態の訃報を明示的に再公開する
   mgmtNo?: string; attendeeName?: string; showOfferings?: string;
   frame?: string; side?: string; center?: string; top?: string; background?: string;
   portraitPath?: string; // 遺影写真の公開URL
@@ -308,6 +309,28 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
   return { ok: true, slug };
 }
 
+// 保存時のstatus遷移ルール(5専門家会議 2026-07-14の確定仕様)。
+// 判定入力は「公開意図(publishImmediately) と 明示的な再公開フラグ」のみ。
+// 葬儀日・死亡日は一切使わない(過去日付での強制終了を撤廃)。
+// - archived: 終端。常に据え置き(復元は別アクションのみ)。
+// - deleted_at有: 昇格させない(削除案件を編集で復活させない)。
+// - draft:   公開意図(既定ON)で published へ昇格。OFFなら draft維持。→ 誤登録/見積由来draftの自己修復。
+// - closed:  通常保存では closed維持。明示的な再公開(republish)時のみ published(移行データの一斉再公開事故を防止)。
+// - published: 維持(冪等)。意図OFFなら draft へ降格可。
+// published_at は COALESCE(既存, now())。既存publishedの公開日時は上書きしない。
+function nextStatus(
+  current: string,
+  deletedAt: string | null,
+  intent: { publish: boolean; republishClosed: boolean }
+): { status: string; setPublishedAt: boolean } | null {
+  if (deletedAt) return null; // 変更しない
+  if (current === "archived") return null; // 終端: 据え置き
+  if (current === "published") return intent.publish ? { status: "published", setPublishedAt: false } : { status: "draft", setPublishedAt: false };
+  if (current === "draft") return intent.publish ? { status: "published", setPublishedAt: true } : { status: "draft", setPublishedAt: false };
+  if (current === "closed") return intent.republishClosed ? { status: "published", setPublishedAt: true } : { status: "closed", setPublishedAt: false };
+  return null;
+}
+
 // 既存案件の更新（slug指定）
 export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<CreateResult> {
   const err = guard(p);
@@ -315,14 +338,26 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
 
   const supabase = createAdminClient() as unknown as { from: (t: string) => any };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: mem, error: findErr } = await (supabase.from("memorials").select("id").eq("slug", slug).single() as any);
+  const { data: mem, error: findErr } = await (supabase.from("memorials").select("id,status,published_at,deleted_at").eq("slug", slug).single() as any);
   if (findErr || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
   const memorialId = mem.id as string;
   const { memorial, deceased, event } = buildRows(p);
   await fillMournerFromCustomer(supabase, memorial);
 
+  // status遷移(公開意図: publishImmediately既定ON / closedは republishClosed明示時のみ)
+  const trans = nextStatus(String(mem.status), mem.deleted_at ?? null, {
+    publish: p.publishImmediately !== "0",
+    republishClosed: p.republishClosed === "1",
+  });
+  const memorialUpdate: Record<string, unknown> = { ...memorial };
+  if (trans) {
+    memorialUpdate.status = trans.status;
+    if (trans.status === "published") memorialUpdate.noindex_flag = true; // 移行データの露出防止
+    if (trans.setPublishedAt && !mem.published_at) memorialUpdate.published_at = new Date().toISOString();
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: mErr } = await (supabase.from("memorials").update(memorial as any).eq("id", memorialId) as any);
+  const { error: mErr } = await (supabase.from("memorials").update(memorialUpdate as any).eq("id", memorialId) as any);
   if (mErr) return { ok: false, error: "更新に失敗しました: " + mErr.message };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -331,6 +366,13 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
   await supabase.from("funeral_events").delete().eq("memorial_id", memorialId);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await supabase.from("funeral_events").insert({ memorial_id: memorialId, ...event } as any);
+
+  // status/内容の変更を公開ページ・管理一覧へ即時反映(revalidate漏れによる「反映されない」再燃防止)
+  revalidatePath(`/m/${slug}`);
+  revalidatePath(`/m/${slug}/venue`);
+  revalidatePath(`/m/${slug}/venue/hall`);
+  revalidatePath(`/fuhou/ceremonies/${slug}`);
+  revalidatePath("/fuhou/ceremonies");
 
   return { ok: true, slug };
 }
@@ -519,13 +561,13 @@ export async function findMemorialSlugByDeceasedName(
 
 export async function getCeremonyFormState(
   slug: string
-): Promise<{ withVenue: boolean; isTest: boolean; state: Record<string, string> } | null> {
+): Promise<{ withVenue: boolean; isTest: boolean; status: string; state: Record<string, string> } | null> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
   const supabase = createAdminClient() as unknown as { from: (t: string) => any };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: mem, error } = await (supabase
     .from("memorials")
-    .select("id, form_state, venue, obituary_title, obituary_body, announce_mourner_name, religion_type, koden_decline, flower_decline, offering_accept_until")
+    .select("id, status, form_state, venue, obituary_title, obituary_body, announce_mourner_name, religion_type, koden_decline, flower_decline, offering_accept_until")
     .eq("slug", slug)
     .single() as any);
   if (error || !mem) return null;
@@ -554,6 +596,7 @@ export async function getCeremonyFormState(
   return {
     withVenue: Boolean(fsRaw.withVenue ?? mem.venue != null),
     isTest: Boolean(fsRaw.isTest),
+    status: String(mem.status ?? "published"),
     state: merged,
   };
 }

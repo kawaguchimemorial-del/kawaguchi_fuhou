@@ -34,6 +34,7 @@ export function CeremonyWizard({
   withVenue,
   isTest,
   editSlug,
+  currentStatus,
   initialState,
   focusStep,
   flowerProducts = [],
@@ -41,10 +42,12 @@ export function CeremonyWizard({
   withVenue: boolean;
   isTest: boolean;
   editSlug?: string; // 指定時は編集モード（更新）
+  currentStatus?: string; // 編集時の現ステータス(closed=終了 なら再公開UIを出す)
   initialState?: State;
   focusStep?: number; // 指定時はそのステップのみ編集（セクション個別編集）
   flowerProducts?: FlowerProduct[];
 }) {
+  const isClosed = currentStatus === "closed";
   const singleStep = focusStep != null;
   const [step, setStep] = useState(focusStep ?? 0);
   const last = withVenue ? 4 : 2;
@@ -95,6 +98,7 @@ export function CeremonyWizard({
       greetingHeading: g("greetingHeading") || "喪主挨拶", greetingBody: g("greetingBody"),
       greetingSign: g("greetingSign") || (mournerFull ? `喪主 ${mournerFull}` : ""),
       publishImmediately: g("publishImmediately"), openFrom: g("openFrom"), openDays: g("openDays"),
+      republishClosed: isClosed && g("republishClosed") === "1" ? "1" : "",
       mgmtNo: g("mgmtNo"), attendeeName: g("attendeeName"), showOfferings: g("showOfferings"),
       frame: g("frame"), side: g("side"), center: g("center"), top: g("top"), background: g("background"),
       portraitPath: g("portraitPath"),
@@ -147,6 +151,19 @@ export function CeremonyWizard({
       )}
       {singleStep && (
         <p className="mb-4 text-sm text-gray-500">「{STEPS[focusStep!]}」を編集しています。</p>
+      )}
+
+      {/* 終了(closed)状態の訃報は、保存しても既定では公開に戻らない(移行データの一斉再公開防止)。
+          再公開したい場合はここで明示的にチェックする。 */}
+      {isClosed && (
+        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm font-bold text-amber-800">この訃報は現在「終了」状態です（非公開）。</p>
+          <p className="mt-1 text-xs text-amber-700">日程を修正しても、下記にチェックしないと公開されません。誤って登録した過去日程を直して公開する場合はチェックしてください。</p>
+          <label className="mt-2 flex items-center gap-2 text-sm text-amber-900">
+            <input type="checkbox" checked={g("republishClosed") === "1"} onChange={(e) => set("republishClosed", e.target.checked ? "1" : "")} />
+            この訃報を再度公開する
+          </label>
+        </div>
       )}
 
       <div className="rounded-lg bg-white p-6 shadow-sm">
