@@ -66,7 +66,12 @@ export function PortraitRelinkButton({
           <div className="relative flex max-h-[80vh] w-full max-w-lg flex-col rounded-lg bg-white shadow-xl">
             <div className="border-b px-5 py-3">
               <p className="font-bold text-gray-800">見積の紐付けを修正</p>
-              <p className="mt-0.5 text-xs text-gray-500">{deceasedName ? `対象者: ${deceasedName} 様` : "対象者未設定"}</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {deceasedName ? `対象者: ${deceasedName} 様` : "対象者未設定"}
+                <span className="ml-2 text-gray-400">
+                  現在の見積ID: {currentEstimateId ? <span className="font-mono text-gray-600">{currentEstimateId}</span> : "未紐付け"}
+                </span>
+              </p>
             </div>
             <div className="border-b p-3">
               <input
