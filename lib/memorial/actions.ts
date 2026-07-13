@@ -8,7 +8,8 @@ import { OFFERING_PRODUCTS } from "./products";
 import { dbEnabled, resolveMemorialId, insertRow, getPublicProducts } from "./db";
 import { createFlowerOrderInvoice } from "@/lib/kanri/flower-invoice";
 import { sendMailWithPdf } from "@/lib/kanri/mail";
-import { getCompanyInfo } from "@/lib/kanri/masters";
+import { getCompanyInfo, getAppSetting } from "@/lib/kanri/masters";
+import { fillSlot, ORDER_NOTIFY_DEFAULT_TO } from "@/lib/memorial/mail-template";
 
 // 共通の戻り値型
 export type ActionResult =
@@ -250,10 +251,10 @@ export async function submitOrder(
     const addr = [co.prefecture, co.address_city, co.address_street].filter(Boolean).join("");
     const deceasedNm = m.deceased?.nameKanji || "";
     const mournerNm = m.chiefMourner?.nameKanji || "";
-    // 送信専用の注記＋電話問い合わせ案内（両メール共通）
-    const noReplyNote = `<p style="color:#888;font-size:12px;line-height:1.6">`
-      + `※ このメールは送信専用アドレスから配信しています。ご返信いただいてもお受けできません。<br>`
-      + `ご不明な点・ご変更・キャンセル等は、お手数ですが${tel ? `お電話（${tel}）` : "お電話"}にてお問い合わせください。</p>`;
+    // 文言スロット(設定 > メール設定 で編集可能。空/不正は既定値に自動フォールバック)
+    const [notifySetting, tmpl] = await Promise.all([getAppSetting("order_notify"), getAppSetting("order_mail_template")]);
+    const vars = { company, tel };
+    const noReplyNote = `<p style="color:#888;font-size:12px;line-height:1.6">${fillSlot("footer_note", tmpl.footer_note, vars, { html: true })}</p>`;
     const signature = `<p>――――――――――<br>${company}<br>${addr}<br>${tel ? "TEL: " + tel : ""}</p>`;
     const orderLines = `商品：${product.name}<br>数量：${d.quantity}<br>札名：${d.namePlateText}<br>`
       + `旧字体希望：${d.oldChar === "on" ? "あり" : "なし"}<br>合計：${total.toLocaleString()}円（税込）<br>お支払い方法：${paymentMethod}`;
@@ -264,21 +265,21 @@ export async function submitOrder(
       + (d.memo ? `<br>備考：${d.memo}` : "");
 
     // 1) 注文者への確認メール
-    const subject = `【${company}】供花・供物ご注文ありがとうございます`;
+    const subject = fillSlot("subject", tmpl.subject, vars);
     const html = `<p>${fullName} 様</p>`
-      + `<p>この度は供花・供物のご注文をいただき、誠にありがとうございます。以下の内容で承りました。</p>`
+      + `<p>${fillSlot("greeting", tmpl.greeting, vars, { html: true })}</p>`
       + `<p>${orderLines}</p>`
       + (paymentMethod === "当日現地払い"
-        ? `<p>当日、会場にてお支払いをお願いいたします。</p>`
+        ? `<p>${fillSlot("pay_onsite", tmpl.pay_onsite, vars, { html: true })}</p>`
         : (invoiceId
-          ? `<p>お支払いは、下記より請求書を開いて印刷のうえ、記載の方法にてお願いいたします。<br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">▶ 請求書を表示・印刷する</a></p>`
-          : `<p>後ほど請求書のご案内をお送りいたします。</p>`))
+          ? `<p>${fillSlot("pay_invoice", tmpl.pay_invoice, vars, { html: true })}<br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">▶ 請求書を表示・印刷する</a></p>`
+          : `<p>${fillSlot("pay_pending", tmpl.pay_pending, vars, { html: true })}</p>`))
       + noReplyNote + signature;
     const mailRes = await sendMailWithPdf({ to: d.email, subject, html });
     if (!mailRes.ok) console.error("[flower-order] 確認メール送信失敗:", mailRes.error);
 
     // 2) 葬儀社への注文通知メール
-    const notifyTo = process.env.ORDER_NOTIFY_TO || "flower@kawaguchi-memorial-hall.com";
+    const notifyTo = (notifySetting.to ?? "").trim() || process.env.ORDER_NOTIFY_TO || ORDER_NOTIFY_DEFAULT_TO;
     const nsubject = `【供花注文】${deceasedNm ? `故${deceasedNm}様　` : ""}${fullName}様より`;
     const nhtml = `<p>オンライン供花・供物のご注文が入りました。</p>`
       + `<p><b>■ 対象</b><br>故人：${deceasedNm || "—"}<br>喪主：${mournerNm || "—"}</p>`
