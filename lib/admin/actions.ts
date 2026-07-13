@@ -588,3 +588,22 @@ export async function convertToVenue(slug: string): Promise<CreateResult> {
   revalidatePath(`/fuhou/ceremonies/${slug}`);
   return { ok: true, slug };
 }
+
+// ===== 訃報案内(葬儀)の削除 =====
+// soft-delete: memorials.deleted_at をセット。詳細/一覧/検出関数は全て
+// deleted_at is null で除外するため、削除後は一覧から消え開けなくなる。
+// 見積との紐付け(fk_estimates.memorial_id)も解除し、見積側は「作成」導線へ戻す。
+export async function deleteCeremony(slug: string): Promise<{ ok: boolean; error?: string }> {
+  if (!slug) return { ok: false, error: "対象が指定されていません。" };
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { ok: false, error: "Supabase未設定" };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const { data: mem } = await supabase.from("memorials").select("id").eq("slug", slug).is("deleted_at", null).maybeSingle();
+  if (!mem) return { ok: false, error: "対象の葬儀が見つかりません。" };
+  const { error } = await supabase.from("memorials").update({ deleted_at: new Date().toISOString() }).eq("id", mem.id);
+  if (error) return { ok: false, error: "削除に失敗しました: " + error.message };
+  // 見積からの参照を解除(残っていても getEstimate 側で吸収するが整合性のため)
+  try { await supabase.from("fk_estimates").update({ memorial_id: null }).eq("memorial_id", mem.id); } catch { /* 解除失敗は致命ではない */ }
+  revalidatePath("/fuhou/ceremonies");
+  return { ok: true };
+}
