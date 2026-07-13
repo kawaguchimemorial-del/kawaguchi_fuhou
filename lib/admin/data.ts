@@ -100,7 +100,7 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
     const { data, error } = await supabase
       .from("memorials")
       .select(
-        "slug,status,access_level,koden_decline,published_at,venue,announce_mourner_name,estimate_id,deceased(name_kanji),funeral_events(event_type,start_at,datetime_label),fk_estimates!memorials_estimate(fk_customers(last_name,first_name))"
+        "slug,status,access_level,koden_decline,flower_decline,offering_accept_until,published_at,venue,announce_mourner_name,estimate_id,deceased(name_kanji),funeral_events(event_type,start_at,datetime_label),fk_estimates!memorials_estimate(fk_customers(last_name,first_name))"
       )
       .eq("funeral_home_id", DEMO_FUNERAL_HOME_ID)
       .is("deleted_at", null)
@@ -133,6 +133,10 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
         event2: ev(events[1]),
         publishFrom: fmtDateTime(m.published_at),
         publishUntil: fmtDateTime(publishUntil),
+        // 供花・供物の注文受付終了(offering_accept_until は供花・供物 共通)。
+        // 受け付けない場合は明示。未設定は「-」表示のまま。
+        flowerDeadline: m.flower_decline ? "受付なし" : (m.offering_accept_until ? fmtDateTime(m.offering_accept_until) : undefined),
+        offeringDeadline: m.flower_decline ? "受付なし" : (m.offering_accept_until ? fmtDateTime(m.offering_accept_until) : undefined),
         status: m.status === "published" ? "公開中" : m.status === "draft" ? "下書き" : "終了",
         kodenOption: m.koden_decline ? "利用しない" : "利用する",
       };

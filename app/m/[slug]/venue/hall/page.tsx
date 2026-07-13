@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPublicMemorial } from "@/lib/memorial/data";
 import { TestBanner, GoldButton, ShareRow, SiteFooter } from "@/components/guest/parts";
+import { isPast } from "@/lib/format";
 import { AltarView } from "@/components/guest/AltarView";
 import { AlbumGallery } from "@/components/guest/AlbumGallery";
 import { HlsPlayer } from "@/components/guest/HlsPlayer";
@@ -19,6 +20,12 @@ export default async function VenueHall({ params }: Params) {
   if (!m || !m.venue) notFound();
   const v = m.venue;
   await logView(slug, "venue"); // 入場（閲覧）を記録
+
+  // 供花・供物の注文受付(訃報トップと同条件: 受付NG or 締切超過なら非表示)
+  const flowerOpen = !m.flowerDecline && !isPast(m.offeringAcceptUntil);
+  const flowerUntil = m.offeringAcceptUntil
+    ? new Date(m.offeringAcceptUntil).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "";
 
   return (
     <div className="min-h-screen">
@@ -61,6 +68,25 @@ export default async function VenueHall({ params }: Params) {
             </a>
           </div>
         </section>
+
+        {/* 供花・供物のご注文（訃報トップと同じ導線をオンライン式場にも表示） */}
+        {flowerOpen && (
+          <section className="mt-10 bg-[var(--card)] px-6 py-8 text-center">
+            <h2 className="font-serif text-xl text-[var(--primary)]">
+              供花・供物のご注文
+              <span className="mx-auto mt-2 block h-px w-16 bg-[var(--accent)]" />
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
+              故人様へ供花・供物をお贈りいただけます。
+              {flowerUntil && <><br />受付は {flowerUntil} まで</>}
+            </p>
+            <div className="mt-6">
+              <GoldButton href={`/m/${m.slug}/flower`} className="px-16">
+                ご注文はこちら　›
+              </GoldButton>
+            </div>
+          </section>
+        )}
 
         {/* 葬儀の様子（複数写真。旧・単写真 ceremonyPhotoPath はフォールバック） */}
         {(() => {
