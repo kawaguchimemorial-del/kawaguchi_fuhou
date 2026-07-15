@@ -1616,3 +1616,36 @@
 ### ロールバック
 - 全体: タグ admin-ui-v1(aacb73fe)。UIのみ: NEXT_PUBLIC_FUHOU_V2=0。改名のみ: C2をrevert。
 - 旧URL https://.../admin は307で/fuhouへ転送されるため既存ブックマークは壊れない。
+
+---
+
+## 2026-07-16 — セッション: Supabase Storage 2.7GB 容量削減
+
+### 背景
+- Supabaseから「ストレージ2.7GB」警告。調査の結果、DB本体は28MBのみで、`memorial-media`バケットが2,620MB（全体の99.5%）を占有。
+- 中身は63葬儀分の写真ギャラリー（2026-07-03に＠葬儀から一括移植）。平均1.4MB/枚・最大19MBの**無圧縮フル解像度原本**（8256×5504等）を保存しており、リサイズ/圧縮が全く行われていなかった。孤児・削除済みファイルは0件。
+
+### やったこと
+- `sharp`で全1,857枚を **長辺2048px・JPEG品質80（PNGはpng再エンコード）** に一括変換。
+- **同一パスへ上書き**アップロード（`x-upsert`）→ DB・フロント無変更、公開中サイト無停止・リンク切れゼロ。
+- 原本は全て `F:\memorial-media-originals-backup`（2.6GB）にローカル退避。
+- 一時的な502で1枚だけ失敗 → 該当葬儀を再実行して回収。
+
+### 結果
+- `memorial-media`: **2,524MB → 417MB（83.5%削減）**
+- Storage合計: **約2,634MB → 430.6MB**（無料枠1GB内に収束）
+- 最大ファイル: 19.4MB → 1.67MB
+- 作業スクリプト（サービスロールキーをハードコードしていたため）は作業後に削除。
+
+### 残課題（今後）
+- **今後のアップロード経路に自動リサイズ未導入** → 新規写真は再びフル解像度で溜まる。恒久対策としてアップロードAPIに`sharp`リサイズを組み込むこと。
+
+### 追加: アップロード経路の自動圧縮（再発防止・恒久対策）
+- 共通ユーティリティ `lib/image/compress-client.ts` を新規作成（ブラウザ内canvas圧縮・追加依存なし／長辺2048・JPEG品質0.82前後・EXIF回転焼込み・透過は白下地・圧縮後が大きければ元を使用）。
+- 全アップロード経路に組込み:
+  - ① 祭壇遺影 `components/admin/CeremonyWizard.tsx`（クライアント圧縮）
+  - ② 喪主アルバム/式場写真 `components/admin/AlbumManager.tsx`（クライアント圧縮）
+  - ③ 会葬者 記帳＋写真 `components/guest/forms/MessageForm.tsx`（クライアント圧縮）
+  - ④ AI遺影保存 `app/api/iei-photo/save/route.ts`（サーバー`sharp`圧縮／透過ありはPNG維持・無しはJPEG q85・長辺2048）
+- 商品画像 `lib/admin/product-actions.ts` は元々sharp最適化済みのため変更なし。
+- 検証: `tsc --noEmit` エラー0 ／ `next build` exit 0（Compiled successfully）。

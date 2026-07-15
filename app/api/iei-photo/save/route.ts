@@ -1,19 +1,43 @@
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 import { KANRI_HOME_ID } from "@/lib/kanri/constants";
+import sharp from "sharp";
 
 export const dynamic = "force-dynamic";
 
-// dataURL(png/jpeg/webp) を Storage(ai-portraits) にアップロードして公開URLを返す。
+// 長辺2048へ圧縮する。透過があればPNG、無ければJPEGへ再エンコードし Storage 容量肥大化を防ぐ。
+async function optimize(buf: Buffer): Promise<{ out: Buffer; contentType: string; ext: string }> {
+  try {
+    const img = sharp(buf, { failOn: "none" }).rotate();
+    const meta = await img.metadata();
+    let pipe = img;
+    if (Math.max(meta.width ?? 0, meta.height ?? 0) > 2048) {
+      pipe = pipe.resize(2048, 2048, { fit: "inside", withoutEnlargement: true });
+    }
+    if (meta.hasAlpha) {
+      const out = await pipe.png({ compressionLevel: 9, palette: true }).toBuffer();
+      return out.length < buf.length
+        ? { out, contentType: "image/png", ext: "png" }
+        : { out: buf, contentType: "image/png", ext: "png" };
+    }
+    const out = await pipe.jpeg({ quality: 85, mozjpeg: true }).toBuffer();
+    return out.length < buf.length
+      ? { out, contentType: "image/jpeg", ext: "jpg" }
+      : { out: buf, contentType: "image/jpeg", ext: "jpg" };
+  } catch {
+    return { out: buf, contentType: "image/jpeg", ext: "jpg" };
+  }
+}
+
+// dataURL(png/jpeg/webp) を圧縮して Storage(ai-portraits) にアップロードし公開URLを返す。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function upload(c: any, dataUrl: string): Promise<{ url?: string; error?: string }> {
   const m = /^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/.exec(dataUrl ?? "");
   if (!m) return { error: "画像データが不正です。" };
-  const contentType = m[1];
-  const ext = m[2] === "jpeg" ? "jpg" : m[2];
-  const buf = Buffer.from(m[3], "base64");
-  if (buf.length > 15 * 1024 * 1024) return { error: "画像サイズが大きすぎます。" };
+  const raw = Buffer.from(m[3], "base64");
+  if (raw.length > 15 * 1024 * 1024) return { error: "画像サイズが大きすぎます。" };
+  const { out, contentType, ext } = await optimize(raw);
   const path = `${KANRI_HOME_ID}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
-  const { error } = await c.storage.from("ai-portraits").upload(path, buf, { contentType, upsert: false });
+  const { error } = await c.storage.from("ai-portraits").upload(path, out, { contentType, upsert: false });
   if (error) return { error: error.message };
   return { url: c.storage.from("ai-portraits").getPublicUrl(path).data.publicUrl };
 }

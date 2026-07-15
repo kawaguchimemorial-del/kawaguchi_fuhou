@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitMessage } from "@/lib/memorial/actions";
 import { createClient } from "@/lib/supabase/client";
+import { compressImageFile } from "@/lib/image/compress-client";
 
 const MAX_FILES = 3;
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -51,8 +52,9 @@ export function MessageForm({ slug }: { slug: string }) {
       if (files.length) {
         const sb = createClient();
         for (let i = 0; i < files.length; i++) {
-          const f = files[i];
-          const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+          // アップロード前に長辺2048/JPEGへ圧縮（Storage容量肥大化を防止）
+          const f = await compressImageFile(files[i], { maxEdge: 2048, quality: 0.82 });
+          const ext = f.type === "image/jpeg" ? "jpg" : (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
           const path = `${slug}/${Date.now()}-${i}.${ext}`;
           const { error } = await sb.storage.from("condolence").upload(path, f, { contentType: f.type, upsert: false });
           if (error) throw new Error(`画像のアップロードに失敗しました: ${error.message}`);

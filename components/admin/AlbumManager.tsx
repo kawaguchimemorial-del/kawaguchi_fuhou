@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createAlbumUploadUrl, saveVenuePhotos } from "@/lib/admin/actions";
 import { createClient } from "@/lib/supabase/client";
+import { compressImageFile } from "@/lib/image/compress-client";
 
 const PHOTO_BUCKET = "product-images"; // 公開読取バケット（album/ 配下）
 const MAX_ALBUM = 30;
@@ -66,11 +67,13 @@ export function AlbumManager({
           setError("JPGまたはPNG画像のみアップロードできます。");
           continue;
         }
-        if (file.size > MAX_MB * 1024 * 1024) {
+        // アップロード前に長辺2048/JPEGへ圧縮（Storage容量肥大化を防止）
+        const upFile = await compressImageFile(file, { maxEdge: 2048, quality: 0.82 });
+        if (upFile.size > MAX_MB * 1024 * 1024) {
           setError(`画像は${MAX_MB}MBまでです（${file.name}）。`);
           continue;
         }
-        const ext = file.type === "image/png" ? "png" : "jpg";
+        const ext = upFile.type === "image/png" ? "png" : "jpg";
         const sig = await createAlbumUploadUrl(ext);
         if (!sig.ok || !sig.path || !sig.token || !sig.publicUrl) {
           setError(sig.error ?? "アップロードURLの発行に失敗しました。");
@@ -78,7 +81,7 @@ export function AlbumManager({
         }
         const { error: upErr } = await supabase.storage
           .from(PHOTO_BUCKET)
-          .uploadToSignedUrl(sig.path, sig.token, file, { contentType: file.type });
+          .uploadToSignedUrl(sig.path, sig.token, upFile, { contentType: upFile.type });
         if (upErr) {
           setError("アップロードに失敗しました: " + upErr.message);
           continue;
