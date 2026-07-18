@@ -1,4 +1,4 @@
-import { EstimateCreateForm } from "@/components/kanri/EstimateCreateForm";
+import { EstimateCreateWithIntake } from "@/components/kanri/EstimateCreateWithIntake";
 import { listProducts, listProductSets } from "@/lib/kanri/products";
 import { listMasterItems } from "@/lib/kanri/masters";
 
@@ -14,7 +14,7 @@ export default async function NewEstimate() {
     <div className="mx-auto max-w-4xl">
       <div className="-m-5 mb-4 bg-[#2c8c6f] px-5 py-3"><h1 className="text-lg font-bold text-white">見積もり</h1></div>
       <p className="mb-3 font-bold text-gray-700">登録</p>
-      <EstimateCreateForm products={products} productSets={productSets} osonae={osonae} discounts={discounts} memorialServices={memorialServices} purposes={purposes} templates={templates} />
+      <EstimateCreateWithIntake products={products} productSets={productSets} osonae={osonae} discounts={discounts} memorialServices={memorialServices} purposes={purposes} templates={templates} />
     </div>
   );
 }

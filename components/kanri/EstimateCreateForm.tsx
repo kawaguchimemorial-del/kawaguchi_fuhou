@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { saveEstimateFull, saveInvoiceFull, type KanriResult } from "@/lib/kanri/actions";
 import { PREFECTURES } from "@/lib/kanri/constants";
 import type { Product, ProductSet } from "@/lib/kanri/products";
@@ -30,10 +31,16 @@ export interface FormInitial {
   advance?: number; issuerCompany?: string; chargedOrg?: string; chargedUser?: string;
   staffName?: string; // 担当者(最終更新者)
   preConsultation?: boolean; // 事前相談
+  // お客様入力(intake)→見積もり作成へのプリフィル用: 顧客を同時に新規登録の各値
+  newCustomer?: boolean;
+  newCustomerLastName?: string; newCustomerFirstName?: string;
+  newCustomerPostcode?: string; newCustomerPrefecture?: string; newCustomerCity?: string; newCustomerStreet?: string;
+  newCustomerTel?: string; newCustomerMobile?: string; newCustomerEmail?: string;
 }
 interface Props {
   asInvoice?: boolean;
-  initial?: FormInitial;     // 編集モード
+  intakeMode?: boolean;      // お客様入力モード: 上部(顧客/対象者/喪主)のみ表示し「入力完了」で見積もり作成へ受渡し
+  initial?: FormInitial;     // 編集モード / お客様入力からのプリフィル
   products: Product[];
   productSets: ProductSet[];
   osonae: MasterItem[];      // その他オプション、お供えにかかる費用
@@ -95,10 +102,12 @@ function toLocal(iso?: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function EstimateCreateForm({ asInvoice, initial, products, productSets, osonae, discounts, memorialServices = [], purposes = [], templates = [] }: Props) {
+export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, productSets, osonae, discounts, memorialServices = [], purposes = [], templates = [] }: Props) {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(asInvoice ? saveInvoiceFull : saveEstimateFull, null);
   const [customer, setCustomer] = useState<{ id: string; name: string } | null>(initial?.customerId ? { id: initial.customerId, name: initial.customerName ?? "" } : null);
-  const [newCustomer, setNewCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState(initial?.newCustomer ?? false);
   const [pickOpen, setPickOpen] = useState(false);
   const [q, setQ] = useState(""); const [hits, setHits] = useState<Hit[]>([]); const [loading, setLoading] = useState(false);
   const [setOpen, setSetOpen] = useState(false);
@@ -208,11 +217,11 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const [chargedUser, setChargedUser] = useState(initial?.chargedUser ?? "");
   const [staffName, setStaffName] = useState(initial?.staffName ?? "");
   // 顧客を同時に新規登録の入力(バリデーション用に制御化)
-  const [ncLast, setNcLast] = useState("");
-  const [ncFirst, setNcFirst] = useState("");
-  const [ncStreet, setNcStreet] = useState("");
-  const [ncTel, setNcTel] = useState("");
-  const [ncMobile, setNcMobile] = useState("");
+  const [ncLast, setNcLast] = useState(initial?.newCustomerLastName ?? "");
+  const [ncFirst, setNcFirst] = useState(initial?.newCustomerFirstName ?? "");
+  const [ncStreet, setNcStreet] = useState(initial?.newCustomerStreet ?? "");
+  const [ncTel, setNcTel] = useState(initial?.newCustomerTel ?? "");
+  const [ncMobile, setNcMobile] = useState(initial?.newCustomerMobile ?? "");
   const [valErrors, setValErrors] = useState<string[]>([]);
   // 年齢: 没年月日 - 生年月日 で自動計算(いずれか未入力なら手入力値を保持)
   const calcAge = (birth: string, death: string): number | null => {
@@ -229,9 +238,9 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   const ageValue = autoAge != null ? String(autoAge) : dAge;
   const [lookupMsg, setLookupMsg] = useState("");
   // 顧客を同時に新規登録: 郵便番号→住所自動入力
-  const [ncPostcode, setNcPostcode] = useState("");
-  const [ncPref, setNcPref] = useState("");
-  const [ncCity, setNcCity] = useState("");
+  const [ncPostcode, setNcPostcode] = useState(initial?.newCustomerPostcode ?? "");
+  const [ncPref, setNcPref] = useState(initial?.newCustomerPrefecture ?? "");
+  const [ncCity, setNcCity] = useState(initial?.newCustomerCity ?? "");
   const [zipMsg, setZipMsg] = useState("");
   async function zipToAddr(postcode: string, setPref: (v: string) => void, setCity: (v: string) => void, setMsg: (v: string) => void) {
     const z = postcode.replace(/[^0-9]/g, "");
@@ -379,7 +388,38 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
     }
     return m;
   }
+  // お客様入力(intake)完了: フォーム値を丸ごと吸い上げ、sessionStorageに保存して見積もり作成画面へ渡す。
+  const INTAKE_KEY = "estimate_intake_v1";
+  function onIntakeComplete() {
+    const form = formRef.current;
+    const g = (k: string): string => {
+      const v = form ? new FormData(form).get(k) : null;
+      return v == null ? "" : String(v);
+    };
+    const undef = (s: string) => (s.trim() ? s.trim() : undefined);
+    const data: FormInitial = {
+      preConsultation: isPre,
+      constructionNo: undef(pno),
+      customerId: customer?.id, customerName: customer?.name,
+      newCustomer,
+      newCustomerLastName: undef(ncLast), newCustomerFirstName: undef(ncFirst),
+      newCustomerPostcode: undef(ncPostcode), newCustomerPrefecture: undef(ncPref), newCustomerCity: undef(ncCity),
+      newCustomerStreet: undef(ncStreet), newCustomerTel: undef(ncTel), newCustomerMobile: undef(ncMobile),
+      newCustomerEmail: undef(g("new_customer_email")),
+      deceasedLastName: undef(deceasedLast), deceasedFirstName: undef(deceasedFirst),
+      deceasedGender: undef(dGender), deceasedBirthDate: undef(dBirth), deceasedDeathDate: undef(dDeath),
+      deceasedAge: ageValue ? Number(ageValue) : undefined,
+      deceasedRelation: undef(dRelation),
+      mournerLastName: undef(g("mourner_last_name")), mournerFirstName: undef(g("mourner_first_name")),
+      mournerKana: undef(g("mourner_kana")), mournerPhone: undef(g("mourner_phone")),
+      mournerPostcode: undef(mPostcode), mournerPrefecture: undef(mPref), mournerCity: undef(mCity),
+      mournerStreet: undef(g("mourner_address_street")), mournerBuilding: undef(g("mourner_address_building")),
+    };
+    try { sessionStorage.setItem(INTAKE_KEY, JSON.stringify(data)); } catch { /* noop */ }
+    router.push("/kanri/estimates/new");
+  }
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (intakeMode) { e.preventDefault(); return; } // お客様入力モードでは送信しない（Enterキー誤送信防止）
     if (asInvoice) return; // 請求書は従来どおり
     const m = validate();
     if (m.length) {
@@ -392,7 +432,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
   }
 
   return (
-    <form action={action} onSubmit={onSubmit} className="space-y-4 pb-20">
+    <form ref={formRef} action={action} onSubmit={onSubmit} className="space-y-4 pb-20">
       {state && state.ok === false && <p className="rounded bg-red-50 px-4 py-2 text-sm text-red-600">{state.error}</p>}
       {valErrors.length > 0 && (
         <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -466,7 +506,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
             <div className="grid gap-3 sm:grid-cols-3">
               <F label="自宅番号"><input name="new_customer_tel" value={ncTel} onChange={(e) => setNcTel(e.target.value)} className={inp} placeholder="ハイフン無し" /></F>
               <F label="携帯番号"><input name="new_customer_mobile" value={ncMobile} onChange={(e) => setNcMobile(e.target.value)} className={inp} placeholder="ハイフン無し" /></F>
-              <F label="メールアドレス"><input name="new_customer_email" type="email" className={inp} /></F>
+              <F label="メールアドレス"><input name="new_customer_email" type="email" defaultValue={initial?.newCustomerEmail ?? ""} className={inp} /></F>
             </div>
           </div>
         )}
@@ -531,6 +571,15 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         )}
       </Card>
 
+      {/* お客様入力モード: ここまでで完了。値をsessionStorageへ渡して見積もり作成画面へ */}
+      {intakeMode && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col items-center gap-1 border-t bg-white/95 px-6 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.08)] backdrop-blur">
+          <p className="text-[11px] text-gray-500">入力が終わりましたら、このボタンを押して係員にタブレットをお渡しください。</p>
+          <button type="button" onClick={onIntakeComplete} className="w-full max-w-sm rounded bg-[#2c8c6f] px-8 py-3 text-base font-bold text-white shadow hover:bg-[#25795f]">入力完了</button>
+        </div>
+      )}
+
+      {!intakeMode && (<>
       {/* 宛名情報 / 請求先情報 */}
       <Card title={label}>
         <F label={label}>
@@ -895,6 +944,7 @@ export function EstimateCreateForm({ asInvoice, initial, products, productSets, 
         <span className="text-sm">合計</span>
         <span className="text-xl font-bold">{totals.total.toLocaleString()} 円</span>
       </div>
+      </>)}
 
       {/* 顧客ピッカー */}
       {pickOpen && (

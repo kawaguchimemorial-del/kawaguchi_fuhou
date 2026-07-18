@@ -1649,3 +1649,20 @@
   - ④ AI遺影保存 `app/api/iei-photo/save/route.ts`（サーバー`sharp`圧縮／透過ありはPNG維持・無しはJPEG q85・長辺2048）
 - 商品画像 `lib/admin/product-actions.ts` は元々sharp最適化済みのため変更なし。
 - 検証: `tsc --noEmit` エラー0 ／ `next build` exit 0（Compiled successfully）。
+
+---
+
+## 2026-07-18 — セッション: 見積もり作成にお客様入力(intake)画面を追加
+
+### 目的
+お客様にタブレットを直接渡し、故人・顧客・喪主情報を本人に入力してもらう（氏名の漢字誤り防止）。入力完了後、スタッフが引き取ってそのまま見積もり作成へ進める。
+
+### 実装
+- `EstimateCreateForm` に `intakeMode` を追加。ONで上部（事前相談・施行番号・顧客〔検索/選択/新規登録〕・対象者・喪主）のみ表示し、下部（宛名・商品・明細・登録ボタン・合計バー）を非表示。代わりに「入力完了」ボタンを表示。
+- 入力完了で全項目を `FormData` から吸い上げ→ `sessionStorage("estimate_intake_v1")` に保存→ `/kanri/estimates/new` へ遷移。Enterキー誤送信も防止。
+- `FormInitial` に「顧客を同時に新規登録」各値(newCustomer*)を追加し、intake→new でプリフィル復元できるよう各useState初期化子を `initial` 参照に変更。
+- 新規画面: `EstimateCreateWithIntake`(client bridge) を新設。effectでsessionStorageを読み込み後にフォームをマウント（hydration不整合回避）、読込値は一度で破棄。
+- お客様入力画面 `app/kanri/estimates/intake/page.tsx` を新設（商品プロップは空配列）。
+- 導線変更: ダッシュボードの「事前見積作成」「葬儀見積作成」、見積一覧の「＋見積作成」を `/kanri/estimates/new` → `/kanri/estimates/intake` に変更。
+- 受け渡しは同一タブレット内 sessionStorage（個人情報をURLに載せない）。
+- 検証: `tsc --noEmit` エラー0 ／ `next build` exit 0（両ルート生成確認）。未デプロイ。

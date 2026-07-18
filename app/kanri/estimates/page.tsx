@@ -40,7 +40,7 @@ export default async function EstimatesPage({ searchParams }: SP) {
       {/* 緑ヘッダー */}
       <div className="-m-5 mb-4 flex flex-wrap items-center justify-between gap-2 bg-[#2c8c6f] px-5 py-3">
         <h1 className="text-lg font-bold text-white">見積もり</h1>
-        <Link href="/kanri/estimates/new" className="rounded bg-white px-3 py-1.5 text-xs font-medium text-[#2c8c6f]">＋ 見積作成</Link>
+        <Link href="/kanri/estimates/intake" className="rounded bg-white px-3 py-1.5 text-xs font-medium text-[#2c8c6f]">＋ 見積作成</Link>
       </div>
 
       {/* 検索（実画面準拠） */}

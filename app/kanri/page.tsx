@@ -15,11 +15,11 @@ const GROUPS = [
   ] },
   { title: "事前相談", items: [
     { label: "顧客呼び出し", href: "/kanri/customers", icon: Users },
-    { label: "事前見積作成", href: "/kanri/estimates/new", icon: FileText },
+    { label: "事前見積作成", href: "/kanri/estimates/intake", icon: FileText },
   ] },
   { title: "葬儀発生", items: [
     { label: "顧客呼び出し", href: "/kanri/customers", icon: Users },
-    { label: "葬儀見積作成", href: "/kanri/estimates/new", icon: FileText },
+    { label: "葬儀見積作成", href: "/kanri/estimates/intake", icon: FileText },
     { label: "見積もり一覧", href: "/kanri/estimates", icon: ClipboardList },
     { label: "請求書作成", href: "/kanri/billing", icon: Receipt },
   ] },
