@@ -53,10 +53,19 @@ export function MournerAccount({
         <p className="mt-2">ログインID：<span className="font-mono font-medium">{result.loginId}</span></p>
         <p>初期パスワード：<span className="font-mono font-medium">{result.tempPassword}</span></p>
         <p className="mt-2 text-xs text-gray-600">
-          ※ この初期パスワードは一度のみ表示されます。喪主様にお伝えください。<br />
-          ※ ログインURL：<span className="font-mono">/mypage/sign-in</span>
+          ※ この初期パスワードは一度のみ表示されます。喪主様にお伝えください。
         </p>
-        <button onClick={() => { setResult(null); router.refresh(); }} className="mt-3 rounded bg-[#9b2fae] px-4 py-2 text-xs text-white">閉じる</button>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <a
+            href="/mypage/sign-in"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded border border-[#9b2fae] px-4 py-2 text-xs text-[#9b2fae]"
+          >
+            マイページを開く ↗
+          </a>
+          <button onClick={() => { setResult(null); router.refresh(); }} className="rounded bg-[#9b2fae] px-4 py-2 text-xs text-white">閉じる</button>
+        </div>
       </div>
     );
   }

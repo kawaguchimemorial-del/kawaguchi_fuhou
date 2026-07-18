@@ -60,9 +60,22 @@ export default async function CeremonyDetail({ params }: Params) {
         <Row label="故人">{m.deceased.nameKanji}{m.deceased.nameKana ? `（${m.deceased.nameKana}）` : ""}</Row>
         <Row label="没日">{m.deceased.deathDate ? `${toWarekiDate(m.deceased.deathDate)}${m.deceased.ageKazoe ? `　享年${m.deceased.ageKazoe}` : ""}` : "—"}</Row>
         <Row label="喪主">{m.chiefMourner?.nameKanji ?? "—"}</Row>
-        <Row label="喪主 電話番号">{contactDefaults.phone || "—"}</Row>
-        {contactDefaults.email && <Row label="喪主 メール">{contactDefaults.email}</Row>}
-        <Row label="ログインID">{mourner.issued ? mourner.loginId : "未発行"}</Row>
+        <Row label="喪主 電話番号">{mourner.phone || contactDefaults.phone || "—"}</Row>
+        {(mourner.email || contactDefaults.email) && (
+          <Row label="喪主 メール">{mourner.email || contactDefaults.email}</Row>
+        )}
+        <Row label="ログインID">
+          {mourner.issued ? (
+            <span className="flex flex-wrap items-center gap-3">
+              <span className="font-mono">{mourner.loginId}</span>
+              <a href="/mypage/sign-in" target="_blank" rel="noreferrer" className="text-[#9b2fae] underline">
+                マイページを開く ↗
+              </a>
+            </span>
+          ) : (
+            "未発行"
+          )}
+        </Row>
       </Section>
 
       <Section title="訃報・香典" status="登録済" editHref={`${editBase}?step=1`}>

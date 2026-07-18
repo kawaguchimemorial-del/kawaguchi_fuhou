@@ -97,17 +97,25 @@ export async function resetMournerPassword(slug: string): Promise<IssueResult> {
 /** 詳細表示用：喪主アカウントの発行状態 */
 export async function getMournerAccount(
   slug: string
-): Promise<{ issued: boolean; loginId: string | null; method: string | null }> {
-  if (!enabled()) return { issued: false, loginId: null, method: null };
+): Promise<{ issued: boolean; loginId: string | null; method: string | null; phone: string | null; email: string | null }> {
+  const empty = { issued: false, loginId: null, method: null, phone: null, email: null };
+  if (!enabled()) return empty;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
   const { data } = await admin
     .from("memorials")
-    .select("mourner_account_issued,mourner_login_id,mourner_contact_method")
+    .select("mourner_account_issued,mourner_login_id,mourner_contact_method,mourner_phone,mourner_notify_email")
     .eq("slug", slug)
     .single();
-  if (!data) return { issued: false, loginId: null, method: null };
-  return { issued: !!data.mourner_account_issued, loginId: data.mourner_login_id ?? null, method: data.mourner_contact_method ?? null };
+  if (!data) return empty;
+  return {
+    issued: !!data.mourner_account_issued,
+    loginId: data.mourner_login_id ?? null,
+    method: data.mourner_contact_method ?? null,
+    // 発行時に実際に使った連絡先。見積/顧客からの推測値より確実なので詳細表示で優先する。
+    phone: data.mourner_phone ?? null,
+    email: data.mourner_notify_email ?? null,
+  };
 }
 
 // 喪主アカウント発行フォームの初期値(発行方法/電話/メール)。
