@@ -37,7 +37,10 @@ export function MournerAccount({
   if (issued && !result) {
     return (
       <div className="mb-6 rounded bg-green-50 px-4 py-3 text-sm text-green-800">
-        ✅ 喪主アカウント発行済み（ログインID：<span className="font-medium">{loginId}</span>）
+        ✅ 喪主アカウント発行済み（ログインID：<span className="font-mono font-medium">{loginId}</span>）
+        <a href="/mypage/sign-in" target="_blank" rel="noreferrer" className="ml-2 underline">
+          マイページを開く
+        </a>
       </div>
     );
   }
@@ -47,11 +50,11 @@ export function MournerAccount({
     return (
       <div className="mb-6 rounded border border-green-300 bg-green-50 px-4 py-4 text-sm">
         <p className="font-bold text-green-800">喪主アカウントを発行しました。</p>
-        <p className="mt-2">ログインID：<span className="font-medium">{result.loginId}</span></p>
+        <p className="mt-2">ログインID：<span className="font-mono font-medium">{result.loginId}</span></p>
         <p>初期パスワード：<span className="font-mono font-medium">{result.tempPassword}</span></p>
         <p className="mt-2 text-xs text-gray-600">
-          ※ この初期パスワードは一度のみ表示されます。喪主様にお伝えください。
-          {!result.authCreated && "（認証連携はログイン機能の有効化後に完了します）"}
+          ※ この初期パスワードは一度のみ表示されます。喪主様にお伝えください。<br />
+          ※ ログインURL：<span className="font-mono">/mypage/sign-in</span>
         </p>
         <button onClick={() => { setResult(null); router.refresh(); }} className="mt-3 rounded bg-[#9b2fae] px-4 py-2 text-xs text-white">閉じる</button>
       </div>

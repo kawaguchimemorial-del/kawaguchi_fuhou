@@ -20,6 +20,9 @@ tsconfig.tsbuildinfo
 /scripts/crawl-atsougi2.mjs
 /scripts/crawl-atsougi3.mjs
 /scripts/crawl-atsougi4.mjs
+/scripts/crawl-bereaved.mjs
+/scripts/crawl-bereaved2.mjs
+/scripts/crawl-bereaved3.mjs
 .env.local
 .env*.local
 

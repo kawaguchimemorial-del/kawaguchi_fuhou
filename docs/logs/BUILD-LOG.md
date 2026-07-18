@@ -1666,3 +1666,32 @@
 - 導線変更: ダッシュボードの「事前見積作成」「葬儀見積作成」、見積一覧の「＋見積作成」を `/kanri/estimates/new` → `/kanri/estimates/intake` に変更。
 - 受け渡しは同一タブレット内 sessionStorage（個人情報をURLに載せない）。
 - 検証: `tsc --noEmit` エラー0 ／ `next build` exit 0（両ルート生成確認）。未デプロイ。
+
+---
+
+## 2026-07-18 — セッション: 喪主マイページ（訃報案内の強化）
+
+### 目的
+実稼働中のアット葬儀（bereaved.at-sougi.com）の喪主管理画面をクロールし、同等機能を自社版に実装する。
+
+### 調査
+- Playwright で実アカウントにログインし全画面を巡回（`scripts/crawl-bereaved{,2,3}.mjs`／ID・PASS直書きのため gitignore）。
+- 生キャプチャは `docs/research/bereaved/`（実顧客27名の氏名・住所・電話・弔文を含むため gitignore 済み・コミット禁止）。
+- 仕様は `docs/bereaved-portal-spec.md` に整理（認証方式／12カード構成／香典精算ルール／CSV・TXT書式／URL体系）。
+
+### 実装
+- **0038_mourner_portal.sql**: `memorials` に喪主認証(password_hash/phone/last_login)・喪主挨拶・公開期間・メール通知設定を追加。`condolence_messages` にふりがな/会社名/関係/郵便番号/住所/メール/電話/画像を追加。`memorial_photos`(kind=funeral|album) を新設。
+  - 旧方式(0008)の `mourner_login_id`＝電話番号だった2件は、電話を `mourner_phone` へ退避しIDを空にして再発行対象に。旧方式はハッシュもログインUIも無く未稼働だったため実害なし。
+- **`lib/mourner/auth.ts`**: 10桁ログインID発行、scryptハッシュ（追加依存なし）、HMAC署名Cookieセッション(7日)、`assertMournerAccess`。存在しないIDでもダミーハッシュで照合しタイミング差を消す。
+- **`lib/admin/mourner-actions.ts`**: 発行を10桁ID＋ハッシュ保存に変更（Supabase Auth ユーザー作成は廃止）。`resetMournerPassword` を追加。既存の `genPassword` が `Date.now()` 由来で予測可能だったため `randomBytes` に修正。
+- **`/mypage`**: サインイン、ホーム(12カード)、参列者へのご案内(URLコピー)、オンライン式場詳細＋喪主挨拶編集、芳名録(香典精算3ヶ月・手数料5%・翌月末振込・20件ずつ)、参列者詳細、入場記録、葬儀の写真/アルバム(最大30枚・追加/並替/削除/保存・アップロード前に自動圧縮)、メール通知設定、パスワード変更、お問い合わせ/利用規約/特商法。
+- CSV/TXT は＠葬儀の Shift_JIS ではなく、本リポジトリ既存エクスポートと揃えて UTF-8+BOM。
+
+### 検証（`scripts/verify-mypage.mjs`）
+`next build` exit 0（全ルート生成）。本番相当サーバーで実データ巡回し全項目合格:
+未ログイン直アクセス→サインインへ／誤パスワードでエラー表示／全12画面が正しい見出しで描画／参列者詳細へ遷移／CSV・TXT・入場記録の3エクスポートが200／**他案件IDを直打ちしても自案件へ戻される**／**未認証エクスポートは401**。
+
+### 残課題
+- 公開側の記帳フォーム（`components/guest/forms/MessageForm.tsx`）は氏名+本文しか集めていないため、追加した芳名録の項目（ふりがな・住所・電話・会社名・関係）は当面空欄。香典帳／会葬礼状の宛名として使うにはフォーム拡張が必要。
+- 利用規約・特定商取引法の本文は法務確認後に差し込み（現状は「準備中」の器のみ）。
+- 通知設定はUIとDBのみ。実際のメール送信は未配線。
