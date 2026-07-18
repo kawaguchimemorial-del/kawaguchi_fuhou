@@ -68,7 +68,12 @@ export default async function CeremonyDetail({ params }: Params) {
           {mourner.issued ? (
             <span className="flex flex-wrap items-center gap-3">
               <span className="font-mono">{mourner.loginId}</span>
-              <a href="/mypage/sign-in" target="_blank" rel="noreferrer" className="text-[#9b2fae] underline">
+              <a
+                href={`/mypage/sign-in${mourner.loginId ? `?id=${encodeURIComponent(mourner.loginId)}` : ""}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#9b2fae] underline"
+              >
                 マイページを開く ↗
               </a>
             </span>

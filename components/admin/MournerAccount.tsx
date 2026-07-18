@@ -38,7 +38,12 @@ export function MournerAccount({
     return (
       <div className="mb-6 rounded bg-green-50 px-4 py-3 text-sm text-green-800">
         ✅ 喪主アカウント発行済み（ログインID：<span className="font-mono font-medium">{loginId}</span>）
-        <a href="/mypage/sign-in" target="_blank" rel="noreferrer" className="ml-2 underline">
+        <a
+          href={`/mypage/sign-in${loginId ? `?id=${encodeURIComponent(loginId)}` : ""}`}
+          target="_blank"
+          rel="noreferrer"
+          className="ml-2 underline"
+        >
           マイページを開く
         </a>
       </div>
@@ -57,7 +62,7 @@ export function MournerAccount({
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <a
-            href="/mypage/sign-in"
+            href={`/mypage/sign-in?id=${encodeURIComponent(result.loginId)}`}
             target="_blank"
             rel="noreferrer"
             className="rounded border border-[#9b2fae] px-4 py-2 text-xs text-[#9b2fae]"

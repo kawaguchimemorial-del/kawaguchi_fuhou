@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { signInAction } from "@/lib/mourner/actions";
 import type { ActionState } from "@/lib/mourner/types";
 
-export function SignInForm() {
+export function SignInForm({ defaultLoginId = "" }: { defaultLoginId?: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(signInAction, {});
 
   return (
@@ -23,6 +23,7 @@ export function SignInForm() {
         name="loginId"
         type="text"
         required
+        defaultValue={defaultLoginId}
         autoComplete="username"
         autoCapitalize="none"
         spellCheck={false}
@@ -37,6 +38,8 @@ export function SignInForm() {
         name="password"
         type="password"
         required
+        // IDが入力済みなら、そのままパスワードを打ち始められるようにする
+        autoFocus={Boolean(defaultLoginId)}
         autoComplete="current-password"
         className="w-full border-b border-[#ddd] py-2.5 text-lg focus:border-[#1b2a4a] focus:outline-none"
       />
