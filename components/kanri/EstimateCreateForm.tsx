@@ -705,11 +705,11 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>下代 <span className="text-xs text-red-500">必須</span></span>
-                      <input inputMode="decimal" type="text" value={r.cost} onChange={(e) => updOpt(r.key, { cost: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
+                      <input inputMode="decimal" type="text" value={r.cost} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { cost: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>数量 <span className="text-xs text-red-500">必須</span></span>
-                      <input inputMode="numeric" type="text" value={r.quantity} onChange={(e) => updOpt(r.key, { quantity: Number(e.target.value) || 1 })} className={nInp + " text-center"} />
+                      <input inputMode="numeric" type="text" value={r.quantity} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { quantity: Number(e.target.value) || 1 })} className={nInp + " text-center"} />
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>消費税率 <span className="text-xs text-red-500">必須</span></span>
@@ -719,17 +719,17 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>単価</span>
-                      <input inputMode="decimal" type="text" value={r.unitPrice} onChange={(e) => updOpt(r.key, { unitPrice: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
+                      <input inputMode="decimal" type="text" value={r.unitPrice} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { unitPrice: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
                       <span className="text-xs leading-tight text-gray-500">税抜か税込どちらか必須</span>
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>税込単価</span>
-                      <input inputMode="decimal" type="text" value={r.priceInclTax} onChange={(e) => updOpt(r.key, { priceInclTax: e.target.value })} className={nInp + " text-right"} />
+                      <input inputMode="decimal" type="text" value={r.priceInclTax} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { priceInclTax: e.target.value })} className={nInp + " text-right"} />
                       <span className="text-xs leading-tight text-gray-500">入力するとこの額が税込金額に</span>
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>割引（税抜）</span>
-                      <input inputMode="decimal" type="text" value={r.discount || ""} onChange={(e) => updOpt(r.key, { discount: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
+                      <input inputMode="decimal" type="text" value={r.discount || ""} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { discount: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
                     </label>
                   </div>
                   {/* 税込金額（自動計算・印刷にも反映） */}
@@ -863,7 +863,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                   <span className="tabular-nums text-gray-600 sm:text-right">{(m.price ?? 0).toLocaleString()}円</span>
                   <div className="flex shrink-0 items-center">
                     <button type="button" aria-label="数量を減らす" onClick={() => setOsonaeQty((s) => ({ ...s, [m.id]: Math.max(0, (s[m.id] ?? 0) - 1) }))} className="h-11 w-11 rounded-l-lg border border-[#8fd0c8] text-lg text-gray-600">−</button>
-                    <input inputMode="numeric" type="text" value={osonaeQty[m.id] ?? 0} onChange={(e) => setOsonaeQty((s) => ({ ...s, [m.id]: Number(e.target.value) || 0 }))} className="h-11 w-12 border-y border-[#8fd0c8] text-center text-base tabular-nums focus:outline-none" />
+                    <input inputMode="numeric" type="text" value={osonaeQty[m.id] ?? 0} onFocus={(e) => e.currentTarget.select()} onChange={(e) => setOsonaeQty((s) => ({ ...s, [m.id]: Number(e.target.value) || 0 }))} className="h-11 w-12 border-y border-[#8fd0c8] text-center text-base tabular-nums focus:outline-none" />
                     <button type="button" aria-label="数量を増やす" onClick={() => setOsonaeQty((s) => ({ ...s, [m.id]: (s[m.id] ?? 0) + 1 }))} className="h-11 w-11 rounded-r-lg border border-[#8fd0c8] text-lg text-gray-600">＋</button>
                   </div>
                 </div>
