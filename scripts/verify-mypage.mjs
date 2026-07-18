@@ -45,7 +45,8 @@ try {
   await page.fill("#loginId", ID);
   await page.fill("#password", PW);
   await page.click('button[type="submit"]');
-  await page.waitForTimeout(2500);
+  // 本番のコールドスタートでは遷移に数秒かかるため、固定待ちではなくURLの変化を待つ
+  await page.waitForURL(`**/mypage/${MID}`, { timeout: 30000 }).catch(() => {});
   await shot("01_home");
   if (!page.url().includes(MID)) errors.push("!! ログインに失敗した");
 
