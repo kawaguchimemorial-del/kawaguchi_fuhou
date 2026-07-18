@@ -22,3 +22,8 @@ tsconfig.tsbuildinfo
 /scripts/crawl-atsougi4.mjs
 .env.local
 .env*.local
+
+_build.out
+_compress_*.js
+_compress_*.out
+_compress_*.jsonl

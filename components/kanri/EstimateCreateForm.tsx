@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DateSelect } from "./DateSelect";
 import { saveEstimateFull, saveInvoiceFull, type KanriResult } from "@/lib/kanri/actions";
 import { PREFECTURES } from "@/lib/kanri/constants";
 import type { Product, ProductSet } from "@/lib/kanri/products";
@@ -514,14 +515,12 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
           <F label="対象者氏"><input name="deceased_last_name" value={deceasedLast} onChange={(e) => setDeceasedLast(e.target.value)} className={inp} placeholder="姓（例：川口）" /></F>
           <F label="対象者名"><input name="deceased_first_name" value={deceasedFirst} onChange={(e) => setDeceasedFirst(e.target.value)} className={inp} placeholder="名（例：太郎）" /></F>
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <F label="性別">
             <select name="deceased_gender" value={dGender} onChange={(e) => setDGender(e.target.value)} className={inp}>
               <option value="">選択</option><option value="male">男性</option><option value="female">女性</option><option value="other">その他</option>
             </select>
           </F>
-          <F label="生年月日"><input type="date" name="deceased_birth_date" value={dBirth} onChange={(e) => setDBirth(e.target.value)} className={inp} /></F>
-          <F label="没年月日"><input type="date" name="deceased_death_date" value={dDeath} onChange={(e) => setDDeath(e.target.value)} className={inp} /></F>
           <F label="年齢（享年）">
             <div className="flex items-center gap-1">
               <input type="number" name="deceased_age" value={ageValue} onChange={(e) => setDAge(e.target.value)} readOnly={autoAge != null} className={`${inp} ${autoAge != null ? "bg-gray-50 text-gray-600" : ""}`} placeholder="歳" />
@@ -529,6 +528,10 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
             </div>
             {autoAge != null && <p className="mt-0.5 text-[11px] text-gray-400">生年月日・没年月日から自動計算</p>}
           </F>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <F label="生年月日"><DateSelect name="deceased_birth_date" value={dBirth} onChange={setDBirth} /></F>
+          <F label="没年月日"><DateSelect name="deceased_death_date" value={dDeath} onChange={setDDeath} /></F>
         </div>
         <div className="mt-3 sm:max-w-xs">
           <F label="関係（続柄）">
