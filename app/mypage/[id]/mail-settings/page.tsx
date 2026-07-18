@@ -13,12 +13,7 @@ export default async function MailSettingsPage({ params }: { params: Promise<{ i
   return (
     <div>
       <PageHeader title="メール通知設定" backHref={`/mypage/${id}`} />
-      <MailSettingsForm
-        memorialId={id}
-        email={m.notifyEmail}
-        receipt={m.notifyReceipt}
-        koden={m.notifyKoden}
-      />
+      <MailSettingsForm memorialId={id} email={m.notifyEmail} receipt={m.notifyReceipt} />
       <SiteFooter />
     </div>
   );

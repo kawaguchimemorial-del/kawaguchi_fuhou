@@ -43,7 +43,6 @@ export default async function AttendeeDetailPage({
           <Row label="メールアドレス" value={a.email} />
           <Row label="故人とのご関係" value={a.relation} />
           <Row label="会社名" value={a.company} />
-          <Row label="お香典" value={a.kodenAmount > 0 ? `${a.kodenAmount.toLocaleString("ja-JP")}円` : null} />
           <Row label="メッセージ" value={a.body} />
         </dl>
 

@@ -25,18 +25,10 @@ function splitName(full: string): [string, string] {
   return parts.length >= 2 ? [parts[0], parts.slice(1).join(" ")] : [parts[0] ?? "", ""];
 }
 
-const STATUS_JA: Record<string, string> = {
-  succeeded: "決済完了",
-  paid: "決済完了",
-  requires_payment: "未決済",
-  failed: "決済失敗",
-};
-const statusJa = (s: string | null) => (s ? STATUS_JA[s] ?? s : "処理なし");
-
 function toCsv(rows: Attendee[]): string {
   const header = [
     "日時", "姓", "名", "姓(ふりがな)", "名(ふりがな)", "故人とのご関係", "会社名",
-    "郵便番号", "住所", "メールアドレス", "電話番号", "香典金額", "決済ステータス", "メッセージ",
+    "郵便番号", "住所", "メールアドレス", "電話番号", "メッセージ",
   ];
   const lines = [header.join(",")];
   for (const a of rows) {
@@ -44,8 +36,7 @@ function toCsv(rows: Attendee[]): string {
     const [seiK, meiK] = splitName(a.kana ?? "");
     lines.push([
       jpDateTime(a.createdAt), sei, mei, seiK, meiK, a.relation ?? "", a.company ?? "",
-      a.postalCode ?? "", a.address ?? "", a.email ?? "", a.phone ?? "",
-      a.kodenAmount, statusJa(a.kodenStatus), a.body,
+      a.postalCode ?? "", a.address ?? "", a.email ?? "", a.phone ?? "", a.body,
     ].map(esc).join(","));
   }
   return "﻿" + lines.join("\r\n") + "\r\n";
@@ -60,8 +51,6 @@ function toTxt(rows: Attendee[]): string {
     if (a.postalCode || a.address) lines.push(`住所: ${[a.postalCode, a.address].filter(Boolean).join(" ")}`);
     if (a.relation) lines.push(`故人とのご関係: ${a.relation}`);
     if (a.company) lines.push(`会社名: ${a.company}`);
-    lines.push(`お香典: ${a.kodenAmount.toLocaleString("ja-JP")}円`);
-    lines.push(`決済ステータス: ${statusJa(a.kodenStatus)}`);
     lines.push("メッセージ:", a.body);
     return lines.join("\r\n");
   });

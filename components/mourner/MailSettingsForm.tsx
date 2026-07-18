@@ -4,16 +4,15 @@ import { useActionState } from "react";
 import { saveNotifyAction } from "@/lib/mourner/actions";
 import type { ActionState } from "@/lib/mourner/types";
 
+// 香典機能は提供しないため、通知は「ご記帳の通知」のみ。
 export function MailSettingsForm({
   memorialId,
   email,
   receipt,
-  koden,
 }: {
   memorialId: string;
   email: string | null;
   receipt: boolean;
-  koden: boolean;
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveNotifyAction, {});
 
@@ -47,19 +46,11 @@ export function MailSettingsForm({
         チェックを入れたメールが、登録されたメールアドレス宛に通知されます。
       </p>
 
-      <label className="mb-3 flex gap-3">
+      <label className="mb-6 flex gap-3">
         <input type="checkbox" name="receipt" defaultChecked={receipt} className="mt-1 h-5 w-5 shrink-0" />
         <span>
           <span className="block font-medium">ご記帳の通知</span>
           <span className="block text-sm text-[#6b6b6b]">オンライン式場より、ご記帳があった場合に通知します。</span>
-        </span>
-      </label>
-
-      <label className="mb-6 flex gap-3">
-        <input type="checkbox" name="incense" defaultChecked={koden} className="mt-1 h-5 w-5 shrink-0" />
-        <span>
-          <span className="block font-medium">香典決済の通知</span>
-          <span className="block text-sm text-[#6b6b6b]">オンラインカード決済によるお香典のお渡しがあった場合に通知します。</span>
         </span>
       </label>
 

@@ -63,7 +63,7 @@ export async function saveNotifyAction(_prev: ActionState, form: FormData): Prom
     .update({
       mourner_notify_email: email || null,
       mourner_notify_receipt: form.get("receipt") === "on",
-      mourner_notify_koden: form.get("incense") === "on",
+      // 香典機能は提供しないため mourner_notify_koden は触らない
     })
     .eq("id", memorialId);
   if (error) return { error: "保存に失敗しました: " + error.message };
