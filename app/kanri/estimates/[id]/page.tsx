@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/kanri/PageHeader";
 import { notFound } from "next/navigation";
 import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
+import { getCustomer } from "@/lib/kanri/data";
 import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
 
 export const dynamic = "force-dynamic";
@@ -15,16 +16,38 @@ export default async function EstimateDetail({ params }: Params) {
   const e = await getEstimate(id);
   if (!e) notFound();
   const items = e.items ?? [];
+  // メール送信はPDF画面(print)側でPDFを生成してから送るため、宛先の有無だけここで判定する。
+  const customerEmail = e.customerId ? (await getCustomer(e.customerId))?.email : null;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <PageHeader title="見積もり詳細" />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">{e.title || "見積"}</h1>
+      {/* 見出しと操作ボタンは常に段を分ける。
+          同じ行に並べると、長い件名（お客様名を含む）にボタンが重なって読めなくなるため。 */}
+      <div className="space-y-3">
+        <h1 className="break-words text-xl font-bold">{e.title || "見積"}</h1>
         <div className="flex flex-wrap gap-2 text-sm">
           <Link href="/kanri/estimates" className="rounded border px-3 py-1.5">一覧へ</Link>
           <Link href={`/kanri/estimates/${id}/edit`} className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">編集</Link>
           <a href={`/kanri/estimates/${id}/print`} target="_blank" rel="noopener noreferrer" className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">見積書PDF</a>
+          {customerEmail ? (
+            <a
+              href={`/kanri/estimates/${id}/print?mail=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`${customerEmail} へ見積書PDFを添付して送信します`}
+              className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]"
+            >
+              メールで送信
+            </a>
+          ) : (
+            <span
+              title="顧客にメールアドレスが登録されていません。顧客情報から登録してください。"
+              className="cursor-not-allowed rounded border border-gray-300 px-3 py-1.5 text-gray-400"
+            >
+              メールで送信（宛先未登録）
+            </span>
+          )}
           <form action={deleteEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-red-400 px-3 py-1.5 text-red-500">削除</button></form>
           <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">請求書を作成</button></form>
           <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={id} /><button className="rounded border border-[#1aa39a] px-3 py-1.5 text-[#1aa39a]">発注書を作成</button></form>

@@ -13,8 +13,10 @@ function fmtd(iso?: string) { if (!iso) return ""; const d = new Date(iso); if (
 function yen(n: number) { return `${n.toLocaleString()}円`; }
 function neg(n: number) { return `▲${Math.abs(n).toLocaleString()}円`; }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+  // 見積詳細の「メールで送信」から来た場合は、開いた直後に送信処理を走らせる。
+  const autoMail = new URL(req.url).searchParams.get("mail") === "1";
   const e = await getEstimate(id);
   if (!e) return new Response("not found", { status: 404 });
   const cust = e.customerId ? await getCustomer(e.customerId) : null;
@@ -180,6 +182,13 @@ ${SIGN_CSS}
     }catch(err){ alert('エラー: '+err); }
     finally{ btn.disabled=false; btn.textContent=old; }
   }
+  ${autoMail ? `
+  // ?mail=1 で開かれたら自動送信。画像(ロゴ・角印)の読み込み完了を待ってからPDF化する。
+  window.addEventListener('load', function(){
+    var btn=document.getElementById('mailBtn');
+    if(btn && btn.disabled){ alert('顧客にメールアドレスが登録されていません。顧客情報から登録してください。'); return; }
+    setTimeout(sendMail, 300);
+  });` : ""}
   </script>
 </body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
