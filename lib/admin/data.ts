@@ -91,9 +91,21 @@ function fmtDateTime(iso?: string | null): string {
   return `${fmtDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-export async function listCeremonies(): Promise<CeremonyListItem[]> {
+/**
+ * 葬儀一覧。DBに繋がらない場合はシード（サンプル）を返すが、
+ * 実データと見分けがつかないと障害に気づけないため degraded で呼び出し側へ伝える。
+ * （2026-07 にSupabaseが容量超過で停止した際、サンプル2件を実データと誤認する事故があった）
+ */
+export type CeremonyListResult = {
+  rows: CeremonyListItem[];
+  /** null=実データ / "unconfigured"=DB未設定 / "error"=取得失敗 */
+  degraded: null | "unconfigured" | "error";
+  errorMessage?: string;
+};
+
+export async function listCeremonies(): Promise<CeremonyListResult> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return CEREMONIES; // 未設定時はシード
+    return { rows: CEREMONIES, degraded: "unconfigured" };
   }
   try {
     const supabase = createAdminClient();
@@ -107,10 +119,12 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
       // 公開日(published_at)の降順。未設定は作成日で後ろに回す。
       .order("published_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
-    if (error || !data) return CEREMONIES;
+    if (error || !data) {
+      return { rows: CEREMONIES, degraded: "error", errorMessage: error?.message };
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any[]).map((m, i): CeremonyListItem => {
+    const rows = (data as any[]).map((m, i): CeremonyListItem => {
       const events = (m.funeral_events ?? []) as Array<{ event_type: string; start_at?: string; datetime_label?: string }>;
       const dec = Array.isArray(m.deceased) ? m.deceased[0] : m.deceased;
       const venue = m.venue as { openUntil?: string } | null;
@@ -141,8 +155,9 @@ export async function listCeremonies(): Promise<CeremonyListItem[]> {
         kodenOption: m.koden_decline ? "利用しない" : "利用する",
       };
     });
-  } catch {
-    return CEREMONIES;
+    return { rows, degraded: null };
+  } catch (e) {
+    return { rows: CEREMONIES, degraded: "error", errorMessage: (e as Error)?.message };
   }
 }
 export interface AllOrderRow {

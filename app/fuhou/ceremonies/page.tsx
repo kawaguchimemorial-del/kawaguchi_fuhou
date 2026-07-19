@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { listCeremonies } from "@/lib/admin/data";
 import { CeremonyList } from "@/components/admin/CeremonyList";
+import { DegradedBanner } from "@/components/admin/DegradedBanner";
 
 // 作成直後の案件を常に反映するため動的レンダリング
 export const dynamic = "force-dynamic";
 
 export default async function CeremoniesPage() {
-  const rows = await listCeremonies();
+  const { rows, degraded, errorMessage } = await listCeremonies();
   return (
     <div className="mx-auto max-w-6xl">
+      <DegradedBanner degraded={degraded} errorMessage={errorMessage} />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold">葬儀一覧</h1>
         <Link

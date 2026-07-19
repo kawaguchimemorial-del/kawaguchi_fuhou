@@ -1772,3 +1772,30 @@ IDあり→欄に入りフォーカスはpassword／IDなし→空／大文字+@
 
 ### 検証
 `tsc --noEmit` エラー0 ／ `next build` exit 0。実データで芳名録・参列者詳細・メール通知設定の3画面、およびCSV/TXT出力を確認し「香典」の出現0件。CSVヘッダは `日時,姓,名,姓(ふりがな),名(ふりがな),故人とのご関係,会社名,郵便番号,住所,メールアドレス,電話番号,メッセージ`。
+
+---
+
+## 2026-07-19 — Supabase停止からの復旧と、サイレントフォールバックの可視化
+
+### 障害
+「葬儀一覧に過去の案件が表示されない」との報告。調査の結果、原因はコードではなく **Supabaseプロジェクトの停止**。全API(REST/Storage/Auth/公開画像)が HTTP 402 を返していた。
+
+```
+Service for this project is restricted due to the following violations:
+exceed_storage_size_quota.
+```
+
+`listCeremonies()` はDB取得失敗時にシード `CEREMONIES`(2件)へ黙ってフォールバックする作りだったため、実データ210件が消えたように見えていた。影響は一覧に留まらず、公開訃報ページ404・喪主マイページのログイン不可・画像配信不可に及んでいた。
+
+Proプランへの課金で復旧（一覧210件・公開ページ200・マイページログイン可・画像200 を確認）。データ消失は無し。当時の使用量は Storage 432MB / DB 28MB で、Proの枠(100GB/8GB)に対し0.4%程度。
+
+### 対処
+障害時にサンプルデータを実データと誤認しないよう、状態を画面に出す。
+- `listCeremonies()` の戻り値を `CeremonyListItem[]` から `{ rows, degraded, errorMessage }` に変更。`degraded` は `null`(実データ) / `"unconfigured"`(DB未設定) / `"error"`(取得失敗)。
+- `components/admin/DegradedBanner.tsx` を新設し、葬儀一覧の先頭に赤い警告を表示。「表示中のデータはサンプルです」「実際の葬儀データは消えていません」とSupabaseダッシュボードへの導線、原因メッセージを出す。
+
+### 検証
+正常時=210件・バナー非表示／`SUPABASE_SERVICE_ROLE_KEY` を不正値にして起動した障害時=2件・バナー表示(原因 "Invalid API key" も表示)。両状態を実機で確認。`tsc --noEmit` エラー0 ／ `next build` exit 0。
+
+### 補足
+`lib/memorial/data.ts` の公開訃報も取得失敗時にSEEDへフォールバックするが、該当slugが無ければ404になり「正常に見えて実は偽データ」にはなりにくいため今回は据え置き。
