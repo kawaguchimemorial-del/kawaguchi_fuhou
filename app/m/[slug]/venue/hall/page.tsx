@@ -60,12 +60,6 @@ export default async function VenueHall({ params }: Params) {
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <GoldButton href={`/m/${m.slug}/message`}>受付はこちら　›</GoldButton>
-            <a
-              href={`/m/${m.slug}/messages`}
-              className="inline-block rounded-sm border border-[var(--accent)] px-6 py-3 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-white"
-            >
-              頂いたご記帳の一覧　›
-            </a>
           </div>
         </section>
 

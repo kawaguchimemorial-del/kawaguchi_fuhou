@@ -150,9 +150,7 @@ export function AltarView({
           >
             {worshipButtonLabel(altar.center)}
           </button>
-          {hasSmoke && smoking && (
-            <p className="mt-3 text-sm text-[var(--muted)]">心を込めて{worshipButtonLabel(altar.center)}いたしました。</p>
-          )}
+          {/* 押下後の確認文は出さない（煙の演出のみで伝える） */}
         </div>
       )}
     </div>
