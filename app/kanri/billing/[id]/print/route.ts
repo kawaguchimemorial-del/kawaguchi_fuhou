@@ -6,6 +6,7 @@ import { KAKUIN_DATA_URL } from "@/lib/kanri/kakuin";
 import { LOGO_DATA_URL } from "@/lib/kanri/logo";
 import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
 import { signTableHtml, signWidgetHtml, SIGN_CSS } from "@/lib/kanri/sign-widget";
+import { PDF_SCRIPT } from "@/lib/kanri/pdf-script";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,7 @@ ${SIGN_CSS}
 <body>
   <div class="toolbar" data-html2canvas-ignore="true">
     <button onclick="window.print()">印刷</button>
+    <button id="pdfBtn" onclick="downloadPdf('請求書')">PDFを保存</button>
     <button class="mail" id="mailBtn" onclick="sendMail()" ${hasEmail ? "" : "disabled title=\"顧客にメールアドレスが登録されていません\""}>${hasEmail ? "メール送信" : "メール送信（未登録）"}</button>
   </div>
   <div class="head">
@@ -177,28 +179,7 @@ ${SIGN_CSS}
     { sign: iv.mournerSign ?? e?.mournerSign, signedAt: iv.mournerSign ? iv.mournerSignedAt : e?.mournerSignedAt, inherited: !iv.mournerSign && !!e?.mournerSign },
     { sign: iv.ownerSign ?? e?.ownerSign, signedAt: iv.ownerSign ? iv.ownerSignedAt : e?.ownerSignedAt, inherited: !iv.ownerSign && !!e?.ownerSign },
   ) + signWidgetHtml("invoice", iv.id)}
-  <script src="/vendor/html2canvas.min.js"></script>
-  <script src="/vendor/jspdf.umd.min.js"></script>
-  <script>
-  async function sendMail(){
-    var btn=document.getElementById('mailBtn'); if(!btn||btn.disabled) return;
-    var old=btn.textContent; btn.disabled=true; btn.textContent='作成中…';
-    try{
-      var canvas=await html2canvas(document.body,{scale:2,backgroundColor:'#ffffff',windowWidth:document.body.scrollWidth});
-      var img=canvas.toDataURL('image/jpeg',0.92);
-      var jsPDF=window.jspdf.jsPDF, pdf=new jsPDF('p','mm','a4');
-      var pw=210, ph=297, iw=pw, ih=canvas.height*pw/canvas.width;
-      if(ih<=ph){ pdf.addImage(img,'JPEG',0,0,iw,ih); }
-      else { var page=0, rem=ih; while(rem>0){ if(page>0) pdf.addPage(); pdf.addImage(img,'JPEG',0,-(ph*page),iw,ih); rem-=ph; page++; } }
-      var dataUrl=pdf.output('datauristring');
-      btn.textContent='送信中…';
-      var res=await fetch('./send-mail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdfBase64:dataUrl})});
-      var d=await res.json().catch(function(){return{ok:false,error:'応答が不正です'};});
-      if(d.ok){ alert('メールを送信しました: '+(d.to||'')); } else { alert('送信できませんでした\\n'+(d.error||'')); }
-    }catch(err){ alert('エラー: '+err); }
-    finally{ btn.disabled=false; btn.textContent=old; }
-  }
-  </script>
+  ${PDF_SCRIPT}
 </body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
