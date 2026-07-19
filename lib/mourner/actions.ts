@@ -50,27 +50,6 @@ export async function saveGreetingAction(_prev: ActionState, form: FormData): Pr
   return { ok: "喪主挨拶を保存しました。" };
 }
 
-/** メール通知設定の保存 */
-export async function saveNotifyAction(_prev: ActionState, form: FormData): Promise<ActionState> {
-  const memorialId = String(form.get("memorialId") ?? "");
-  if (!(await guard(memorialId))) return { error: "セッションが切れました。もう一度ログインしてください。" };
-  const email = String(form.get("email") ?? "").trim();
-  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return { error: "メールアドレスの形式が正しくありません。" };
-  }
-  const { error } = await db()
-    .from("memorials")
-    .update({
-      mourner_notify_email: email || null,
-      mourner_notify_receipt: form.get("receipt") === "on",
-      // 香典機能は提供しないため mourner_notify_koden は触らない
-    })
-    .eq("id", memorialId);
-  if (error) return { error: "保存に失敗しました: " + error.message };
-  revalidatePath(`/mypage/${memorialId}/mail-settings`);
-  return { ok: "通知設定を保存しました。" };
-}
-
 /** パスワード変更 */
 export async function changePasswordAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const memorialId = String(form.get("memorialId") ?? "");

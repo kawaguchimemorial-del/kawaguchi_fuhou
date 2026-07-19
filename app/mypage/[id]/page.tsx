@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  Album, BookUser, ClipboardList, FileText, Images, KeyRound,
-  LogOut, Mail, MessageSquare, Scale, Send, Share2,
+  Album, BookUser, ClipboardList, Images, KeyRound,
+  LogOut, MessageSquare, Share2,
 } from "lucide-react";
 import { assertMournerAccess } from "@/lib/mourner/auth";
 import { getMournerCounts, getMournerMemorial } from "@/lib/mourner/data";
@@ -28,7 +28,7 @@ export default async function MournerHome({ params }: { params: Promise<{ id: st
       badge: memorial.status === "published" ? "公開中" : "準備中",
       desc: "オンライン式場のご確認と、挨拶文の編集ができます。" },
     { href: `/mypage/${id}/attendees`, Icon: BookUser, title: "芳名録", badge: `${counts.attendees}件`,
-      desc: "参列者の一覧・メッセージ・お香典はこちらからご確認いただけます。" },
+      desc: "参列者の一覧・メッセージはこちらからご確認いただけます。" },
     { href: `/mypage/${id}/visitors`, Icon: ClipboardList, title: "入場記録", badge: `${counts.visitors}件`,
       desc: "オンライン式場に入場された方の一覧はこちらからご確認いただけます。" },
     { href: `/mypage/${id}/funeral-photos`, Icon: Images, title: "葬儀の写真", badge: `${counts.funeralPhotos}枚`,
@@ -37,14 +37,6 @@ export default async function MournerHome({ params }: { params: Promise<{ id: st
       desc: "オンライン式場に表示する故人の思い出写真を編集できます。" },
     { href: `/mypage/${id}/password`, Icon: KeyRound, title: "アカウント情報", badge: null,
       desc: "アカウント確認・パスワード変更はこちらから。" },
-    { href: `/mypage/${id}/mail-settings`, Icon: Mail, title: "メール通知設定", badge: null,
-      desc: "メールアドレスの登録と通知の設定はこちらから。" },
-    { href: `/mypage/${id}/contact`, Icon: Send, title: "お問い合わせ", badge: null,
-      desc: "お問い合わせはこちらから。" },
-    { href: `/mypage/${id}/term`, Icon: FileText, title: "利用規約", badge: null,
-      desc: "利用規約はこちらからご確認いただけます。" },
-    { href: `/mypage/${id}/transactions`, Icon: Scale, title: "特定商取引法に基づく表記", badge: null,
-      desc: "特定商取引法に基づく表記はこちらからご確認いただけます。" },
   ];
 
   return (

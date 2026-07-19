@@ -17,9 +17,6 @@ export type MournerMemorial = {
   greeting: string | null;
   publicFrom: string | null;
   publicUntil: string | null;
-  notifyEmail: string | null;
-  notifyReceipt: boolean;
-  notifyKoden: boolean;
   loginId: string | null;
 };
 
@@ -27,7 +24,7 @@ export async function getMournerMemorial(memorialId: string): Promise<MournerMem
   const { data } = await db()
     .from("memorials")
     .select(
-      "id, slug, status, announce_mourner_name, mourner_greeting, venue_public_from, venue_public_until, mourner_notify_email, mourner_notify_receipt, mourner_notify_koden, mourner_login_id, published_at, archive_at, deceased(name_kanji)"
+      "id, slug, status, announce_mourner_name, mourner_greeting, venue_public_from, venue_public_until, mourner_login_id, published_at, archive_at, deceased(name_kanji)"
     )
     .eq("id", memorialId)
     .maybeSingle();
@@ -43,9 +40,6 @@ export async function getMournerMemorial(memorialId: string): Promise<MournerMem
     // 公開期間は専用列が未設定なら published_at〜archive_at を使う
     publicFrom: data.venue_public_from ?? data.published_at ?? null,
     publicUntil: data.venue_public_until ?? data.archive_at ?? null,
-    notifyEmail: data.mourner_notify_email ?? null,
-    notifyReceipt: data.mourner_notify_receipt ?? true,
-    notifyKoden: data.mourner_notify_koden ?? true,
     loginId: data.mourner_login_id ?? null,
   };
 }
