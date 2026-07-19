@@ -65,6 +65,10 @@ interface OptRow {
   tradedOn: string; returnedQty: number; remarks: string;
   divideTitle: string;          // 区切りタイトル(カードの下に挿入)
 }
+// 新規見積もりに既定で出すオプション（夜間の時間外搬送の請求漏れ防止）
+const DEFAULT_OPT_NAME = "時間外搬送";
+const DEFAULT_OPT_PRICE = 20000;
+
 // 料理の配膳人(15人に1名, 15,000円税抜)・忌中払会場費 の自動明細名
 const MEAL_SERVER_UNIT = 15000;
 const AUTO_MEAL_NAMES = new Set(["通夜料理配膳人", "告別料理配膳人", "忌中払会場費"]);
@@ -148,11 +152,18 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const osonaeIdByName = useMemo(() => new Map(osonae.map((m) => [m.name, m.id])), [osonae]);
   const isOsonaeLine = (it: { lineKind: string; productId?: string | null; name: string }) =>
     it.lineKind === "item" && !it.productId && osonaeIdByName.has(it.name);
-  const [opts, setOpts] = useState<OptRow[]>(
-    initItems
+  const [opts, setOpts] = useState<OptRow[]>(() => {
+    const restored = initItems
       .filter((it) => it.lineKind === "item" && !it.isSetItem && it.name !== initSetName && !isOsonaeLine(it) && !(!asInvoice && AUTO_MEAL_NAMES.has(it.name)))
-      .map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }))
-  );
+      .map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }));
+    // 新規の見積もりのみ、時間外搬送のカードを1枚あらかじめ出しておく。
+    // 夜間搬送の割増を取り忘れる事故が多いため。日中の施行なら削除して使う運用。
+    // 編集時(initial.id あり)と請求書には入れない。
+    if (restored.length === 0 && !asInvoice && !initial?.id) {
+      return [{ ...newOpt(), name: DEFAULT_OPT_NAME, unitPrice: DEFAULT_OPT_PRICE, quantity: 1 }];
+    }
+    return restored;
+  });
   // 旧データ救済: セット選択済みなのに保存済みセット内訳が無い場合のみ、セット定義から内訳を読み込む。
   useEffect(() => {
     if (chosenSet && initSetItems.length === 0) loadSetItems(chosenSet.id);
@@ -204,6 +215,16 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const [dGender, setDGender] = useState(initial?.deceasedGender ?? "");
   const [dBirth, setDBirth] = useState(initial?.deceasedBirthDate ?? "");
   const [dDeath, setDDeath] = useState(initial?.deceasedDeathDate ?? "");
+  // 没年月日の既定値＝本日。ほとんどの施行は当日〜前日の逝去のため。
+  // サーバー(UTC)とブラウザ(JST)で日付がずれてhydration不整合になるのを避けるため、
+  // 初期値ではなくマウント後に入れる。編集時と入力済みのときは触らない。
+  useEffect(() => {
+    if (initial?.id || initial?.deceasedDeathDate) return;
+    const d = new Date();
+    setDDeath(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    // マウント時のみ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [dRelation, setDRelation] = useState(initial?.deceasedRelation ?? "");
   // 見積日（必須）・通夜日時・告別式日時
   const [estimateOn, setEstimateOn] = useState(initial?.date1 ?? "");
@@ -704,7 +725,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                   {/* 数量・下代・税率など6項目（スマホ縦は2列・PCは6列に復帰。入力頻度順） */}
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
                     <label className="flex flex-col gap-1">
-                      <span className={nLbl}>下代 <span className="text-xs text-red-500">必須</span></span>
+                      <span className={nLbl}>下代</span>
                       <input inputMode="decimal" type="text" value={r.cost} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { cost: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
                     </label>
                     <label className="flex flex-col gap-1">
