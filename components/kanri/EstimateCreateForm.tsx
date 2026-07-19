@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DateSelect } from "./DateSelect";
 import { saveEstimateFull, saveInvoiceFull, type KanriResult } from "@/lib/kanri/actions";
-import { PREFECTURES } from "@/lib/kanri/constants";
+import { CUSTOMER_STATUSES, PREFECTURES } from "@/lib/kanri/constants";
 import type { Product, ProductSet } from "@/lib/kanri/products";
 import type { MasterItem } from "@/lib/kanri/master-defs";
 
@@ -37,6 +37,7 @@ export interface FormInitial {
   newCustomerLastName?: string; newCustomerFirstName?: string;
   newCustomerPostcode?: string; newCustomerPrefecture?: string; newCustomerCity?: string; newCustomerStreet?: string;
   newCustomerTel?: string; newCustomerMobile?: string; newCustomerEmail?: string;
+  newCustomerStatus?: string;
 }
 interface Props {
   asInvoice?: boolean;
@@ -184,7 +185,10 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   // - 編集時: 保存済みのお供え明細(名称一致)から数量を復元する。
   // - 新規作成時: 既定のお供え(追加安置日数/追加ドライアイス/収骨容器一式/本尊セット一式)を数量1に。
   const initOsonaeQty: Record<string, number> = {};
-  if (initial) {
+  // 編集の判定は initial の有無ではなく id の有無で行う。
+  // お客様入力(intake)から来た新規作成でも initial は入っており、
+  // ここを initial で判定すると既定値が入らず全て0になっていた。
+  if (initial?.id) {
     for (const it of initItems) {
       if (isOsonaeLine(it)) {
         const id = osonaeIdByName.get(it.name);
@@ -243,6 +247,10 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const [ncStreet, setNcStreet] = useState(initial?.newCustomerStreet ?? "");
   const [ncTel, setNcTel] = useState(initial?.newCustomerTel ?? "");
   const [ncMobile, setNcMobile] = useState(initial?.newCustomerMobile ?? "");
+  // メールアドレスとステータスも state で保持する。
+  // defaultValue のままだとチェックを外した時に入力欄ごと消え、入れ直すと値が失われる。
+  const [ncEmail, setNcEmail] = useState(initial?.newCustomerEmail ?? "");
+  const [ncStatus, setNcStatus] = useState(initial?.newCustomerStatus ?? "問い合わせ");
   const [valErrors, setValErrors] = useState<string[]>([]);
   // 年齢: 没年月日 - 生年月日 で自動計算(いずれか未入力なら手入力値を保持)
   const calcAge = (birth: string, death: string): number | null => {
@@ -426,7 +434,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
       newCustomerLastName: undef(ncLast), newCustomerFirstName: undef(ncFirst),
       newCustomerPostcode: undef(ncPostcode), newCustomerPrefecture: undef(ncPref), newCustomerCity: undef(ncCity),
       newCustomerStreet: undef(ncStreet), newCustomerTel: undef(ncTel), newCustomerMobile: undef(ncMobile),
-      newCustomerEmail: undef(g("new_customer_email")),
+      newCustomerEmail: undef(ncEmail), newCustomerStatus: undef(ncStatus),
       deceasedLastName: undef(deceasedLast), deceasedFirstName: undef(deceasedFirst),
       deceasedGender: undef(dGender), deceasedBirthDate: undef(dBirth), deceasedDeathDate: undef(dDeath),
       deceasedAge: ageValue ? Number(ageValue) : undefined,
@@ -527,7 +535,19 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
             <div className="grid gap-3 sm:grid-cols-3">
               <F label="自宅番号"><input name="new_customer_tel" value={ncTel} onChange={(e) => setNcTel(e.target.value)} className={inp} placeholder="ハイフン無し" /></F>
               <F label="携帯番号"><input name="new_customer_mobile" value={ncMobile} onChange={(e) => setNcMobile(e.target.value)} className={inp} placeholder="ハイフン無し" /></F>
-              <F label="メールアドレス"><input name="new_customer_email" type="email" defaultValue={initial?.newCustomerEmail ?? ""} className={inp} /></F>
+              <div className="sm:col-span-1">
+                <F label="メールアドレス（任意）">
+                  <input name="new_customer_email" type="email" value={ncEmail} onChange={(e) => setNcEmail(e.target.value)} className={inp} placeholder="example@example.com" />
+                </F>
+                <p className="mt-1 text-xs text-gray-500">見積書・請求書をメールで送る場合に必要です。</p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <F label="ステータス">
+                <select name="new_customer_status" value={ncStatus} onChange={(e) => setNcStatus(e.target.value)} className={inp}>
+                  {CUSTOMER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </F>
             </div>
           </div>
         )}

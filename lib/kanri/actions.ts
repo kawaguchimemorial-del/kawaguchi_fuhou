@@ -636,6 +636,8 @@ async function resolveCustomerId(c: ReturnType<typeof admin>, fd: FormData): Pro
         address_city: s(fd, "new_customer_city"), address_street: s(fd, "new_customer_street"),
         telephone_number: s(fd, "new_customer_tel"), mobile_number: s(fd, "new_customer_mobile"),
         email: s(fd, "new_customer_email"),
+        // 見積もり画面で選んだステータス（既定は問い合わせ／受注に切替可）
+        status: s(fd, "new_customer_status") ?? "問い合わせ",
       }).select("id").single();
       customerId = data?.id ?? null;
     }
