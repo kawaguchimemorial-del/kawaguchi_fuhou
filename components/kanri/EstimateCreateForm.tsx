@@ -46,7 +46,6 @@ interface Props {
   productSets: ProductSet[];
   osonae: MasterItem[];      // その他オプション、お供えにかかる費用
   discounts: MasterItem[];   // 値引商品マスタ
-  memorialServices?: MasterItem[]; // 葬儀・法要等マスタ
   purposes?: MasterItem[];         // 摘要設定マスタ
   templates?: MasterItem[];        // 見積書/請求書テンプレート
 }
@@ -107,7 +106,7 @@ function toLocal(iso?: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, productSets, osonae, discounts, memorialServices = [], purposes = [], templates = [] }: Props) {
+export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, productSets, osonae, discounts, purposes = [], templates = [] }: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(asInvoice ? saveInvoiceFull : saveEstimateFull, null);
@@ -914,19 +913,6 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
           </div>
         )}
         <button type="button" onClick={() => setDiscRows((rs) => [...rs, { key: seq++, name: "", amount: 0 }])} className="rounded bg-sky-400 px-3 py-1.5 text-xs text-white">＋ 追加</button>
-      </Card>
-
-      {/* 葬儀・法要等 */}
-      <Card title="葬儀・法要等">
-        <button type="button" onClick={() => { if (memorialServices.length === 0) return; const m = memorialServices[0]; setOpts((rs) => [...rs, { ...newOpt(), name: m.name, unitPrice: m.price ?? 0 }]); }} className="rounded bg-sky-400 px-3 py-1.5 text-xs text-white">葬儀・法要等 追加</button>
-        {memorialServices.length === 0 && <p className="mt-1 text-xs text-gray-400">法要マスタが未登録です（設定 &gt; 法要設定）。登録するとここから追加できます。</p>}
-        {memorialServices.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {memorialServices.map((m) => (
-              <button key={m.id} type="button" onClick={() => setOpts((rs) => [...rs, { ...newOpt(), name: m.name, unitPrice: m.price ?? 0 }])} className="rounded border border-[#2c8c6f] px-2.5 py-1 text-xs text-[#2c8c6f] hover:bg-[#f0faf8]">{m.name}</button>
-            ))}
-          </div>
-        )}
       </Card>
 
       {/* 前受金・発行情報 */}

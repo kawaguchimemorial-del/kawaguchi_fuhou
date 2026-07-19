@@ -9,9 +9,9 @@ type SP = { searchParams: Promise<{ from_estimate?: string }> };
 
 export default async function NewInvoice({ searchParams }: SP) {
   const sp = await searchParams;
-  const [products, productSets, osonae, discounts, memorialServices, purposes, templates] = await Promise.all([
+  const [products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
     listProducts(), listProductSets(), listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
-    listMasterItems("memorial_service"), listMasterItems("purpose"), listMasterItems("invoice_template"),
+    listMasterItems("purpose"), listMasterItems("invoice_template"),
   ]);
   // 見積から作成: 見積内容をプレフィル（顧客/宛名/件名/明細/セット/担当）
   let initial: FormInitial | undefined;
@@ -40,7 +40,7 @@ export default async function NewInvoice({ searchParams }: SP) {
     <div className="mx-auto max-w-4xl">
       <div className="-m-5 mb-4 bg-[#2c8c6f] px-5 py-3"><h1 className="text-lg font-bold text-white">請求書</h1></div>
       <p className="mb-3 font-bold text-gray-700">登録{initial ? "（見積もりから作成）" : ""}</p>
-      <EstimateCreateForm asInvoice initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} memorialServices={memorialServices} purposes={purposes} templates={templates} />
+      <EstimateCreateForm asInvoice initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} purposes={purposes} templates={templates} />
     </div>
   );
 }

@@ -10,10 +10,10 @@ type Params = { params: Promise<{ id: string }> };
 
 export default async function EditEstimate({ params }: Params) {
   const { id } = await params;
-  const [e, products, productSets, osonae, discounts, memorialServices, purposes, templates] = await Promise.all([
+  const [e, products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
     getEstimate(id), listProducts(), listProductSets(),
     listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
-    listMasterItems("memorial_service"), listMasterItems("purpose"), listMasterItems("estimate_template"),
+    listMasterItems("purpose"), listMasterItems("estimate_template"),
   ]);
   if (!e) notFound();
   const initial: FormInitial = {
@@ -45,7 +45,7 @@ export default async function EditEstimate({ params }: Params) {
     <div className="mx-auto max-w-4xl">
       <div className="-m-5 mb-4 bg-[#2c8c6f] px-5 py-3"><h1 className="text-lg font-bold text-white">見積もり</h1></div>
       <p className="mb-3 font-bold text-gray-700">編集</p>
-      <EstimateCreateForm initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} memorialServices={memorialServices} purposes={purposes} templates={templates} />
+      <EstimateCreateForm initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} purposes={purposes} templates={templates} />
     </div>
   );
 }

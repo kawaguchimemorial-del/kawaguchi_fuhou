@@ -13,7 +13,7 @@ export default function EstimateIntake() {
         お手数ですが、以下の項目をご入力ください。<br />
         <span className="text-xs text-gray-400">お名前の漢字など、間違いのないようご本人にご入力いただけます。入力後「入力完了」を押してください。</span>
       </p>
-      <EstimateCreateForm intakeMode products={[]} productSets={[]} osonae={[]} discounts={[]} memorialServices={[]} purposes={[]} templates={[]} />
+      <EstimateCreateForm intakeMode products={[]} productSets={[]} osonae={[]} discounts={[]} purposes={[]} templates={[]} />
     </div>
   );
 }

@@ -11,7 +11,6 @@ type Props = {
   productSets: ProductSet[];
   osonae: MasterItem[];
   discounts: MasterItem[];
-  memorialServices: MasterItem[];
   purposes: MasterItem[];
   templates: MasterItem[];
 };

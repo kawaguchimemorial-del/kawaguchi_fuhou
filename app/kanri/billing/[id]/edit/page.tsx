@@ -10,10 +10,10 @@ type Params = { params: Promise<{ id: string }> };
 
 export default async function EditInvoice({ params }: Params) {
   const { id } = await params;
-  const [res, products, productSets, osonae, discounts, memorialServices, purposes, templates] = await Promise.all([
+  const [res, products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
     getInvoice(id), listProducts(), listProductSets(),
     listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
-    listMasterItems("memorial_service"), listMasterItems("purpose"), listMasterItems("invoice_template"),
+    listMasterItems("purpose"), listMasterItems("invoice_template"),
   ]);
   if (!res) notFound();
   const { invoice: iv, details } = res;
@@ -42,7 +42,7 @@ export default async function EditInvoice({ params }: Params) {
     <div className="mx-auto max-w-4xl">
       <div className="-m-5 mb-4 bg-[#2c8c6f] px-5 py-3"><h1 className="text-lg font-bold text-white">請求書</h1></div>
       <p className="mb-3 font-bold text-gray-700">編集</p>
-      <EstimateCreateForm asInvoice initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} memorialServices={memorialServices} purposes={purposes} templates={templates} />
+      <EstimateCreateForm asInvoice initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} purposes={purposes} templates={templates} />
     </div>
   );
 }

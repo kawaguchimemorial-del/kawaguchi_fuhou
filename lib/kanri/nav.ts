@@ -70,7 +70,6 @@ export const CRM_NAV: NavNode[] = [
       { label: "お清め場所", href: "/kanri/settings/purify_place" },
       { label: "乗車場所", href: "/kanri/settings/boarding_place" },
       { label: "車種", href: "/kanri/settings/car_model" },
-      { label: "法要設定", href: "/kanri/settings/memorial_service" },
     ] },
     { label: "商品", children: [
       { label: "発注先", href: "/kanri/settings/supplier" },

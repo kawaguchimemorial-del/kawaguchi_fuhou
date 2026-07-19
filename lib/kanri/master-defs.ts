@@ -45,7 +45,6 @@ export const MASTER_TYPES: MasterDef[] = [
   { type: "phase", label: "フェーズ", category: "葬儀設定" },
   { type: "my_temple", label: "宗教者", category: "葬儀設定", fields: [{ key: "name", label: "宗教者名", col: "name" }, { key: "religion", label: "宗旨" }, { key: "sect", label: "宗派" }, { key: "tel", label: "電話" }] },
   { type: "area_for_my_temple", label: "宗教者エリア", category: "葬儀設定" },
-  { type: "memorial_service", label: "法要", category: "葬儀設定" },
   { type: "note_master", label: "備考欄テンプレート", category: "葬儀設定", fields: [{ key: "name", label: "備考欄種別", col: "name" }, { key: "body", label: "備考欄" }] },
   { type: "order_instruction_template", label: "発注指示テンプレート", category: "葬儀設定", fields: [{ key: "name", label: "タイトル", col: "name" }, { key: "body", label: "内容" }] },
   { type: "notice_setting_funeral", label: "葬儀の通知設定", category: "葬儀設定", fields: [{ key: "name", label: "通知メッセージ", col: "name" }, { key: "criteria", label: "通知する基準" }] },
