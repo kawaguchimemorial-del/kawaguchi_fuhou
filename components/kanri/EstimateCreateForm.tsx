@@ -730,7 +730,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>数量 <span className="text-xs text-red-500">必須</span></span>
-                      <input inputMode="numeric" type="text" value={r.quantity} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { quantity: Number(e.target.value) || 1 })} className={nInp + " text-center"} />
+                      <QtyInput value={r.quantity} onChange={(n) => updOpt(r.key, { quantity: n })} />
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>消費税率 <span className="text-xs text-red-500">必須</span></span>
@@ -882,10 +882,10 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                 <span className="font-medium leading-snug text-gray-800">{m.name}</span>
                 <div className="flex items-center justify-between gap-3 sm:contents">
                   <span className="tabular-nums text-gray-600 sm:text-right">{(m.price ?? 0).toLocaleString()}円</span>
-                  <div className="flex shrink-0 items-center">
-                    <button type="button" aria-label="数量を減らす" onClick={() => setOsonaeQty((s) => ({ ...s, [m.id]: Math.max(0, (s[m.id] ?? 0) - 1) }))} className="h-11 w-11 rounded-l-lg border border-[#8fd0c8] text-lg text-gray-600">−</button>
-                    <input inputMode="numeric" type="text" value={osonaeQty[m.id] ?? 0} onFocus={(e) => e.currentTarget.select()} onChange={(e) => setOsonaeQty((s) => ({ ...s, [m.id]: Number(e.target.value) || 0 }))} className="h-11 w-12 border-y border-[#8fd0c8] text-center text-base tabular-nums focus:outline-none" />
-                    <button type="button" aria-label="数量を増やす" onClick={() => setOsonaeQty((s) => ({ ...s, [m.id]: (s[m.id] ?? 0) + 1 }))} className="h-11 w-11 rounded-r-lg border border-[#8fd0c8] text-lg text-gray-600">＋</button>
+                  <div className="w-[8.5rem] shrink-0">
+                    {/* お供えは0個(=付けない)があり得るため min=0 */}
+                    <QtyInput value={osonaeQty[m.id] ?? 0} min={0}
+                      onChange={(n) => setOsonaeQty((s) => ({ ...s, [m.id]: n }))} />
                   </div>
                 </div>
               </div>
@@ -1076,6 +1076,44 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
 function Card({ title, children }: { title?: string; children: React.ReactNode }) {
   return <div className="rounded-lg bg-white p-5 shadow-sm">{title && <p className="mb-3 font-bold text-gray-700">{title}</p>}{children}</div>;
 }
+/**
+ * 数量入力。−/＋のダイヤル操作と直接入力の両方に対応する。
+ * タブレットでは±が速く、10や350のような大きい数はキーボード入力が速いため両立させている。
+ *
+ * 入力中は打った文字をそのまま表示する（draft）。値を数値に丸めてしまうと、
+ * 消して打ち直すたびに最小値へ跳ね返って直接入力できないため。
+ */
+function QtyInput({ value, onChange, min = 1 }: { value: number; onChange: (n: number) => void; min?: number }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? String(value);
+  const toNum = (s: string) => {
+    const n = Math.floor(Number(s.replace(/[^0-9]/g, "")));
+    return Number.isFinite(n) && n >= min ? n : min;
+  };
+  const btn = "h-11 w-11 shrink-0 border border-[#8fd0c8] text-lg text-gray-600 active:bg-[#eaf7f5]";
+  return (
+    <div className="flex items-stretch">
+      <button type="button" aria-label="数量を減らす" className={btn + " rounded-l-lg"}
+        onClick={() => { setDraft(null); onChange(Math.max(min, value - 1)); }}>−</button>
+      <input
+        inputMode="numeric"
+        type="text"
+        value={shown}
+        aria-label="数量"
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          if (e.target.value.trim() !== "") onChange(toNum(e.target.value));
+        }}
+        onBlur={() => { if (draft !== null) onChange(toNum(draft)); setDraft(null); }}
+        className="h-11 w-full min-w-[3rem] border-y border-[#8fd0c8] text-center text-base tabular-nums focus:outline-none"
+      />
+      <button type="button" aria-label="数量を増やす" className={btn + " rounded-r-lg"}
+        onClick={() => { setDraft(null); onChange(value + 1); }}>＋</button>
+    </div>
+  );
+}
+
 function F({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return <div><label className="block text-sm text-gray-600">{label}{required && <span className="ml-1 rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span>}</label><div className="mt-1">{children}</div></div>;
 }
