@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserPlus, Users, FileText, Receipt, CheckSquare, TrendingUp, CircleDollarSign, ClipboardList, AlertTriangle, CalendarClock } from "lucide-react";
+import { UserPlus, Users, FileText, Receipt, CircleDollarSign, ClipboardList, AlertTriangle, CalendarClock } from "lucide-react";
 import { listCustomers, monthlyCustomerCounts, countCustomers } from "@/lib/kanri/data";
 import { listEstimates, deceasedFullName } from "@/lib/kanri/estimates";
 import { listInvoices } from "@/lib/kanri/invoices";
@@ -13,22 +13,17 @@ const GROUPS = [
     { label: "新規登録", href: "/kanri/customers/new", icon: UserPlus },
     { label: "顧客情報確認", href: "/kanri/customers", icon: Users },
   ] },
-  { title: "事前相談", items: [
-    { label: "顧客呼び出し", href: "/kanri/customers", icon: Users },
-    { label: "事前見積作成", href: "/kanri/estimates/intake", icon: FileText },
-  ] },
   { title: "葬儀発生", items: [
     { label: "顧客呼び出し", href: "/kanri/customers", icon: Users },
     { label: "葬儀見積作成", href: "/kanri/estimates/intake", icon: FileText },
     { label: "見積もり一覧", href: "/kanri/estimates", icon: ClipboardList },
     { label: "請求書作成", href: "/kanri/billing", icon: Receipt },
   ] },
-  { title: "葬儀後アフター", items: [
-    { label: "アフターtodo", href: "/kanri/schedule", icon: CheckSquare },
+  { title: "事前相談", items: [
+    { label: "顧客呼び出し", href: "/kanri/customers", icon: Users },
+    { label: "事前見積作成", href: "/kanri/estimates/intake", icon: FileText },
   ] },
   { title: "その他", items: [
-    { label: "営業日報", href: "/kanri/analytics", icon: FileText },
-    { label: "顧客登録推移", href: "/kanri/analytics", icon: TrendingUp },
     { label: "入金管理", href: "/kanri/deposits", icon: CircleDollarSign },
     { label: "ユーザー管理", href: "/kanri/settings", icon: Users },
   ] },
