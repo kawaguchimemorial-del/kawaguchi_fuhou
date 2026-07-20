@@ -208,6 +208,8 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const [tplOpen, setTplOpen] = useState(false);
   const [memoVal, setMemoVal] = useState(initial?.memo ?? "");
   const [titleVal, setTitleVal] = useState(initial?.title ?? "");
+  // 件名は「対象者氏名 御葬儀」を既定。ユーザーが手で変えたら自動更新を止める。
+  const titleEdited = useRef(!!initial?.title);
   const [pno, setPno] = useState(initial?.constructionNo ?? "");
   // 対象者(故人)氏名は氏・名に分離（訃報案内で氏名が正しく分かれるように）
   const _initName = (initial?.deceasedName ?? "").replace(/　/g, " ");
@@ -222,12 +224,23 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   // サーバー(UTC)とブラウザ(JST)で日付がずれてhydration不整合になるのを避けるため、
   // 初期値ではなくマウント後に入れる。編集時と入力済みのときは触らない。
   useEffect(() => {
-    if (initial?.id || initial?.deceasedDeathDate) return;
+    if (initial?.id) return;
     const d = new Date();
-    setDDeath(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // 没年月日の既定＝本日
+    if (!initial?.deceasedDeathDate) setDDeath(today);
+    // 見積日の既定＝本日
+    if (!initial?.date1) setEstimateOn(today);
     // マウント時のみ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // 件名を「対象者氏名 御葬儀」に自動追従（手入力があるまで）
+  useEffect(() => {
+    if (titleEdited.current) return;
+    const nm = `${deceasedLast}${deceasedFirst ? "　" + deceasedFirst : ""}`.trim();
+    setTitleVal(nm ? `${nm}　御葬儀` : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deceasedLast, deceasedFirst]);
   const [dRelation, setDRelation] = useState(initial?.deceasedRelation ?? "");
   // 見積日（必須）・通夜日時・告別式日時
   const [estimateOn, setEstimateOn] = useState(initial?.date1 ?? "");
@@ -657,7 +670,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
 
       {/* 件名・摘要・日付 */}
       <Card>
-        <F label="件名" required><input name="title" required value={titleVal} onChange={(e) => setTitleVal(e.target.value)} className={inp} /></F>
+        <F label="件名" required><input name="title" required value={titleVal} onChange={(e) => { titleEdited.current = true; setTitleVal(e.target.value); }} className={inp} /></F>
         <div className="mt-3">
           <label className="flex items-center gap-2 text-sm text-gray-600">摘要
             {purposes.length > 0 && <button type="button" onClick={() => setPurposeOpen(true)} className="rounded border border-blue-400 px-2 py-0.5 text-xs text-blue-500">参照</button>}
