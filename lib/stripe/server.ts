@@ -1,9 +1,19 @@
 import "server-only";
 import Stripe from "stripe";
 
-// STRIPE_SECRET_KEY が設定されているときだけ有効。未設定なら香典決済は「準備中」動作にフォールバック。
+// STRIPE_SECRET_KEY が設定されているときだけ有効。未設定なら決済は「準備中」動作にフォールバック。
 export function stripeEnabled(): boolean {
   return !!process.env.STRIPE_SECRET_KEY;
+}
+
+// 供物(供花)のカード決済を使うか。Stripe鍵に加えて明示フラグで有効化する。
+export function offeringPaymentEnabled(): boolean {
+  return stripeEnabled() && process.env.OFFERING_PAYMENT_ENABLED === "1";
+}
+
+// 香典のカード決済を使うか。※現状は使わない方針。鍵を入れても、このフラグを立てるまでオフのまま。
+export function kodenPaymentEnabled(): boolean {
+  return stripeEnabled() && process.env.KODEN_PAYMENT_ENABLED === "1";
 }
 
 let _stripe: Stripe | null = null;

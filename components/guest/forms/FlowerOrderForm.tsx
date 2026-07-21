@@ -2,25 +2,29 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { submitOrder, type ActionResult } from "@/lib/memorial/actions";
+import { submitOrder, type OrderStart } from "@/lib/memorial/actions";
 import type { OfferingProduct } from "@/lib/memorial/products";
+import { OfferingPaymentStep } from "./OfferingPaymentStep";
 
 export function FlowerOrderForm({
   slug,
   products,
   acceptInvoice = true,
   acceptOnsite = true,
+  acceptCard = false,
 }: {
   slug: string;
   products: OfferingProduct[];
   acceptInvoice?: boolean;
   acceptOnsite?: boolean;
+  acceptCard?: boolean;
 }) {
-  const [state, action, pending] = useActionState<ActionResult | null, FormData>(
+  const [state, action, pending] = useActionState<OrderStart | null, FormData>(
     submitOrder,
     null
   );
   const payOptions = [
+    ...(acceptCard ? ["クレジットカード"] : []),
     ...(acceptInvoice ? ["請求書払い（銀行振込）"] : []),
     ...(acceptOnsite ? ["当日現地払い"] : []),
   ];
@@ -64,6 +68,10 @@ export function FlowerOrderForm({
     return () => window.removeEventListener("keydown", onKey);
   }, [zoom]);
 
+  // カード決済へ（clientSecret取得済み）→ Payment Element を表示
+  if (state?.ok && "card" in state) {
+    return <OfferingPaymentStep slug={slug} clientSecret={state.clientSecret} amount={state.amount} productName={state.productName} quantity={state.quantity} />;
+  }
   if (state?.ok) {
     return (
       <div className="rounded-md bg-[var(--card)] px-6 py-10 text-center">
@@ -294,7 +302,7 @@ export function FlowerOrderForm({
                 </label>
               ))}
             </div>
-            <p className="mt-1 text-xs text-[var(--muted)]">{payMethod === "当日現地払い" ? "当日、会場にてお支払いください。" : "ご注文確認メールに記載の請求書リンクを開き、印刷してお支払いください。"}</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">{payMethod === "クレジットカード" ? "次の画面でカード情報をご入力いただきます。お支払い完了でご注文が確定します。" : payMethod === "当日現地払い" ? "当日、会場にてお支払いください。" : "ご注文確認メールに記載の請求書リンクを開き、印刷してお支払いください。"}</p>
           </div>
         )}
 
@@ -367,7 +375,7 @@ export function FlowerOrderForm({
             disabled={pending}
             className="w-full rounded-sm bg-[var(--accent)] py-3.5 text-white transition-colors hover:bg-[var(--accent-strong)] disabled:opacity-60"
           >
-            {pending ? "送信中…" : "この内容で注文する"}
+            {pending ? "送信中…" : (review.paymentMethod === "クレジットカード" ? "お支払いへ進む" : "この内容で注文する")}
           </button>
           <button
             type="button"

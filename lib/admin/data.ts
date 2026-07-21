@@ -185,7 +185,8 @@ export async function listAllOrders(): Promise<AllOrderRow[]> {
       "id,product_name,quantity,unit_price_jpy,orderer_name,company,address,name_plate_text,status,payment_method,created_at,memorials!inner(funeral_home_id,announce_mourner_name,deceased(name_kanji))"
     )
     .eq("memorials.funeral_home_id", DEMO_FUNERAL_HOME_ID)
-    .neq("status", "error") // 決済未成立(error)は除外
+    .neq("status", "error") // 決済失敗(error)は除外
+    .neq("status", "requires_payment") // カード決済の未確定(未入金)は除外
     .order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => {
@@ -317,8 +318,8 @@ export async function listOrders(slug: string): Promise<OrderRow[]> {
   if (!c) return [];
   const mid = await memorialIdBySlug(slug);
   if (!mid) return [];
-  // status=error は決済が通っていない注文のため一覧に出さない
-  const { data } = await c.from("offering_orders").select("id,product_name,quantity,unit_price_jpy,orderer_name,email,name_plate_text,status,created_at").eq("memorial_id", mid).neq("status", "error").order("created_at", { ascending: false });
+  // status=error(決済失敗) / requires_payment(カード未入金) は一覧に出さない
+  const { data } = await c.from("offering_orders").select("id,product_name,quantity,unit_price_jpy,orderer_name,email,name_plate_text,status,created_at").eq("memorial_id", mid).neq("status", "error").neq("status", "requires_payment").order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => ({
     id: r.id, productName: r.product_name ?? "—", quantity: r.quantity ?? 1, amountJpy: (r.unit_price_jpy ?? 0) * (r.quantity ?? 1),
@@ -411,6 +412,7 @@ export async function getOrdersForExport(slug: string): Promise<ExportOrderRow[]
     .select("created_at,status,product_name,quantity,unit_price_jpy,orderer_name,company,name_plate_text,postal_code,address,phone,email,invoice_name,memorials(announce_mourner_name,deceased(name_kanji))")
     .eq("memorial_id", mid)
     .neq("status", "error")
+    .neq("status", "requires_payment")
     .order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => {

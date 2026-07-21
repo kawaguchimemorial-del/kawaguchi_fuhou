@@ -4,6 +4,7 @@ import { isPast } from "@/lib/format";
 import { OFFERING_PRODUCTS } from "@/lib/memorial/products";
 import { getPublicProducts, getMemorialFlowerSelection } from "@/lib/memorial/db";
 import { getOrderSettings } from "@/lib/admin/product-actions";
+import { offeringPaymentEnabled } from "@/lib/stripe/server";
 import { TestBanner, SiteFooter } from "@/components/guest/parts";
 import { FlowerOrderForm } from "@/components/guest/forms/FlowerOrderForm";
 
@@ -26,6 +27,7 @@ export default async function FlowerPage({ params }: Params) {
   const pm = (settings.paymentMethods ?? {}) as { invoice?: boolean; onsite?: boolean };
   const acceptInvoice = pm.invoice !== false;
   const acceptOnsite = pm.onsite !== false;
+  const acceptCard = offeringPaymentEnabled(); // Stripe鍵＋OFFERING_PAYMENT_ENABLED=1 で有効
   const filtered = selectedIds ? dbProducts.filter((p) => selectedIds.includes(p.id)) : dbProducts;
   const products = filtered.length > 0 ? filtered : (dbProducts.length > 0 ? dbProducts : OFFERING_PRODUCTS);
 
@@ -42,7 +44,7 @@ export default async function FlowerPage({ params }: Params) {
             申し訳ございません。供花・供物のご注文受付は終了いたしました。
           </p>
         ) : (
-          <FlowerOrderForm slug={slug} products={products} acceptInvoice={acceptInvoice} acceptOnsite={acceptOnsite} />
+          <FlowerOrderForm slug={slug} products={products} acceptInvoice={acceptInvoice} acceptOnsite={acceptOnsite} acceptCard={acceptCard} />
         )}
       </main>
       <SiteFooter />

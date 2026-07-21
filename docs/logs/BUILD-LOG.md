@@ -2058,3 +2058,15 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - /m/[slug]/koden/complete: redirect_statusで結果表示（確定はWebhook）。
 - Webhook実装: 署名検証・processed_webhook_eventsでdedup・payment_intent.succeeded→koden_payments succeeded、payment_failed/charge.refunded対応。
 - キー未設定でも既存動作を壊さない（本番はキー投入まで「準備中」）。要設定: STRIPE_SECRET_KEY / NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY / STRIPE_WEBHOOK_SECRET。
+
+## 2026-07-21 供物(供花)のクレジット決済(Stripe)を実装／香典はフラグでオフ固定
+- 香典: kodenPaymentEnabled()=鍵＋KODEN_PAYMENT_ENABLED=1 でのみ有効。既定オフ（鍵を入れても香典は動かない）。
+- 供物: offeringPaymentEnabled()=鍵＋OFFERING_PAYMENT_ENABLED=1 で「クレジットカード」支払い方法を追加。
+- migration 0041: offering_orders に provider_payment_intent_id/idempotency_key/charged_amount_jpy/paid_at/updated_at/pending_payload 追加（本番適用済み）。
+- 設計: カードは決済成功で初めて確定。要件どおり——
+  - 成功(payment_intent.succeeded, metadata.kind=offering) → status=captured、pending_payloadから請求書作成＋確認/通知メール、注文一覧に表示。
+  - 失敗(payment_intent.payment_failed) → status=error、請求書を作らず一覧に出さない、注文者＆葬儀社の双方へ失敗通知メール。
+  - 未決済中は status=requires_payment（listAllOrders/listOrders/export で除外）。
+- 確定/失敗処理を lib/memorial/offering-fulfill.ts に共通化（銀行振込/当日払いは従来どおり即時確定でこの関数を利用）。
+- フロント: FlowerOrderFormに「クレジットカード」追加、OfferingPaymentStep(Payment Element)、/m/[slug]/flower/complete。
+- 香典の決済description の [object Object] バグ修正（m.deceased?.nameKanji）。

@@ -6,11 +6,8 @@ import { religionVocab } from "./religion";
 import { store, nextId } from "./store";
 import { OFFERING_PRODUCTS } from "./products";
 import { dbEnabled, resolveMemorialId, insertRow, insertRowReturningId, updateRowById, getPublicProducts } from "./db";
-import { getStripe, stripeEnabled, chargedAmount } from "@/lib/stripe/server";
-import { createFlowerOrderInvoice } from "@/lib/kanri/flower-invoice";
-import { sendMailWithPdf } from "@/lib/kanri/mail";
-import { getCompanyInfo, getAppSetting } from "@/lib/kanri/masters";
-import { fillSlot, ORDER_NOTIFY_DEFAULT_TO } from "@/lib/memorial/mail-template";
+import { getStripe, kodenPaymentEnabled, offeringPaymentEnabled, chargedAmount } from "@/lib/stripe/server";
+import { fulfillOfferingOrder, type OfferingPayload } from "./offering-fulfill";
 
 // 共通の戻り値型
 export type ActionResult =
@@ -150,7 +147,7 @@ const orderSchema = z
     emailConfirm: z.string().trim(),
     namePlateText: z.string().trim().min(1, "札名をご入力ください").max(100),
     oldChar: z.enum(["on", ""]).optional(),
-    paymentMethod: z.enum(["請求書払い（銀行振込）", "当日現地払い"]).optional(),
+    paymentMethod: z.enum(["請求書払い（銀行振込）", "当日現地払い", "クレジットカード"]).optional(),
     invoiceName: z.string().trim().optional().or(z.literal("")),
     memo: z.string().trim().max(500).optional().or(z.literal("")),
   })
@@ -159,10 +156,15 @@ const orderSchema = z
     message: "確認用メールアドレスが一致しません",
   });
 
+export type OrderStart =
+  | { ok: false; errors: Record<string, string> }
+  | { ok: true; message: string }
+  | { ok: true; card: true; clientSecret: string; amount: number; productName: string; quantity: number };
+
 export async function submitOrder(
-  _prev: ActionResult | null,
+  _prev: OrderStart | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<OrderStart> {
   const parsed = orderSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { ok: false, errors: fieldErrors(parsed.error) };
@@ -182,117 +184,72 @@ export async function submitOrder(
   const product = catalog.find((p) => p.id === d.productId);
   if (!product) return { ok: false, errors: { productId: "商品が見つかりません" } };
 
+  const total = product.priceJpy * d.quantity;
+  const paymentMethod = d.paymentMethod || "請求書払い（銀行振込）";
+  const wantCard = d.paymentMethod === "クレジットカード";
+
+  // 確定処理(請求書・メール)で使う注文内容。カード決済時はDBに一時保存し、決済成功Webhookで使う。
+  const payload: OfferingPayload = {
+    slug: d.slug, productId: d.productId, productName: product.name, unitPriceJpy: product.priceJpy, quantity: d.quantity,
+    ordererLast: d.ordererName, ordererFirst: d.ordererFirstName, ordererKana: d.ordererKana || "", ordererKanaMei: d.ordererKanaMei || "",
+    company: d.company || "", postalCode: d.postalCode, prefecture: d.prefecture, city: d.city, street: d.street, building: d.building || "",
+    phone: d.phone, email: d.email, namePlateText: d.namePlateText, oldChar: d.oldChar === "on",
+    invoiceName: d.invoiceName || "", memo: d.memo || "", paymentMethod,
+  };
+
+  // ===== カード決済(Stripe) =====
+  // 決済が成功して初めて確定(請求書作成・メール・一覧表示)する。失敗時は請求書を作らず一覧にも出さない。
+  const stripe = getStripe();
+  if (wantCard && stripe && offeringPaymentEnabled() && dbEnabled()) {
+    const mid = await resolveMemorialId(d.slug);
+    if (!mid) return { ok: false, errors: { _form: "対象の式場が見つかりませんでした。" } };
+    const idempotencyKey = nextId("offer_idem");
+    const orderId = await insertRowReturningId("offering_orders", {
+      memorial_id: mid, product_id: d.productId, product_name: product.name, quantity: d.quantity,
+      unit_price_jpy: product.priceJpy, charged_amount_jpy: total, orderer_name: fullName, orderer_kana: fullKana,
+      company: d.company || null, postal_code: d.postalCode, address: fullAddress, phone: d.phone, email: d.email,
+      name_plate_text: d.namePlateText, old_char: d.oldChar === "on", invoice_name: d.invoiceName || null, memo: d.memo || null,
+      payment_method: "クレジットカード", status: "requires_payment", idempotency_key: idempotencyKey, pending_payload: payload,
+    });
+    if (!orderId) return { ok: false, errors: { _form: "受付処理に失敗しました。時間をおいてお試しください。" } };
+    try {
+      const intent = await stripe.paymentIntents.create(
+        {
+          amount: total, currency: "jpy", automatic_payment_methods: { enabled: true },
+          description: `供花・供物 ${product.name}×${d.quantity} / ${m.deceased?.nameKanji ?? ""}`,
+          metadata: { kind: "offering", offering_order_id: orderId, memorial_id: mid, slug: d.slug, orderer_name: fullName },
+        },
+        { idempotencyKey }
+      );
+      await updateRowById("offering_orders", orderId, { provider_payment_intent_id: intent.id, updated_at: new Date().toISOString() });
+      return { ok: true, card: true, clientSecret: intent.client_secret!, amount: total, productName: product.name, quantity: d.quantity };
+    } catch {
+      await updateRowById("offering_orders", orderId, { status: "error", updated_at: new Date().toISOString() });
+      return { ok: false, errors: { _form: "決済の準備に失敗しました。時間をおいて再度お試しください。" } };
+    }
+  }
+
+  // ===== 銀行振込 / 当日現地払い（従来どおり即時確定） =====
   if (dbEnabled()) {
     const mid = await resolveMemorialId(d.slug);
     if (mid)
       await insertRow("offering_orders", {
-        memorial_id: mid,
-        product_id: d.productId,
-        product_name: product.name,
-        quantity: d.quantity,
-        unit_price_jpy: product.priceJpy,
-        orderer_name: fullName,
-        orderer_kana: fullKana,
-        company: d.company || null,
-        postal_code: d.postalCode,
-        address: fullAddress,
-        phone: d.phone,
-        email: d.email,
-        name_plate_text: d.namePlateText,
-        old_char: d.oldChar === "on",
-        invoice_name: d.invoiceName || null,
-        memo: d.memo || null,
-        payment_method: d.paymentMethod || "請求書払い（銀行振込）",
-        status: "pending_confirm",
+        memorial_id: mid, product_id: d.productId, product_name: product.name, quantity: d.quantity,
+        unit_price_jpy: product.priceJpy, orderer_name: fullName, orderer_kana: fullKana, company: d.company || null,
+        postal_code: d.postalCode, address: fullAddress, phone: d.phone, email: d.email, name_plate_text: d.namePlateText,
+        old_char: d.oldChar === "on", invoice_name: d.invoiceName || null, memo: d.memo || null,
+        payment_method: paymentMethod, status: "pending_confirm",
       });
   }
   store.orders.push({
-    id: nextId("ord"),
-    memorialSlug: d.slug,
-    productId: d.productId,
-    quantity: d.quantity,
-    unitPriceAtOrder: product.priceJpy, // 注文時価格をスナップショット
-    ordererName: fullName,
-    ordererKana: fullKana,
-    company: d.company || null,
-    postalCode: d.postalCode,
-    address: fullAddress,
-    phone: d.phone,
-    email: d.email,
-    namePlateText: d.namePlateText,
-    oldCharRequested: d.oldChar === "on",
-    invoiceName: d.invoiceName || null,
-    memo: d.memo || null,
-    status: "pending_confirm",
-    createdAt: new Date().toISOString(),
+    id: nextId("ord"), memorialSlug: d.slug, productId: d.productId, quantity: d.quantity,
+    unitPriceAtOrder: product.priceJpy, ordererName: fullName, ordererKana: fullKana, company: d.company || null,
+    postalCode: d.postalCode, address: fullAddress, phone: d.phone, email: d.email, namePlateText: d.namePlateText,
+    oldCharRequested: d.oldChar === "on", invoiceName: d.invoiceName || null, memo: d.memo || null,
+    status: "pending_confirm", createdAt: new Date().toISOString(),
   });
-  const total = product.priceJpy * d.quantity;
-  const paymentMethod = d.paymentMethod || "請求書払い（銀行振込）";
-  // 社内管理用に請求書(fk_invoices)を作成。請求先=注文者・種別=オンライン供花注文。
-  let invoiceId: string | undefined;
-  if (dbEnabled()) {
-    const mid = await resolveMemorialId(d.slug);
-    if (mid) {
-      try {
-        const r = await createFlowerOrderInvoice({
-          memorialId: mid, productName: product.name, unitPriceIncTax: product.priceJpy,
-          quantity: d.quantity, paymentMethod, invoiceName: d.invoiceName || undefined,
-          orderer: { lastName: d.ordererName, firstName: d.ordererFirstName, kana: fullKana, company: d.company || undefined, postcode: d.postalCode, prefecture: d.prefecture, city: d.city, street: d.street, building: d.building || undefined, phone: d.phone, email: d.email },
-        });
-        if (r.ok) invoiceId = r.invoiceId;
-      } catch { /* 請求書作成失敗は注文自体は成立させる(社内で手動作成可) */ }
-    }
-  }
-  // 注文確認メールを注文者へ送信(PDFなし)。未設定・失敗でも注文は成立。
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://kawaguchi-fuhou.vercel.app").replace(/\/$/, "");
-  try {
-    const co = await getCompanyInfo();
-    const company = co.company_name || "株式会社 川口典礼";
-    const tel = co.tel || "";
-    const addr = [co.prefecture, co.address_city, co.address_street].filter(Boolean).join("");
-    const deceasedNm = m.deceased?.nameKanji || "";
-    const mournerNm = m.chiefMourner?.nameKanji || "";
-    // 文言スロット(設定 > メール設定 で編集可能。空/不正は既定値に自動フォールバック)
-    const [notifySetting, tmpl] = await Promise.all([getAppSetting("order_notify"), getAppSetting("order_mail_template")]);
-    const vars = { company, tel };
-    const noReplyNote = `<p style="color:#888;font-size:12px;line-height:1.6">${fillSlot("footer_note", tmpl.footer_note, vars, { html: true })}</p>`;
-    const signature = `<p>――――――――――<br>${company}<br>${addr}<br>${tel ? "TEL: " + tel : ""}</p>`;
-    const orderLines = `商品：${product.name}<br>数量：${d.quantity}<br>札名：${d.namePlateText}<br>`
-      + `旧字体希望：${d.oldChar === "on" ? "あり" : "なし"}<br>合計：${total.toLocaleString()}円（税込）<br>お支払い方法：${paymentMethod}`;
-    const ordererInfo = `お名前：${fullName}<br>フリガナ：${fullKana || "—"}<br>`
-      + (d.company ? `法人・団体：${d.company}<br>` : "")
-      + `ご住所：〒${d.postalCode} ${fullAddress}<br>お電話：${d.phone}<br>メール：${d.email}`
-      + (d.invoiceName ? `<br>請求書・領収書宛名：${d.invoiceName}` : "")
-      + (d.memo ? `<br>備考：${d.memo}` : "");
-
-    // 1) 注文者への確認メール
-    const subject = fillSlot("subject", tmpl.subject, vars);
-    const html = `<p>${fullName} 様</p>`
-      + `<p>${fillSlot("greeting", tmpl.greeting, vars, { html: true })}</p>`
-      + `<p>${orderLines}</p>`
-      + (paymentMethod === "当日現地払い"
-        ? `<p>${fillSlot("pay_onsite", tmpl.pay_onsite, vars, { html: true })}</p>`
-        : (invoiceId
-          ? `<p>${fillSlot("pay_invoice", tmpl.pay_invoice, vars, { html: true })}<br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">▶ 請求書を表示・印刷する</a></p>`
-          : `<p>${fillSlot("pay_pending", tmpl.pay_pending, vars, { html: true })}</p>`))
-      + noReplyNote + signature;
-    const mailRes = await sendMailWithPdf({ to: d.email, subject, html });
-    if (!mailRes.ok) console.error("[flower-order] 確認メール送信失敗:", mailRes.error);
-
-    // 2) 葬儀社への注文通知メール
-    const notifyTo = (notifySetting.to ?? "").trim() || process.env.ORDER_NOTIFY_TO || ORDER_NOTIFY_DEFAULT_TO;
-    const nsubject = `【供花注文】${deceasedNm ? `故${deceasedNm}様　` : ""}${fullName}様より`;
-    const nhtml = `<p>オンライン供花・供物のご注文が入りました。</p>`
-      + `<p><b>■ 対象</b><br>故人：${deceasedNm || "—"}<br>喪主：${mournerNm || "—"}</p>`
-      + `<p><b>■ ご注文内容</b><br>${orderLines}</p>`
-      + `<p><b>■ ご注文者</b><br>${ordererInfo}</p>`
-      + (invoiceId
-        ? `<p><b>■ 請求書（社内管理用に自動作成済み）</b><br><a href="${baseUrl}/kanri/billing/${invoiceId}/print">請求書を表示・印刷する</a></p>`
-        : "")
-      + signature;
-    const notifyRes = await sendMailWithPdf({ to: notifyTo, subject: nsubject, html: nhtml });
-    if (!notifyRes.ok) console.error("[flower-order] 注文通知メール送信失敗:", notifyRes.error);
-  } catch (e) { console.error("[flower-order] メール処理例外:", e instanceof Error ? e.message : e); }
+  // 請求書作成・確認/通知メール（共通処理）
+  await fulfillOfferingOrder(payload);
   return {
     ok: true,
     message: `ご注文を承りました（${product.name} ×${d.quantity}／合計 ${total.toLocaleString()}円・税込）。葬儀社よりご連絡のうえ確定いたします。`,
@@ -394,8 +351,8 @@ export async function createKodenPayment(
   const idempotencyKey = nextId("koden_idem");
 
   const stripe = getStripe();
-  // Stripe未設定 or DB未接続 → 従来どおり記録のみで「準備中」
-  if (!stripe || !stripeEnabled() || !dbEnabled()) {
+  // 香典決済フラグOFF or Stripe未設定 or DB未接続 → 従来どおり記録のみで「準備中」
+  if (!stripe || !kodenPaymentEnabled() || !dbEnabled()) {
     if (dbEnabled()) {
       const mid = await resolveMemorialId(d.slug);
       if (mid) await insertRow("koden_payments", {
@@ -425,7 +382,7 @@ export async function createKodenPayment(
         amount: charge, // JPYは最小単位=円（×100しない）
         currency: "jpy",
         automatic_payment_methods: { enabled: true },
-        description: `お香典 ${hyogaki} / ${m.deceased ?? ""}`,
+        description: `お香典 ${hyogaki} / ${m.deceased?.nameKanji ?? ""}`,
         metadata: { koden_payment_id: paymentId, memorial_id: mid, slug: d.slug, donor_name: d.donorName, koden_amount: String(d.amount), fee_payer: d.feePayer },
       },
       { idempotencyKey }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
+import { fulfillOfferingOrder, notifyOfferingFailed, type OfferingPayload } from "@/lib/memorial/offering-fulfill";
 
 // Stripe Webhook 受信口（決済確定の唯一の真実源）。
 // 原則:
@@ -47,8 +48,21 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
-        if (c) {
-          const patch = { status: "succeeded", updated_at: new Date().toISOString() };
+        const now = new Date().toISOString();
+        if (pi.metadata?.kind === "offering") {
+          // 供花・供物: 決済成功で確定（captured）。請求書作成・確認/通知メールはここで。
+          const oid = pi.metadata.offering_order_id;
+          if (c && oid) {
+            const { data: row } = await c.from("offering_orders").select("status,pending_payload").eq("id", oid).maybeSingle();
+            // 二重確定防止（すでにcaptured等なら何もしない）
+            if (row && row.status === "requires_payment") {
+              await c.from("offering_orders").update({ status: "captured", paid_at: now, updated_at: now }).eq("id", oid);
+              if (row.pending_payload) await fulfillOfferingOrder(row.pending_payload as OfferingPayload);
+            }
+          }
+        } else if (c) {
+          // 香典（現状フラグOFF・将来用）
+          const patch = { status: "succeeded", updated_at: now };
           const kid = pi.metadata?.koden_payment_id;
           if (kid) await c.from("koden_payments").update(patch).eq("id", kid);
           else await c.from("koden_payments").update(patch).eq("provider_payment_intent_id", pi.id);
@@ -57,7 +71,20 @@ export async function POST(req: NextRequest) {
       }
       case "payment_intent.payment_failed": {
         const pi = event.data.object as Stripe.PaymentIntent;
-        if (c) await c.from("koden_payments").update({ status: "failed", updated_at: new Date().toISOString() }).eq("provider_payment_intent_id", pi.id);
+        const now = new Date().toISOString();
+        if (pi.metadata?.kind === "offering") {
+          // 供花・供物: 失敗 → error（一覧に出さない・請求書なし）＋ 両者へ失敗通知
+          const oid = pi.metadata.offering_order_id;
+          if (c && oid) {
+            const { data: row } = await c.from("offering_orders").select("status,pending_payload").eq("id", oid).maybeSingle();
+            if (row && row.status === "requires_payment") {
+              await c.from("offering_orders").update({ status: "error", updated_at: now }).eq("id", oid);
+              if (row.pending_payload) await notifyOfferingFailed(row.pending_payload as OfferingPayload);
+            }
+          }
+        } else if (c) {
+          await c.from("koden_payments").update({ status: "failed", updated_at: now }).eq("provider_payment_intent_id", pi.id);
+        }
         break;
       }
       case "charge.refunded": {
