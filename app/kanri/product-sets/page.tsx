@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listProductSets } from "@/lib/kanri/products";
 import { deleteProductSet } from "@/lib/kanri/actions";
+import { SetHiddenToggle } from "@/components/kanri/SetHiddenToggle";
 
 export const metadata = { title: "セット商品" };
 export const dynamic = "force-dynamic";
@@ -31,11 +32,12 @@ export default async function ProductSetsPage() {
                     <td className="px-4 py-2 whitespace-nowrap text-right">{st.price.toLocaleString()}円</td>
                     <td className="px-4 py-2 whitespace-nowrap text-right">{st.taxIncludedPrice.toLocaleString()}円</td>
                     <td className="px-4 py-2">{Math.round(st.tax * 100)}%</td>
-                    <td className="px-4 py-2">{st.hidden ? "非表示" : ""}</td>
+                    <td className="px-4 py-2">{st.hidden ? <span className="text-red-500">非表示</span> : ""}</td>
                     <td className="px-4 py-2">
-                      <div className="flex gap-1">
+                      <div className="flex items-center gap-2">
                         <Link href={`/kanri/product-sets/${st.id}/edit`} className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">編集</Link>
                         <form action={deleteProductSet}><input type="hidden" name="id" value={st.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
+                        <SetHiddenToggle id={st.id} hidden={st.hidden} />
                       </div>
                     </td>
                   </tr>

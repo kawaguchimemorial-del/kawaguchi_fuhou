@@ -181,6 +181,13 @@ export async function reorderMasterItems(type: string, orderedIds: string[]): Pr
   revalidatePath("/kanri/products");
 }
 
+// セット商品の非表示トグル（見積もり作成のセット選択から除外するため）
+export async function setProductSetHidden(id: string, hidden: boolean): Promise<void> {
+  if (!id) return;
+  await admin().from("fk_product_sets").update({ hidden }).eq("id", id);
+  revalidatePath("/kanri/product-sets");
+}
+
 export async function deleteMasterItem(fd: FormData): Promise<void> {
   const id = s(fd, "id"); const type = s(fd, "master_type");
   if (!id) return;

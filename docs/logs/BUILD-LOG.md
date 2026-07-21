@@ -2013,3 +2013,8 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - 新規: reorderMasterItems(type, orderedIds) アクション（渡された順に sort_order=1..N を再採番）。
 - 新規: components/kanri/ProductKindReorder.tsx（HTML5 D&D、楽観更新＋サーバー同期、名称編集/削除も内包）。
 - updateMasterItemのsort_orderリール処理はそのまま残置（未使用）。listProductsの種別順ソートは継続。
+
+## 2026-07-21 セット商品の非表示チェック
+- セット商品一覧(操作列)の編集/削除の隣に「非表示」チェックを追加。ON=見積もり作成のセット選択に出さない。
+- 新規: setProductSetHidden(id, hidden) アクション、SetHiddenToggle クライアントコンポーネント。
+- 見積もり作成のセット選択は既に productSets.filter(s=>!s.hidden) で除外済み。
