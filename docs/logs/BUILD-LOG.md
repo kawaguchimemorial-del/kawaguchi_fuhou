@@ -2048,3 +2048,13 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 ## 2026-07-21 未参照の「提携先」「ブランド」を設定から削除
 - master-defs.ts から partner / bland を削除。両者だけだった「その他設定」カテゴリも MASTER_CATEGORIES から除去。
 - nav.ts の「その他」グループを削除。データは両者0件。
+
+## 2026-07-21 香典クレジット決済(Stripe / 単独加盟店・Payment Element)を実装
+- 依存追加: stripe / @stripe/stripe-js / @stripe/react-stripe-js。
+- migration 0040: koden_paymentsに provider_payment_intent_id / idempotency_key / charged_amount_jpy / updated_at、processed_webhook_events テーブル追加（本番適用済み）。
+- lib/stripe/server.ts: getStripe()/stripeEnabled()/chargedAmount()（手数料負担者=senderのとき約3.6%上乗せ）。
+- createKodenPayment アクション: koden_payments(requires_payment)作成→PaymentIntent(jpy, automatic_payment_methods, metadata.koden_payment_id, 冪等キー)発行→clientSecret返却。STRIPE未設定時はstripe:falseで従来「準備中」にフォールバック。
+- KodenForm: 2段階化（詳細入力→Payment Element）。KodenPaymentStep.tsx で Elements+PaymentElement、confirmPaymentのreturn_url=/m/[slug]/koden/complete。
+- /m/[slug]/koden/complete: redirect_statusで結果表示（確定はWebhook）。
+- Webhook実装: 署名検証・processed_webhook_eventsでdedup・payment_intent.succeeded→koden_payments succeeded、payment_failed/charge.refunded対応。
+- キー未設定でも既存動作を壊さない（本番はキー投入まで「準備中」）。要設定: STRIPE_SECRET_KEY / NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY / STRIPE_WEBHOOK_SECRET。

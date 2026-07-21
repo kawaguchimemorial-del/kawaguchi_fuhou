@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { submitKoden, type ActionResult } from "@/lib/memorial/actions";
+import { createKodenPayment, type KodenStart } from "@/lib/memorial/actions";
+import { KodenPaymentStep } from "./KodenPaymentStep";
 
 const PRESETS = [3000, 5000, 10000, 30000, 50000];
 
@@ -13,13 +14,20 @@ export function KodenForm({
   slug: string;
   hyogaki: string;
 }) {
-  const [state, action, pending] = useActionState<ActionResult | null, FormData>(
-    submitKoden,
+  const [state, action, pending] = useActionState<KodenStart | null, FormData>(
+    createKodenPayment,
     null
   );
   const [amount, setAmount] = useState(5000);
 
-  if (state?.ok) {
+  // Stripe決済へ（clientSecret取得済み）→ Payment Element を表示
+  if (state?.ok && state.stripe) {
+    return (
+      <KodenPaymentStep slug={slug} clientSecret={state.clientSecret} amount={state.amount} chargedAmount={state.chargedAmount} feePayer={state.feePayer} />
+    );
+  }
+  // Stripe未設定時のフォールバック（従来の「準備中」表示）
+  if (state?.ok && !state.stripe) {
     return (
       <div className="rounded-md bg-[var(--card)] px-6 py-10 text-center">
         <p className="font-serif text-lg text-[var(--primary)]">{state.message}</p>
@@ -92,12 +100,12 @@ export function KodenForm({
       </label>
 
       <p className="text-xs text-[var(--muted)]">
-        ※ お支払いは次の画面でカード情報をご入力いただきます（準備中）。お香典は喪主さまへお届けします。
+        ※ 次の画面でカード情報をご入力いただきます。お香典は喪主さまへお届けします。
       </p>
       {err._form && <p className="rounded bg-red-50 px-4 py-2 text-sm text-[var(--danger)]">{err._form}</p>}
 
       <button type="submit" disabled={pending} className="w-full rounded-sm bg-[var(--accent)] py-3.5 text-white hover:bg-[var(--accent-strong)] disabled:opacity-60">
-        {pending ? "送信中…" : "お香典を申し込む"}
+        {pending ? "処理中…" : "お支払いへ進む"}
       </button>
     </form>
   );

@@ -5,7 +5,8 @@ import { getPublicMemorial } from "./data";
 import { religionVocab } from "./religion";
 import { store, nextId } from "./store";
 import { OFFERING_PRODUCTS } from "./products";
-import { dbEnabled, resolveMemorialId, insertRow, getPublicProducts } from "./db";
+import { dbEnabled, resolveMemorialId, insertRow, insertRowReturningId, updateRowById, getPublicProducts } from "./db";
+import { getStripe, stripeEnabled, chargedAmount } from "@/lib/stripe/server";
 import { createFlowerOrderInvoice } from "@/lib/kanri/flower-invoice";
 import { sendMailWithPdf } from "@/lib/kanri/mail";
 import { getCompanyInfo, getAppSetting } from "@/lib/kanri/masters";
@@ -361,12 +362,80 @@ export async function submitKoden(
     idempotencyKey,
     createdAt: new Date().toISOString(),
   });
-  // TODO(stripe): PaymentIntent作成(destination charge/application_fee, 冪等キー=idempotencyKey,
-  //   3DS必須)。確定は /api/webhooks/stripe の payment_intent.succeeded で行う。
   return {
     ok: true,
     message: `お香典（${d.amount.toLocaleString()}円）のお申し込みを受け付けました。決済画面は準備中です。`,
   };
+}
+
+// 香典のクレジット決済開始。koden_paymentsを requires_payment で作成し、StripeのPaymentIntentを発行して
+// clientSecret を返す（フロントは Payment Element で確定）。確定の真実源は /api/webhooks/stripe。
+// STRIPE_SECRET_KEY 未設定時は stripe:false を返し、従来の「準備中」表示にフォールバックする。
+export type KodenStart =
+  | { ok: false; errors: Record<string, string> }
+  | { ok: true; stripe: false; message: string }
+  | { ok: true; stripe: true; clientSecret: string; amount: number; chargedAmount: number; feePayer: string };
+
+export async function createKodenPayment(
+  _prev: KodenStart | null,
+  formData: FormData
+): Promise<KodenStart> {
+  const parsed = kodenSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
+  const d = parsed.data;
+  if (!ALLOWED_AMOUNTS.includes(d.amount)) return { ok: false, errors: { amount: "選択できない金額です" } };
+  const m = await getPublicMemorial(d.slug);
+  if (!m || m.kodenDecline || isPastIso(m.kodenAcceptUntil)) {
+    return { ok: false, errors: { _form: "現在この式場ではお香典を受け付けておりません。" } };
+  }
+
+  const hyogaki = religionVocab(m.religionType).kodenHyogaki;
+  const charge = chargedAmount(d.amount, d.feePayer);
+  const idempotencyKey = nextId("koden_idem");
+
+  const stripe = getStripe();
+  // Stripe未設定 or DB未接続 → 従来どおり記録のみで「準備中」
+  if (!stripe || !stripeEnabled() || !dbEnabled()) {
+    if (dbEnabled()) {
+      const mid = await resolveMemorialId(d.slug);
+      if (mid) await insertRow("koden_payments", {
+        memorial_id: mid, donor_name: d.donorName, donor_company: d.donorCompany || null,
+        amount_jpy: d.amount, hyogaki, fee_payer: d.feePayer, message: d.message || null,
+        is_amount_public: d.isAmountPublic === "on", status: "requires_payment",
+      });
+    }
+    return { ok: true, stripe: false, message: `お香典（${d.amount.toLocaleString()}円）のお申し込みを受け付けました。決済画面は準備中です。` };
+  }
+
+  const mid = await resolveMemorialId(d.slug);
+  if (!mid) return { ok: false, errors: { _form: "対象の式場が見つかりませんでした。" } };
+
+  // 先に決済レコードを作成し、そのidをPaymentIntentのmetadataへ（Webhookで突合するため）。
+  const paymentId = await insertRowReturningId("koden_payments", {
+    memorial_id: mid, donor_name: d.donorName, donor_company: d.donorCompany || null,
+    amount_jpy: d.amount, charged_amount_jpy: charge, hyogaki, fee_payer: d.feePayer,
+    message: d.message || null, is_amount_public: d.isAmountPublic === "on",
+    status: "requires_payment", idempotency_key: idempotencyKey,
+  });
+  if (!paymentId) return { ok: false, errors: { _form: "受付処理に失敗しました。時間をおいてお試しください。" } };
+
+  try {
+    const intent = await stripe.paymentIntents.create(
+      {
+        amount: charge, // JPYは最小単位=円（×100しない）
+        currency: "jpy",
+        automatic_payment_methods: { enabled: true },
+        description: `お香典 ${hyogaki} / ${m.deceased ?? ""}`,
+        metadata: { koden_payment_id: paymentId, memorial_id: mid, slug: d.slug, donor_name: d.donorName, koden_amount: String(d.amount), fee_payer: d.feePayer },
+      },
+      { idempotencyKey }
+    );
+    await updateRowById("koden_payments", paymentId, { provider_payment_intent_id: intent.id, updated_at: new Date().toISOString() });
+    return { ok: true, stripe: true, clientSecret: intent.client_secret!, amount: d.amount, chargedAmount: charge, feePayer: d.feePayer };
+  } catch {
+    await updateRowById("koden_payments", paymentId, { status: "failed", updated_at: new Date().toISOString() });
+    return { ok: false, errors: { _form: "決済の準備に失敗しました。時間をおいて再度お試しください。" } };
+  }
 }
 
 // ---------------------------------------------------------------------------

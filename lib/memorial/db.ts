@@ -174,3 +174,21 @@ export async function insertRow(table: string, row: Record<string, unknown>): Pr
   const { error } = await db.from(table).insert(row);
   return error ? error.message : null;
 }
+
+// insert して作成行の id を返す（Stripe決済など、作成直後にidが必要な用途）。失敗時は null。
+export async function insertRowReturningId(table: string, row: Record<string, unknown>): Promise<string | null> {
+  if (!dbEnabled()) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createAdminClient() as unknown as { from: (t: string) => any };
+  const { data, error } = await db.from(table).insert(row).select("id").single();
+  if (error || !data) return null;
+  return data.id as string;
+}
+
+// 任意テーブルの1行を id で更新。
+export async function updateRowById(table: string, id: string, patch: Record<string, unknown>): Promise<void> {
+  if (!dbEnabled()) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createAdminClient() as unknown as { from: (t: string) => any };
+  await db.from(table).update(patch).eq("id", id);
+}
