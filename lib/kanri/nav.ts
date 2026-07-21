@@ -108,9 +108,5 @@ export const CRM_NAV: NavNode[] = [
       { label: "ｱﾌﾀｰｾｰﾙｽ用ステータス", href: "/kanri/settings/after_sale_action" },
       { label: "ｱﾌﾀｰｾｰﾙｽ用ステータス設定", href: "/kanri/settings/after_sale_item_action" },
     ] },
-    { label: "その他", children: [
-      { label: "提携先", href: "/kanri/settings/partner" },
-      { label: "ブランド", href: "/kanri/settings/bland" },
-    ] },
   ] },
 ];

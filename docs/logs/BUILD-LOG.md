@@ -2044,3 +2044,7 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - サブエージェントで全master_type(65)の実消費箇所を網羅調査。実際に作成/業務画面で参照されるのは product_kind / product_sub_kind / supplier / discounted_product / purpose / estimate_template / invoice_template / rough_product_osonae と別テーブルの商品セットのみ、と判明。
 - master-defs.ts の全MASTER_TYPESに hint を追加（用途＋現状の使用有無。未参照は「設定登録のみ・未参照」と明記）。
 - 設定>[type]ページ上部・マスタ一覧タイルは既存の hint 表示でそのまま反映。
+
+## 2026-07-21 未参照の「提携先」「ブランド」を設定から削除
+- master-defs.ts から partner / bland を削除。両者だけだった「その他設定」カテゴリも MASTER_CATEGORIES から除去。
+- nav.ts の「その他」グループを削除。データは両者0件。

@@ -76,11 +76,9 @@ export const MASTER_TYPES: MasterDef[] = [
   { type: "after_sale_item", label: "ｱﾌﾀｰｾｰﾙｽ項目", category: "アフターセールス設定", hint: "アフターフォローの項目。※現在は設定登録のみ・未参照です。" },
   { type: "after_sale_action", label: "ｱﾌﾀｰｾｰﾙｽ用ステータス", category: "アフターセールス設定", hint: "アフターフォローのステータス。※現在は設定登録のみ・未参照です。" },
   { type: "after_sale_item_action", label: "ｱﾌﾀｰｾｰﾙｽ用ステータス設定", category: "アフターセールス設定", hint: "アフター項目×ステータスの組合せ設定。※現在は設定登録のみ・未参照です。" },
-  { type: "partner", label: "提携先", category: "その他設定", fields: [{ key: "name", label: "提携先名", col: "name" }, { key: "tel", label: "電話" }, { key: "email", label: "メール" }], hint: "提携先の登録。※現在は設定登録のみ・未参照です。" },
-  { type: "bland", label: "ブランド", category: "その他設定", hint: "自社ブランドの登録。※現在は設定登録のみ・未参照です。" },
 ];
 
-export const MASTER_CATEGORIES = ["基本設定", "顧客設定", "商品設定", "葬儀設定", "請求設定", "スケジュール設定", "SMS設定", "アフターセールス設定", "その他設定"];
+export const MASTER_CATEGORIES = ["基本設定", "顧客設定", "商品設定", "葬儀設定", "請求設定", "スケジュール設定", "SMS設定", "アフターセールス設定"];
 
 export function masterDef(type: string): MasterDef | undefined { return MASTER_TYPES.find((m) => m.type === type); }
 export function masterLabel(type: string): string { return masterDef(type)?.label ?? type; }
