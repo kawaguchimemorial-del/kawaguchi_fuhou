@@ -181,6 +181,18 @@ export async function reorderMasterItems(type: string, orderedIds: string[]): Pr
   revalidatePath("/kanri/products");
 }
 
+// 商品種別の非表示トグル（extra.hidden）。ONだと見積もり作成のオプション選択に、その種別と配下商品を出さない。
+export async function setProductKindHidden(id: string, hidden: boolean): Promise<void> {
+  if (!id) return;
+  const c = admin();
+  const { data: cur } = await c.from("fk_master_items").select("extra").eq("id", id).maybeSingle();
+  const extra: Record<string, unknown> = { ...(cur?.extra ?? {}) };
+  if (hidden) extra.hidden = "1"; else delete extra.hidden;
+  await c.from("fk_master_items").update({ extra }).eq("id", id);
+  revalidatePath("/kanri/settings/product_kind");
+  revalidatePath("/kanri/products");
+}
+
 // セット商品の非表示トグル（見積もり作成のセット選択から除外するため）
 export async function setProductSetHidden(id: string, hidden: boolean): Promise<void> {
   if (!id) return;

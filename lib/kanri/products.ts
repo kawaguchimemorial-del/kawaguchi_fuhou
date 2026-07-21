@@ -90,18 +90,22 @@ export async function getProductSet(id: string): Promise<ProductSet | null> {
   return set;
 }
 
-export async function listProducts(): Promise<Product[]> {
+// excludeHiddenKinds: 非表示に設定された商品種別とその配下商品を除外する（見積もり作成のオプション選択用）。
+export async function listProducts(opts?: { excludeHiddenKinds?: boolean }): Promise<Product[]> {
   const c = db();
   if (!c) return [];
   // 商品種別(product_kind)マスターの順番(sort_order)で並べる。見積作成の「種別」リールの並びもこれに従う。
-  const { data: kinds } = await c.from("fk_master_items").select("name,sort_order")
+  const { data: kinds } = await c.from("fk_master_items").select("name,sort_order,extra")
     .eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", "product_kind").is("deleted_at", null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const kindOrder = new Map<string, number>(((kinds ?? []) as any[]).map((k) => [k.name, k.sort_order ?? 0]));
+  const kindRows = ((kinds ?? []) as any[]);
+  const kindOrder = new Map<string, number>(kindRows.map((k) => [k.name, k.sort_order ?? 0]));
+  const hiddenKinds = new Set<string>(kindRows.filter((k) => k.extra?.hidden === "1").map((k) => k.name));
   const { data } = await c.from("fk_products").select("*").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null)
     .order("sort_order", { ascending: true }).order("created_at", { ascending: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = ((data ?? []) as any[]).map(map);
+  let rows = ((data ?? []) as any[]).map(map);
+  if (opts?.excludeHiddenKinds) rows = rows.filter((p) => !(p.productKind && hiddenKinds.has(p.productKind)));
   // 種別のsort_order → 種別名 で安定ソート（未登録種別は末尾）
   const ord = (k?: string) => (k && kindOrder.has(k) ? kindOrder.get(k)! : Number.MAX_SAFE_INTEGER);
   return rows

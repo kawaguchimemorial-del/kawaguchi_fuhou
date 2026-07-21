@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
 export default async function EditEstimate({ params }: Params) {
   const { id } = await params;
   const [e, products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
-    getEstimate(id), listProducts(), listProductSets(),
+    getEstimate(id), listProducts({ excludeHiddenKinds: true }), listProductSets(),
     listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
     listMasterItems("purpose"), listMasterItems("estimate_template"),
   ]);

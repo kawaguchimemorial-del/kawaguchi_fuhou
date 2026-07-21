@@ -43,7 +43,7 @@ export default async function MasterTypePage({ params }: Params) {
       </form>
 
       {type === "product_kind" ? (
-        <ProductKindReorder type={type} items={items.map((it) => ({ id: it.id, name: it.name }))} />
+        <ProductKindReorder type={type} items={items.map((it) => ({ id: it.id, name: it.name, hidden: it.extra?.hidden === "1" }))} />
       ) : (
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full text-left text-sm">

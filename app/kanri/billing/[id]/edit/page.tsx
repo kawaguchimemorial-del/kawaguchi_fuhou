@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> };
 export default async function EditInvoice({ params }: Params) {
   const { id } = await params;
   const [res, products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
-    getInvoice(id), listProducts(), listProductSets(),
+    getInvoice(id), listProducts({ excludeHiddenKinds: true }), listProductSets(),
     listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
     listMasterItems("purpose"), listMasterItems("invoice_template"),
   ]);

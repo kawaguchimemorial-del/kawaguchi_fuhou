@@ -10,7 +10,7 @@ type SP = { searchParams: Promise<{ from_estimate?: string }> };
 export default async function NewInvoice({ searchParams }: SP) {
   const sp = await searchParams;
   const [products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
-    listProducts(), listProductSets(), listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
+    listProducts({ excludeHiddenKinds: true }), listProductSets(), listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
     listMasterItems("purpose"), listMasterItems("invoice_template"),
   ]);
   // 見積から作成: 見積内容をプレフィル（顧客/宛名/件名/明細/セット/担当）

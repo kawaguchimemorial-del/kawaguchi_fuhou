@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewEstimate() {
   const [products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
-    listProducts(), listProductSets(), listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
+    listProducts({ excludeHiddenKinds: true }), listProductSets(), listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
     listMasterItems("purpose"), listMasterItems("estimate_template"),
   ]);
   return (

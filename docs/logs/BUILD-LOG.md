@@ -2018,3 +2018,11 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - セット商品一覧(操作列)の編集/削除の隣に「非表示」チェックを追加。ON=見積もり作成のセット選択に出さない。
 - 新規: setProductSetHidden(id, hidden) アクション、SetHiddenToggle クライアントコンポーネント。
 - 見積もり作成のセット選択は既に productSets.filter(s=>!s.hidden) で除外済み。
+
+## 2026-07-21 商品種別の非表示（オプション選択から除外）＋一覧を種別順表示
+- 設定>商品種別のD&Dカードに「非表示」チェックを追加（extra.hidden="1"）。セット用に残すが、見積もりのオプション選択には出さない。
+- 新規: setProductKindHidden(id, hidden) アクション。
+- listProducts({ excludeHiddenKinds:true }) を追加。非表示種別とその配下商品を除外。
+- 見積もり/請求のフォーム系ページ(estimates/new, billing/new, estimates/[id]/edit, billing/[id]/edit, billing/bulk)で excludeHiddenKinds を使用。→ オプションの「種別」リールと商品一覧の両方から除外。
+- 商品一覧(オプション選択・連続追加モーダル)は listProducts の種別sort_order順で表示（種別カードの並び順に追従）。
+- 商品管理ページ・セット作成の商品選択は従来通り全件（非表示種別も表示）。

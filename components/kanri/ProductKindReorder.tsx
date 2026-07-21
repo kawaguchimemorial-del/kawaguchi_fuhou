@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { updateMasterItem, deleteMasterItem, reorderMasterItems } from "@/lib/kanri/actions";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { updateMasterItem, deleteMasterItem, reorderMasterItems, setProductKindHidden } from "@/lib/kanri/actions";
 
-type Item = { id: string; name: string };
+type Item = { id: string; name: string; hidden: boolean };
 
 // 商品種別をドラッグ&ドロップで並べ替える。ドロップした位置の順番が自動で保存される（番号入力は不要）。
 export function ProductKindReorder({ type, items }: { type: string; items: Item[] }) {
@@ -58,9 +58,24 @@ export function ProductKindReorder({ type, items }: { type: string; items: Item[
               <input type="hidden" name="master_type" value={type} />
               <button className="px-2 text-xs text-red-500 hover:underline">削除</button>
             </form>
+            <HiddenToggle id={it.id} hidden={it.hidden} />
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+// 非表示チェック。ONにすると見積もり作成のオプション選択にこの種別と配下商品が出ない。
+function HiddenToggle({ id, hidden }: { id: string; hidden: boolean }) {
+  const [on, setOn] = useState(hidden);
+  const [pending, start] = useTransition();
+  useEffect(() => { setOn(hidden); }, [hidden]);
+  return (
+    <label className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-gray-600" title="オプション選択に出さない（セットには利用可）">
+      <input type="checkbox" className="h-4 w-4" checked={on} disabled={pending}
+        onChange={(e) => { const v = e.target.checked; setOn(v); start(() => setProductKindHidden(id, v)); }} />
+      非表示
+    </label>
   );
 }
