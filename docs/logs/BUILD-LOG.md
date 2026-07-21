@@ -2026,3 +2026,10 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - 見積もり/請求のフォーム系ページ(estimates/new, billing/new, estimates/[id]/edit, billing/[id]/edit, billing/bulk)で excludeHiddenKinds を使用。→ オプションの「種別」リールと商品一覧の両方から除外。
 - 商品一覧(オプション選択・連続追加モーダル)は listProducts の種別sort_order順で表示（種別カードの並び順に追従）。
 - 商品管理ページ・セット作成の商品選択は従来通り全件（非表示種別も表示）。
+
+## 2026-07-21 セット商品の並べ替え（D&D）＋見積もりのセット選択に反映
+- migration 0039: fk_product_sets に sort_order 列を追加、既存は created_at 順で1..N採番（本番へ適用済み）。
+- listProductSets を sort_order 順に変更。mapSet/ProductSet に sortOrder 追加。
+- 新規: reorderProductSets(orderedIds) アクション、ProductSetReorder クライアントコンポーネント。
+- 設定>セット商品一覧をテーブルからD&Dカードに変更（編集/削除/非表示チェックも内包）。
+- 見積もり作成のセット商品選択モーダルは listProductSets の順（=D&D順）で表示。既存の !hidden 除外はそのまま。

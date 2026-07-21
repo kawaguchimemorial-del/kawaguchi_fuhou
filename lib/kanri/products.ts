@@ -60,6 +60,7 @@ export interface ProductSetItem { id: string; productSourceId?: string; productI
 export interface ProductSet {
   id: string; code?: string; name: string; description?: string;
   price: number; taxIncludedPrice: number; tax: number; selfPlanning: boolean; hidden: boolean;
+  sortOrder: number;
   items?: ProductSetItem[];
 }
 
@@ -67,13 +68,15 @@ export interface ProductSet {
 function mapSet(r: any): ProductSet {
   return { id: r.id, code: r.code ?? undefined, name: r.name, description: r.description ?? undefined,
     price: r.price ?? 0, taxIncludedPrice: r.tax_included_price ?? 0, tax: Number(r.tax ?? 0.1),
-    selfPlanning: !!r.self_planning, hidden: !!r.hidden };
+    selfPlanning: !!r.self_planning, hidden: !!r.hidden, sortOrder: r.sort_order ?? 0 };
 }
 
 export async function listProductSets(): Promise<ProductSet[]> {
   const c = db();
   if (!c) return [];
-  const { data } = await c.from("fk_product_sets").select("*").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null).order("created_at", { ascending: true });
+  // 設定画面のカードD&Dで決めた並び順（sort_order）で返す。見積もりのセット選択もこの順に従う。
+  const { data } = await c.from("fk_product_sets").select("*").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null)
+    .order("sort_order", { ascending: true }).order("created_at", { ascending: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map(mapSet);
 }

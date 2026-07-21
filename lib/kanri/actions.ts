@@ -193,6 +193,16 @@ export async function setProductKindHidden(id: string, hidden: boolean): Promise
   revalidatePath("/kanri/products");
 }
 
+// セット商品の並び替え（ドラッグ&ドロップ）。渡された順に sort_order=1..N を振り直す。
+export async function reorderProductSets(orderedIds: string[]): Promise<void> {
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) return;
+  const c = admin();
+  for (let i = 0; i < orderedIds.length; i++) {
+    await c.from("fk_product_sets").update({ sort_order: i + 1 }).eq("id", orderedIds[i]).eq("funeral_home_id", KANRI_HOME_ID);
+  }
+  revalidatePath("/kanri/product-sets");
+}
+
 // セット商品の非表示トグル（見積もり作成のセット選択から除外するため）
 export async function setProductSetHidden(id: string, hidden: boolean): Promise<void> {
   if (!id) return;

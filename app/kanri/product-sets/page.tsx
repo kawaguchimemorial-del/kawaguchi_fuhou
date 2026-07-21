@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { listProductSets } from "@/lib/kanri/products";
-import { deleteProductSet } from "@/lib/kanri/actions";
-import { SetHiddenToggle } from "@/components/kanri/SetHiddenToggle";
+import { ProductSetReorder } from "@/components/kanri/ProductSetReorder";
 
 export const metadata = { title: "セット商品" };
 export const dynamic = "force-dynamic";
@@ -18,34 +17,7 @@ export default async function ProductSetsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg bg-white shadow-sm">
-        <div className="border-b px-4 py-3"><p className="text-sm font-bold">一覧　<span className="font-normal text-gray-500">{sets.length} 件</span></p></div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="border-b bg-gray-50 text-xs text-gray-600"><tr>{["セット商品コード", "セット名", "セット価格(税抜)", "セット価格(税込)", "消費税率", "非表示", "操作"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead>
-            <tbody className="divide-y">
-              {sets.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">セット商品がありません。</td></tr> :
-                sets.map((st) => (
-                  <tr key={st.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">{st.code ?? "—"}</td>
-                    <td className="px-4 py-2 font-medium">{st.name}</td>
-                    <td className="px-4 py-2 whitespace-nowrap text-right">{st.price.toLocaleString()}円</td>
-                    <td className="px-4 py-2 whitespace-nowrap text-right">{st.taxIncludedPrice.toLocaleString()}円</td>
-                    <td className="px-4 py-2">{Math.round(st.tax * 100)}%</td>
-                    <td className="px-4 py-2">{st.hidden ? <span className="text-red-500">非表示</span> : ""}</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <Link href={`/kanri/product-sets/${st.id}/edit`} className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">編集</Link>
-                        <form action={deleteProductSet}><input type="hidden" name="id" value={st.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
-                        <SetHiddenToggle id={st.id} hidden={st.hidden} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ProductSetReorder sets={sets.map((st) => ({ id: st.id, code: st.code, name: st.name, price: st.price, taxIncludedPrice: st.taxIncludedPrice, tax: st.tax, hidden: st.hidden }))} />
     </div>
   );
 }
