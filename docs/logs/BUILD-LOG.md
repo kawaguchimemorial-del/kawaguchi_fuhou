@@ -2007,3 +2007,9 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - updateMasterItem: sort_order指定時、対象をNに置き、衝突する項目を+1でずらし込み、最後に1..件数へ再採番。
 - listProducts: 商品を product_kind マスターの sort_order 順に並べ替え（見積もり作成の「種別」リールの並びもこれに追従）。
 - 既存の product_kind は全て sort_order=0 だったため、現在の表示順で 1..23 にバックフィル済み。
+
+## 2026-07-21 商品種別の並べ替えを番号制→ドラッグ&ドロップに変更
+- 設定>商品種別: 番号リールを廃止。カード(名称)をドラッグして並べ替え、ドロップ位置の順番を自動保存。
+- 新規: reorderMasterItems(type, orderedIds) アクション（渡された順に sort_order=1..N を再採番）。
+- 新規: components/kanri/ProductKindReorder.tsx（HTML5 D&D、楽観更新＋サーバー同期、名称編集/削除も内包）。
+- updateMasterItemのsort_orderリール処理はそのまま残置（未使用）。listProductsの種別順ソートは継続。

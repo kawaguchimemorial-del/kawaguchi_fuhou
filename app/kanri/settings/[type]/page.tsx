@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { masterDef, masterFields, masterLabel, listMasterItems, fieldValue } from "@/lib/kanri/masters";
 import { addMasterItem, updateMasterItem, deleteMasterItem } from "@/lib/kanri/actions";
+import { ProductKindReorder } from "@/components/kanri/ProductKindReorder";
 
 export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ type: string }> };
@@ -41,6 +42,9 @@ export default async function MasterTypePage({ params }: Params) {
         <button className="rounded bg-[#1aa39a] px-4 py-2 text-white">追加</button>
       </form>
 
+      {type === "product_kind" ? (
+        <ProductKindReorder type={type} items={items.map((it) => ({ id: it.id, name: it.name }))} />
+      ) : (
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-gray-50 text-xs text-gray-600">
@@ -50,7 +54,7 @@ export default async function MasterTypePage({ params }: Params) {
             {items.length === 0 ? (
               <tr><td colSpan={fields.length + 1} className="px-3 py-8 text-center text-gray-400">未登録です。</td></tr>
             ) : (
-              items.map((it, idx) => (
+              items.map((it) => (
                 <tr key={it.id}>
                   {fields.map((f) => (
                     <td key={f.key} className="px-3 py-2">
@@ -72,17 +76,9 @@ export default async function MasterTypePage({ params }: Params) {
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <form id={`edit-${it.id}`} action={updateMasterItem} className="inline-flex items-center gap-2 align-middle">
+                    <form id={`edit-${it.id}`} action={updateMasterItem} className="inline">
                       <input type="hidden" name="id" value={it.id} />
                       <input type="hidden" name="master_type" value={type} />
-                      {type === "product_kind" && (
-                        <label className="flex items-center gap-1 text-xs text-gray-500">
-                          順番
-                          <select name="sort_order" defaultValue={String(it.sortOrder || idx + 1)} className="rounded border border-gray-200 px-2 py-1 focus:border-[#1aa39a] focus:outline-none">
-                            {items.map((_, n) => <option key={n} value={n + 1}>{n + 1}</option>)}
-                          </select>
-                        </label>
-                      )}
                       <button className="rounded bg-[#1aa39a] px-3 py-1 text-xs text-white hover:opacity-90">更新</button>
                     </form>
                     <form action={deleteMasterItem} className="ml-2 inline">
@@ -97,6 +93,7 @@ export default async function MasterTypePage({ params }: Params) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

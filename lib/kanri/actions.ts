@@ -170,6 +170,17 @@ export async function updateMasterItem(fd: FormData): Promise<void> {
   revalidatePath(`/kanri/settings/${type}`);
 }
 
+// マスタ項目の並び替え（ドラッグ&ドロップ）。渡された順に sort_order = 1..N を振り直す。
+export async function reorderMasterItems(type: string, orderedIds: string[]): Promise<void> {
+  if (!type || !Array.isArray(orderedIds) || orderedIds.length === 0) return;
+  const c = admin();
+  for (let i = 0; i < orderedIds.length; i++) {
+    await c.from("fk_master_items").update({ sort_order: i + 1 }).eq("id", orderedIds[i]).eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", type);
+  }
+  revalidatePath(`/kanri/settings/${type}`);
+  revalidatePath("/kanri/products");
+}
+
 export async function deleteMasterItem(fd: FormData): Promise<void> {
   const id = s(fd, "id"); const type = s(fd, "master_type");
   if (!id) return;
