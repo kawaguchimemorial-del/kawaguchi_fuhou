@@ -93,10 +93,21 @@ export async function getProductSet(id: string): Promise<ProductSet | null> {
 export async function listProducts(): Promise<Product[]> {
   const c = db();
   if (!c) return [];
-  const { data } = await c.from("fk_products").select("*").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null)
-    .order("product_kind", { ascending: true }).order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+  // 商品種別(product_kind)マスターの順番(sort_order)で並べる。見積作成の「種別」リールの並びもこれに従う。
+  const { data: kinds } = await c.from("fk_master_items").select("name,sort_order")
+    .eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", "product_kind").is("deleted_at", null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map(map);
+  const kindOrder = new Map<string, number>(((kinds ?? []) as any[]).map((k) => [k.name, k.sort_order ?? 0]));
+  const { data } = await c.from("fk_products").select("*").eq("funeral_home_id", KANRI_HOME_ID).is("deleted_at", null)
+    .order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = ((data ?? []) as any[]).map(map);
+  // 種別のsort_order → 種別名 で安定ソート（未登録種別は末尾）
+  const ord = (k?: string) => (k && kindOrder.has(k) ? kindOrder.get(k)! : Number.MAX_SAFE_INTEGER);
+  return rows
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => (ord(a.p.productKind) - ord(b.p.productKind)) || ((a.p.productKind ?? "").localeCompare(b.p.productKind ?? "")) || (a.i - b.i))
+    .map((x) => x.p);
 }
 
 export async function getProduct(id: string): Promise<Product | null> {

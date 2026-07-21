@@ -50,7 +50,7 @@ export default async function MasterTypePage({ params }: Params) {
             {items.length === 0 ? (
               <tr><td colSpan={fields.length + 1} className="px-3 py-8 text-center text-gray-400">未登録です。</td></tr>
             ) : (
-              items.map((it) => (
+              items.map((it, idx) => (
                 <tr key={it.id}>
                   {fields.map((f) => (
                     <td key={f.key} className="px-3 py-2">
@@ -72,9 +72,17 @@ export default async function MasterTypePage({ params }: Params) {
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    <form id={`edit-${it.id}`} action={updateMasterItem} className="inline">
+                    <form id={`edit-${it.id}`} action={updateMasterItem} className="inline-flex items-center gap-2 align-middle">
                       <input type="hidden" name="id" value={it.id} />
                       <input type="hidden" name="master_type" value={type} />
+                      {type === "product_kind" && (
+                        <label className="flex items-center gap-1 text-xs text-gray-500">
+                          順番
+                          <select name="sort_order" defaultValue={String(it.sortOrder || idx + 1)} className="rounded border border-gray-200 px-2 py-1 focus:border-[#1aa39a] focus:outline-none">
+                            {items.map((_, n) => <option key={n} value={n + 1}>{n + 1}</option>)}
+                          </select>
+                        </label>
+                      )}
                       <button className="rounded bg-[#1aa39a] px-3 py-1 text-xs text-white hover:opacity-90">更新</button>
                     </form>
                     <form action={deleteMasterItem} className="ml-2 inline">

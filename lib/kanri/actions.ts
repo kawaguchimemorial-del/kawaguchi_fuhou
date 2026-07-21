@@ -120,7 +120,31 @@ export async function updateMasterItem(fd: FormData): Promise<void> {
   const { data: cur } = await c.from("fk_master_items").select("name,extra").eq("id", id).maybeSingle();
   const oldName = cur?.name as string | undefined;
   row.extra = { ...(cur?.extra ?? {}), ...extra };
+
+  // 順番(sort_order)の指定があれば設定。選んだ番号が他で使われていれば、その項目を+1でずらし込む(連鎖)。
+  const sortRaw = s(fd, "sort_order");
+  const N = sortRaw != null && sortRaw !== "" ? Math.max(1, Math.trunc(Number(sortRaw)) || 1) : null;
+  if (N != null) row.sort_order = N;
+
   await c.from("fk_master_items").update(row).eq("id", id);
+
+  if (N != null) {
+    // 対象を N に置いたうえで、他項目が同番なら +1 でずらし込む(連鎖) → 最後に 1..件数 へ再採番して歯抜けを防ぐ。
+    const { data: all } = await c.from("fk_master_items").select("id,sort_order")
+      .eq("funeral_home_id", KANRI_HOME_ID).eq("master_type", type).is("deleted_at", null);
+    const rows2 = ((all ?? []) as { id: string; sort_order: number }[])
+      // 対象は N、他は自番。同番のときは対象を前に出す(=対象がその位置を奪う)。
+      .sort((a, b) => {
+        const sa = a.id === id ? N : a.sort_order, sb = b.id === id ? N : b.sort_order;
+        if (sa !== sb) return sa - sb;
+        return a.id === id ? -1 : b.id === id ? 1 : 0;
+      });
+    for (let i = 0; i < rows2.length; i++) {
+      const want = i + 1;
+      if (rows2[i].sort_order !== want) await c.from("fk_master_items").update({ sort_order: want }).eq("id", rows2[i].id);
+    }
+    revalidatePath("/kanri/products");
+  }
 
   // 名称変更を、その名称で登録された商品/子カテゴリへ連動反映（非正規化のため手動カスケード）
   const newName = row.name as string;
