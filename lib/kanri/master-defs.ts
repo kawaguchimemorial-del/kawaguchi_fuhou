@@ -1,6 +1,6 @@
 // マスタ定義（クライアント/サーバー共用。DB非依存・server-onlyにしない）
 export interface FieldDef { key: string; label: string; kind?: "text" | "number"; col?: "name" | "kana" | "price"; selectFrom?: "product_kind" }
-export interface MasterDef { type: string; label: string; category: string; fields?: FieldDef[] }
+export interface MasterDef { type: string; label: string; category: string; fields?: FieldDef[]; hint?: string }
 export interface MasterItem { id: string; name: string; kana?: string; price?: number; extra: Record<string, string>; sortOrder: number; isActive: boolean }
 
 const NAME_ONLY: FieldDef[] = [{ key: "name", label: "名称", col: "name" }];
@@ -35,9 +35,9 @@ export const MASTER_TYPES: MasterDef[] = [
   { type: "product_sub_kind", label: "商品子カテゴリ", category: "商品設定", fields: [{ key: "name", label: "子カテゴリ名", col: "name" }, { key: "parent", label: "親の商品種別", selectFrom: "product_kind" }] },
   { type: "discounted_product", label: "値引商品", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "price", label: "値引額", col: "price", kind: "number" }] },
   { type: "product_set", label: "商品セット", category: "商品設定", fields: [{ key: "code", label: "セット商品コード" }, { key: "name", label: "セット名", col: "name" }, { key: "price", label: "セット価格(税抜)", col: "price", kind: "number" }] },
-  { type: "rough_product", label: "まとめ商品(ざっくり商品)", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "unit", label: "単位" }] },
-  { type: "rough_product_osonae", label: "まとめ商品(お供え)", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "unit", label: "単位" }] },
-  { type: "sale_category", label: "売上区分", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "color", label: "書類カラー" }] },
+  { type: "rough_product", label: "まとめ商品(ざっくり商品)", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "unit", label: "単位" }], hint: "複数の明細を1行にまとめて概算表記するための商品名です。※現在どの見積書・請求書の作成画面からも参照していません（登録しても作成画面には出ません）。" },
+  { type: "rough_product_osonae", label: "まとめ商品(お供え)", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "unit", label: "単位" }], hint: "見積もり・請求の作成画面『その他オプション、お供えにかかる費用』欄にここの項目が並びます。数量を入れるとその分が明細に加算されます（追加安置日数・追加ドライアイス・収骨容器・本尊セットは既定で数量1）。" },
+  { type: "sale_category", label: "売上区分", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "color", label: "書類カラー" }], hint: "請求書を売上の種類で分類するための区分です。※現在この設定の選択肢・色分けは作成画面では未使用です。請求一覧やCSVに出る『売上区分』は、供花請求などで自動設定される請求書側の値です。" },
   { type: "purchase_category", label: "仕入区分", category: "商品設定" },
   { type: "supplier", label: "発注先", category: "商品設定", fields: [{ key: "name", label: "発注先名", col: "name" }, { key: "tel", label: "電話" }, { key: "email", label: "メール" }] },
   { type: "shipping", label: "送料", category: "商品設定", fields: [{ key: "name", label: "名称", col: "name" }, { key: "price", label: "金額", col: "price", kind: "number" }] },

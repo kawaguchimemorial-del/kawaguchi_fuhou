@@ -9,6 +9,9 @@ export default async function ServiceFeePage() {
   return (
     <div>
       <div className="-m-5 mb-5 border-b bg-white px-5 py-4"><h1 className="text-lg font-bold text-gray-800">サービス利用料</h1></div>
+      <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+        <span className="font-bold">この設定の使いどころ：</span>商品種別ごとにサービス利用料率を保持できます。※現在この率は見積もり・請求の金額計算には反映していません（登録のみ）。
+      </p>
       <p className="mb-3 font-bold text-gray-700">サービス利用料一覧</p>
       <form action={saveAppSetting} className="rounded-lg bg-white p-4 shadow-sm">
         <input type="hidden" name="setting_key" value="service_fee" />

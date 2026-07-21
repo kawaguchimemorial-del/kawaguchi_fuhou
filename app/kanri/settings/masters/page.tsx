@@ -48,6 +48,7 @@ export default async function SettingsPage() {
               <Link key={m.type} href={`/kanri/settings/${m.type}`} className="rounded-lg bg-white p-3 shadow-sm hover:bg-gray-50">
                 <p className="text-sm font-medium text-[#1aa39a]">{m.label}</p>
                 <p className="mt-1 text-xs text-gray-400">{counts[m.type] ?? 0} 件</p>
+                {m.hint && <p className="mt-1 text-[11px] leading-snug text-gray-400 line-clamp-2">{m.hint}</p>}
               </Link>
             ))}
           </div>

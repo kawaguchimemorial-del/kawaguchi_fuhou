@@ -23,6 +23,11 @@ export default async function MasterTypePage({ params }: Params) {
         <h1 className="text-xl font-bold">{masterLabel(type)}</h1>
         <Link href="/kanri/settings" className="rounded border px-3 py-1.5 text-sm">設定へ</Link>
       </div>
+      {def.hint && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+          <span className="font-bold">この設定の使いどころ：</span>{def.hint}
+        </p>
+      )}
 
       <form action={addMasterItem} className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm text-sm">
         <input type="hidden" name="master_type" value={type} />
