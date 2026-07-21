@@ -263,7 +263,14 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   // メールアドレスとステータスも state で保持する。
   // defaultValue のままだとチェックを外した時に入力欄ごと消え、入れ直すと値が失われる。
   const [ncEmail, setNcEmail] = useState(initial?.newCustomerEmail ?? "");
-  const [ncStatus, setNcStatus] = useState(initial?.newCustomerStatus ?? "問い合わせ");
+  const [ncStatus, setNcStatus] = useState(initial?.newCustomerStatus ?? "受注");
+  // 事前相談にチェックが無い限りステータスは「受注」。手動変更があれば追従を止める。
+  const statusEdited = useRef(!!initial?.newCustomerStatus);
+  useEffect(() => {
+    if (statusEdited.current) return;
+    setNcStatus(isPre ? "事前相談・見積もり" : "受注");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPre]);
   const [valErrors, setValErrors] = useState<string[]>([]);
   // 年齢: 没年月日 - 生年月日 で自動計算(いずれか未入力なら手入力値を保持)
   const calcAge = (birth: string, death: string): number | null => {
@@ -557,7 +564,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <F label="ステータス">
-                <select name="new_customer_status" value={ncStatus} onChange={(e) => setNcStatus(e.target.value)} className={inp}>
+                <select name="new_customer_status" value={ncStatus} onChange={(e) => { statusEdited.current = true; setNcStatus(e.target.value); }} className={inp}>
                   {CUSTOMER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </F>
