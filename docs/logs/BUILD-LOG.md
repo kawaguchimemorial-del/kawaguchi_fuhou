@@ -2039,3 +2039,8 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - 設定>[type]ページ上部と、設定(マスタ)一覧タイルにhintを表示。
 - サービス利用料ページに「金額計算には未反映（登録のみ）」の注記を追加。
 - 挙動は不変。まとめ商品・お供え費用・サービス利用料・売上区分は残置。
+
+## 2026-07-21 全マスタに用途説明(hint)を付与
+- サブエージェントで全master_type(65)の実消費箇所を網羅調査。実際に作成/業務画面で参照されるのは product_kind / product_sub_kind / supplier / discounted_product / purpose / estimate_template / invoice_template / rough_product_osonae と別テーブルの商品セットのみ、と判明。
+- master-defs.ts の全MASTER_TYPESに hint を追加（用途＋現状の使用有無。未参照は「設定登録のみ・未参照」と明記）。
+- 設定>[type]ページ上部・マスタ一覧タイルは既存の hint 表示でそのまま反映。
