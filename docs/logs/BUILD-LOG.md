@@ -2070,3 +2070,35 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - 確定/失敗処理を lib/memorial/offering-fulfill.ts に共通化（銀行振込/当日払いは従来どおり即時確定でこの関数を利用）。
 - フロント: FlowerOrderFormに「クレジットカード」追加、OfferingPaymentStep(Payment Element)、/m/[slug]/flower/complete。
 - 香典の決済description の [object Object] バグ修正（m.deceased?.nameKanji）。
+
+## 2026-07-25 訃報紙(PDF/Word)のレイアウトを＠葬儀の実出力に合わせる
+- 参照: public/tmp/オンライン祭壇/pdf_word/ の実物（PDF・docx）。docxはXMLを展開して構成・罫線位置・フォントサイズを実測。
+- app/fuhou/ceremonies/[id]/obituary/route.ts を全面書き換え。
+  - PDF: A4縦・用紙全面に細い黒枠・ゴシック/黒一色。「訃報」(27pt)→故人行→訃報本文(中央)→喪主(右)→「記」→罫線→式一覧(式名/日時＋会場住所・会場名・電話番号)→罫線→儀式形態→罫線→下部を左右2段（【ご葬儀に関するお問い合わせ】＝葬儀社名/電話/メール/URL、【ご葬儀の詳細情報】＝案内文＋供花受付/受付期限＋QR）。
+  - Word(.doc): docxと同じ構成（右上に発行日、■式名ごとに 日時/場所/連絡先 の罫線なし表、区切り罫線、儀式形態、【御用達】/【式の詳細情報】＋QR画像）。ファイル名も「〈喪主〉様_訃報紙_〈unixtime〉」に合わせ、日本語名は filename* で付与。
+  - 会場の電話番号は会場マスタ(fk_master_items master_type=venue の extra.tel)を会場名一致で参照。URLは会社情報マスタ(url)。
+  - QRは lib/qr.ts に qrPngDataUrl() を追加し PNG の data URI で埋め込み（Wordが外部/SVG参照を描画しないため）。
+  - 訃報本文の先頭行が「〈故人名〉 儀」だけの場合は故人行と重複するため落とす。
+- 検証: playwright(chromium)でA4 PDF化し、実物PDFと並べて体裁一致を確認。fmt=pdf/doc ともに200。tsc --noEmit クリーン。
+
+## 2026-07-26 訃報紙のWordがA4縦1枚に収まらない問題を修正（HTML .doc → 実体 .docx 生成）
+- 原因の分析:
+  1) ユーザーがDLしたファイルは前回コミット前(未デプロイ)の旧HTML出力だった。加えて、
+  2) HTMLを .doc として配布する方式ではWord側の解釈で高さが決まり、ページ送りを制御できない。
+  3) ＠葬儀の実物docxをWordで開いて検証したところ、参照元自体が2ページ（QRが2枚目に落ちる）。
+     つまり「1枚に収める」は参照元より厳しい要件で、レイアウト移植だけでは達成できない。
+  4) Wordの Yu Gothic は既定行送りが1.6〜1.7emと極端に広く、フォントサイズから高さを予測できない。
+- 対応:
+  - lib/docx.ts を新規追加。node:zlib だけでZIP(docx)を組む最小OOXMLビルダ（外部依存なし）。
+    既定スタイルで spacing before/after=0・snapToGrid=false を強制。
+  - lib/memorial/obituary-docx.ts を新規追加。＠葬儀のdocx構成のまま、
+    全段落の行送りを lineRule="exact" で固定 → 「積み上げ高さ＝実際のページ高さ」になり、
+    A4の使用可能高さと比較して1枚に収まる密度プリセット(6段階)を自動選択する。
+    折り返しは文字幅(全角1em/半角0.52em)から行数を算出して高さに算入。
+    余りは下段2列の直前に空段落として入れ、問い合わせ欄を用紙下端に寄せる（安全マージン20pt）。
+  - 表の行は cantSplit、QR段落のみ自動行送り＋実寸加算（exactだと画像が切れるため）。
+  - ルートは application/vnd...wordprocessingml.document で .docx を返す（fmt=doc/word/docx）。
+  - 訃報本文の先頭行が「故 〈故人名〉 儀」でも故人行と重複するので落とすよう判定を拡張。
+- 検証: Word COM で実際に開いてページ数を計測。式1〜4件／本文6〜9行／実データ2件すべて pages=1。
+  詰め切り境界も probe で実測（worst caseは余白1200twipsまで1枚を維持→安全マージン400twipsに設定）。
+  Word出力PDFの体裁も参照元と目視比較して一致を確認。tsc --noEmit クリーン。
