@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listCustomers } from "@/lib/kanri/data";
 import { deleteCustomer } from "@/lib/kanri/actions";
 import { CUSTOMER_STATUSES } from "@/lib/kanri/constants";
+import { SearchPanel, buildChips } from "@/components/kanri/SearchPanel";
 
 export const metadata = { title: "顧客" };
 export const dynamic = "force-dynamic";
@@ -30,12 +31,18 @@ export default async function CustomersPage({ searchParams }: SP) {
         </div>
       </div>
 
-      {/* 検索パネル */}
-      <form className="mb-4 space-y-3 rounded-lg bg-white p-4 shadow-sm text-sm">
-        <div>
-          <label className="block text-xs text-gray-500">キーワード（氏名/カナ/メール/電話/顧客番号）</label>
-          <input name="q" defaultValue={q ?? ""} className="mt-1 w-full rounded border px-3 py-2" placeholder="検索" />
-        </div>
+      {/* 検索パネル（条件が付いていれば自動展開。項目・nameは不変） */}
+      <SearchPanel
+        basePath="/kanri/customers"
+        params={{ q, status: statuses }}
+        chips={buildChips("/kanri/customers", { q, status: statuses }, { q: "キーワード", status: "ステータス" })}
+        keyword={
+          <>
+            <label className="block text-xs text-gray-500">キーワード（氏名/カナ/メール/電話/顧客番号）</label>
+            <input name="q" defaultValue={q ?? ""} className="mt-1 w-full rounded border px-3 py-2" placeholder="検索" />
+          </>
+        }
+      >
         <div>
           <p className="mb-1 text-xs text-gray-500">ステータス</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -46,8 +53,7 @@ export default async function CustomersPage({ searchParams }: SP) {
             ))}
           </div>
         </div>
-        <button className="rounded bg-[#2c8c6f] px-5 py-2 text-white">🔍 検索</button>
-      </form>
+      </SearchPanel>
 
       {/* 一覧 */}
       <div className="rounded-lg bg-white shadow-sm">

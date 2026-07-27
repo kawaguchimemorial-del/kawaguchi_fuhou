@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SearchPanel, buildChips } from "@/components/kanri/SearchPanel";
 import { listInvoices } from "@/lib/kanri/invoices";
 import { deleteInvoice } from "@/lib/kanri/actions";
 
@@ -43,8 +44,16 @@ export default async function BillingPage({ searchParams }: SP) {
         </div>
       </div>
 
-      {/* 検索（実画面準拠） */}
-      <form className="mb-4 rounded-lg bg-white p-4 shadow-sm text-sm">
+      {/* 検索（条件が付いていれば自動展開。項目・nameは不変） */}
+      <SearchPanel
+        basePath="/kanri/billing"
+        params={{ from: sp.from, to: sp.to, id: sp.id, pno: sp.pno, mourner: sp.mourner, target: sp.target, bill_to: sp.bill_to, title: sp.title }}
+        chips={buildChips(
+          "/kanri/billing",
+          { from: sp.from, to: sp.to, id: sp.id, pno: sp.pno, mourner: sp.mourner, target: sp.target, bill_to: sp.bill_to, title: sp.title },
+          { from: "請求日(から)", to: "請求日(まで)", id: "請求書ID", pno: "施行番号", mourner: "喪主", target: "対象者", bill_to: "請求先名", title: "件名" }
+        )}
+      >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <label className="block text-xs text-gray-500">請求日</label>
@@ -61,8 +70,7 @@ export default async function BillingPage({ searchParams }: SP) {
           <div><label className="block text-xs text-gray-500">請求先名</label><input name="bill_to" defaultValue={sp.bill_to ?? ""} className="mt-1 w-full rounded border px-3 py-2" /></div>
           <div><label className="block text-xs text-gray-500">件名</label><input name="title" defaultValue={sp.title ?? ""} className="mt-1 w-full rounded border px-3 py-2" /></div>
         </div>
-        <button className="mt-4 rounded bg-[#2c8c6f] px-6 py-2 text-white">🔍 検索</button>
-      </form>
+      </SearchPanel>
 
       {/* 一覧（実画面準拠の列構成） */}
       <div className="rounded-lg bg-white shadow-sm">

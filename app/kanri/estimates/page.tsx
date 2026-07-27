@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SearchPanel, buildChips } from "@/components/kanri/SearchPanel";
 import { listEstimates, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
 import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
 import { ConfirmSubmit } from "./ConfirmSubmit";
@@ -43,8 +44,16 @@ export default async function EstimatesPage({ searchParams }: SP) {
         <Link href="/kanri/estimates/intake" className="rounded bg-white px-3 py-1.5 text-xs font-medium text-[#2c8c6f]">＋ 見積作成</Link>
       </div>
 
-      {/* 検索（実画面準拠） */}
-      <form className="mb-4 rounded-lg bg-white p-4 shadow-sm text-sm">
+      {/* 検索（条件が付いていれば自動展開。項目・nameは不変） */}
+      <SearchPanel
+        basePath="/kanri/estimates"
+        params={{ from: sp.from, to: sp.to, id: sp.id, pno: sp.pno, mourner: sp.mourner, target: sp.target, title: sp.title, kind: sp.kind }}
+        chips={buildChips(
+          "/kanri/estimates",
+          { from: sp.from, to: sp.to, id: sp.id, pno: sp.pno, mourner: sp.mourner, target: sp.target, title: sp.title, kind: sp.kind },
+          { from: "見積日(から)", to: "見積日(まで)", id: "見積書ID", pno: "施行番号", mourner: "喪主", target: "対象者", title: "件名", kind: "種別" }
+        )}
+      >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <label className="block text-xs text-gray-500">見積日</label>
@@ -66,8 +75,7 @@ export default async function EstimatesPage({ searchParams }: SP) {
             </select>
           </div>
         </div>
-        <button className="mt-4 rounded bg-[#2c8c6f] px-6 py-2 text-white">🔍 検索</button>
-      </form>
+      </SearchPanel>
 
       {/* 一覧（実画面準拠: 顧客リンク付き） */}
       <div className="rounded-lg bg-white shadow-sm">
