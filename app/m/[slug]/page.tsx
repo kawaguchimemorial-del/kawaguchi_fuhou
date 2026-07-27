@@ -31,7 +31,7 @@ export default async function ObituaryPage({ params }: Params) {
   const flowerOpen = !m.flowerDecline && !isPast(m.offeringAcceptUntil);
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className={"min-h-screen " + (flowerOpen ? "pb-40" : "pb-12")}>
       {m.testMode && <TestBanner />}
 
       <ObituaryHero m={m} />
@@ -43,6 +43,8 @@ export default async function ObituaryPage({ params }: Params) {
         ))}
 
         <RitualRow label="儀式形態" value={m.religionType} />
+
+        {flowerOpen && <FlowerGuide m={m} />}
 
         {m.venue && <VenueGuide m={m} />}
 
@@ -214,28 +216,73 @@ function PurveyorBlock({ m }: { m: Memorial }) {
   );
 }
 
-function OrderBar({ m }: { m: Memorial }) {
-  const until = m.offeringAcceptUntil
-    ? new Date(m.offeringAcceptUntil).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+/** 供花受付期限を「8月2日(土) 17:00 まで」の形に整える */
+function offeringDeadline(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const f = (o: Intl.DateTimeFormatOptions) =>
+    d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", ...o });
+  return `${f({ month: "numeric", day: "numeric" })}(${f({ weekday: "short" })}) ${f({ hour: "2-digit", minute: "2-digit" })}`;
+}
+
+/** 本文中の供花・供物 注文導線（下部固定バーと合わせて二重に案内する） */
+function FlowerGuide({ m }: { m: Memorial }) {
+  const until = offeringDeadline(m.offeringAcceptUntil);
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-xl items-stretch border-t bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
-      <div className="flex flex-1 items-center px-5 text-sm">
-        <span className="text-[var(--muted)]">供花：{until} まで</span>
+    <section className="mb-6 overflow-hidden rounded-sm border-2 border-[var(--accent)] bg-white">
+      <h3 className="bg-[var(--accent)] py-3 text-center font-serif text-lg tracking-wider text-white">
+        供花・供物のご注文
+      </h3>
+      <div className="px-6 py-7 text-center">
+        <p className="text-left text-sm leading-relaxed text-[var(--muted)]">
+          ご供花・ご供物を賜る場合は、下記より24時間オンラインでお申し込みいただけます。
+          お支払いはクレジットカード・銀行振込・当日現地払いよりお選びいただけます。
+        </p>
+        {until && (
+          <p className="mt-5 inline-block rounded-sm bg-[var(--card)] px-4 py-2 text-sm">
+            <span className="text-[var(--muted)]">受付期限</span>
+            <span className="ml-2 font-bold text-[var(--primary)]">{until} まで</span>
+          </p>
+        )}
+        <a
+          href={`/m/${m.slug}/flower`}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-sm bg-[var(--accent)] px-6 py-5 text-lg font-bold tracking-wider text-white shadow-md transition-colors hover:bg-[var(--accent-strong)]"
+        >
+          供花・供物を注文する
+          <span aria-hidden>›</span>
+        </a>
+        <p className="mt-3 text-xs text-[var(--muted)]">
+          お申し込み内容は葬儀社が確認し、確認メールをお送りいたします。
+        </p>
       </div>
-      <a
-        href={`/m/${m.slug}/flower`}
-        className="flex items-center bg-[var(--accent)] px-6 py-4 text-center text-sm leading-tight text-white"
-      >
-        ご注文は
-        <br />
-        こちら　›
-      </a>
+    </section>
+  );
+}
+
+function OrderBar({ m }: { m: Memorial }) {
+  const until = offeringDeadline(m.offeringAcceptUntil);
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-[var(--accent)] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.16)]">
+      <div className="mx-auto max-w-xl px-4 py-3">
+        <p className="mb-2 text-center text-xs text-[var(--muted)]">
+          {until ? (
+            <>
+              供花・供物の受付は
+              <span className="mx-1 font-bold text-[var(--primary)]">{until}</span>
+              まで
+            </>
+          ) : (
+            "供花・供物のお申し込みを受け付けております"
+          )}
+        </p>
+        <a
+          href={`/m/${m.slug}/flower`}
+          className="flex w-full items-center justify-center gap-2 rounded-sm bg-[var(--accent)] py-4 text-lg font-bold tracking-wider text-white shadow-md transition-colors hover:bg-[var(--accent-strong)]"
+        >
+          供花・供物を注文する
+          <span aria-hidden>›</span>
+        </a>
+      </div>
     </nav>
   );
 }

@@ -30,3 +30,6 @@ _build.out
 _compress_*.js
 _compress_*.out
 _compress_*.jsonl
+
+.vercel
+.env*

@@ -2102,3 +2102,28 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - 検証: Word COM で実際に開いてページ数を計測。式1〜4件／本文6〜9行／実データ2件すべて pages=1。
   詰め切り境界も probe で実測（worst caseは余白1200twipsまで1枚を維持→安全マージン400twipsに設定）。
   Word出力PDFの体裁も参照元と目視比較して一致を確認。tsc --noEmit クリーン。
+
+## 2026-07-27 供花・供物のStripe決済をテストモードで疎通確認（本番投入前）
+- 経緯: コード(0041/actions/OfferingPaymentStep/webhook)は 8ec5259 で実装済みだったが、環境変数が未設定で動作していなかった。
+  .env.local に `stripe_公開キー` / `stripe_secret_key` という**コードが読まない名前**で入っていたのが原因。
+- .env.local を正しい名前に修正: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY / STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / OFFERING_PAYMENT_ENABLED=1。
+  ※ 使用キーは pk_test_51TxcAt… / sk_test_51TxcAt… で、スマート葬儀の本番キー(51OlMDk…)とは**別アカウント**。本番化時は当該アカウントの live キーが必要。
+- Webhookガード追加(app/api/webhooks/stripe/route.ts): 香典分岐を `metadata.koden_payment_id` がある時だけに限定。
+  charge.refunded も同様。→ 同一Stripeアカウントを他サービスと共有しても、当システム以外の決済イベントに一切触らない。
+- Stripe CLI 1.44.0 を winget で導入。`stripe listen --forward-to localhost:3000/api/webhooks/stripe` で疎通。
+- テスト結果（slug=fc82df35…、洋花 23,100円）:
+  - 成功(4242): PaymentIntent発行 → payment_intent.succeeded 受信 → status=captured / paid_at 記録 →
+    fk_invoices 自動作成(「故浅香 治様　御葬儀　オンライン供花注文（洋花）」23,100円) → 確認/通知メール送信。完了画面も正常。
+  - 失敗(4000…0002): 「カードが拒否されました。」表示 → payment_intent.payment_failed 受信 → status=error、請求書なし、失敗通知メール。
+  - 未完了(離脱)分は status=requires_payment のまま。lib/admin/data.ts の一覧3箇所すべてで error/requires_payment を除外済みを確認。
+- 残: Vercel(本番)へ環境変数投入・ダッシュボードでWebhookエンドポイント登録・本番テスト → live キーへ切替。
+
+## 2026-07-27 訃報案内: 供花・供物の注文導線を強調
+- 課題: 下部固定バーの注文ボタンが小さく（右端に「ご注文は/こちら›」の2行ボタン）、注文できることが伝わりにくい。
+- 下部固定バー(OrderBar)を刷新: ボタンを横幅いっぱい・text-lg太字・文言を「供花・供物を注文する」に変更。
+  上枠線を金2px＋影を強め、pb-[env(safe-area-inset-bottom)]でiPhoneホームバーとの重なりを回避。本文側は pb-24→pb-40。
+- 本文中に FlowerGuide セクションを新設（儀式形態の直後・オンライン式場案内の前）。
+  金帯見出し「供花・供物のご注文」＋支払い方法(カード/銀行振込/当日払い)の明記＋受付期限の強調＋大きな金ボタン。
+  固定バーだけだと広告的バーとして無視されるため、本文の流れの中にも導線を置く狙い。
+- 受付期限の表記を offeringDeadline() に共通化し「8月2日(土) 17:00」形式（曜日入り）に統一。従来は 08/02 17:00。
+- どちらも flowerOpen(受付終了・供花辞退でない)のときだけ表示。

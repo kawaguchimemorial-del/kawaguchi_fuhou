@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { ShareRow } from "./ShareRow";
+
+export { ShareRow };
 
 /** テスト案件の赤帯 */
 export function TestBanner() {
@@ -29,39 +32,6 @@ export function GoldButton({
     >
       {children}
     </Link>
-  );
-}
-
-/** 「知人にお知らせ」SNS共有行 */
-export function ShareRow({ url, title }: { url: string; title: string }) {
-  const u = encodeURIComponent(url);
-  const t = encodeURIComponent(title);
-  const items = [
-    { label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, icon: "/share/facebook.webp" },
-    { label: "X", href: `https://twitter.com/intent/tweet?url=${u}&text=${t}`, icon: "/share/x.webp" },
-    { label: "LINE", href: `https://line.me/R/msg/text/?${t}%0A${u}`, icon: "/share/line.webp" },
-    { label: "メール", href: `mailto:?subject=${t}&body=${u}`, icon: "/share/mail.webp" },
-    { label: "SMS", href: `sms:?body=${t}%20${u}`, icon: "/share/sms.webp" },
-  ];
-  return (
-    <div className="flex items-center justify-between border-t py-5">
-      <span className="text-[var(--primary)]">知人にお知らせ</span>
-      <div className="flex gap-3">
-        {items.map(({ label, href, icon }) => (
-          <a
-            key={label}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`${label}で知らせる`}
-            className="transition-opacity hover:opacity-80"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={icon} alt={label} className="h-10 w-10" />
-          </a>
-        ))}
-      </div>
-    </div>
   );
 }
 

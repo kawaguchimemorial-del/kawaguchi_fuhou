@@ -60,12 +60,9 @@ export async function POST(req: NextRequest) {
               if (row.pending_payload) await fulfillOfferingOrder(row.pending_payload as OfferingPayload);
             }
           }
-        } else if (c) {
-          // 香典（現状フラグOFF・将来用）
-          const patch = { status: "succeeded", updated_at: now };
-          const kid = pi.metadata?.koden_payment_id;
-          if (kid) await c.from("koden_payments").update(patch).eq("id", kid);
-          else await c.from("koden_payments").update(patch).eq("provider_payment_intent_id", pi.id);
+        } else if (c && pi.metadata?.koden_payment_id) {
+          // 香典（現状フラグOFF・将来用）。metadata が無いPIは当システム外の決済なので触らない。
+          await c.from("koden_payments").update({ status: "succeeded", updated_at: now }).eq("id", pi.metadata.koden_payment_id);
         }
         break;
       }
@@ -82,14 +79,17 @@ export async function POST(req: NextRequest) {
               if (row.pending_payload) await notifyOfferingFailed(row.pending_payload as OfferingPayload);
             }
           }
-        } else if (c) {
-          await c.from("koden_payments").update({ status: "failed", updated_at: now }).eq("provider_payment_intent_id", pi.id);
+        } else if (c && pi.metadata?.koden_payment_id) {
+          await c.from("koden_payments").update({ status: "failed", updated_at: now }).eq("id", pi.metadata.koden_payment_id);
         }
         break;
       }
       case "charge.refunded": {
         const ch = event.data.object as Stripe.Charge;
-        if (c && ch.payment_intent) await c.from("koden_payments").update({ status: "refunded", updated_at: new Date().toISOString() }).eq("provider_payment_intent_id", ch.payment_intent as string);
+        // 当システムの香典決済のみ対象（metadata が無い返金は他サービスのものなので無視）。
+        if (c && ch.payment_intent && ch.metadata?.koden_payment_id) {
+          await c.from("koden_payments").update({ status: "refunded", updated_at: new Date().toISOString() }).eq("id", ch.metadata.koden_payment_id);
+        }
         break;
       }
       default:
