@@ -2155,3 +2155,15 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - lib/legal/company.ts に事業者情報を集約（株式会社川口典礼／代表取締役 吉田寿子／埼玉県川口市西新井宿440-1／
   0120-963-765／flower@kawaguchi-memorial-hall.com）。
 - components/guest/LegalLayout.tsx で体裁を共通化。
+
+## 2026-07-27 返金の追随とレポート除外
+- Webhook: charge.refunded で供花・供物にも対応。metadata.kind=offering の返金を受けて
+  status=refunded / refunded_at / refunded_amount_jpy を更新（ダッシュボード返金にも追随）。
+  charge.metadata に PaymentIntent の metadata が引き継がれること、offering_order_id も入ることを実データで確認済み。
+  管理画面の返金ボタン経由（既に refunded_at あり）は二重更新しない。
+- 返金済みの除外（返金＝納品せず売上にもならないため、集計・報告がずれる）:
+  - getOrdersForExport（供花一覧のExcel/CSV）から除外。
+  - listOrders（葬儀ごとの注文一覧＝手配対象）から除外。
+  - listAllOrders は既定で除外。/fuhou/orders?refunded=1 で「返金済みも表示」に切替でき、
+    表示時も件数・金額の集計には含めない（履歴を追えなくならないようにするため）。
+- ※ Stripe側のエンドポイントに charge.refunded を追加しないとダッシュボード返金は通知されない（未実施）。

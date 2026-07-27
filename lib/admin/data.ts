@@ -176,19 +176,24 @@ const ORDER_STATUS_LABEL: Record<string, string> = {
   captured: "決済完了", authorized: "与信中", canceled: "キャンセル", error: "エラー", pending_confirm: "受付",
   refunded: "返金済み",
 };
-/** 葬儀社全体の供花・供物 注文一覧（offering_orders × memorials × deceased）。 */
-export async function listAllOrders(): Promise<AllOrderRow[]> {
+/**
+ * 葬儀社全体の供花・供物 注文一覧（offering_orders × memorials × deceased）。
+ * 既定では返金済みを除く（件数・金額の集計がずれるため）。
+ * 返金の履歴を確認したいときだけ includeRefunded=true で含める。
+ */
+export async function listAllOrders(includeRefunded = false): Promise<AllOrderRow[]> {
   const c = await db();
   if (!c) return [];
-  const { data } = await c
+  let q = c
     .from("offering_orders")
     .select(
       "id,product_name,quantity,unit_price_jpy,orderer_name,company,address,name_plate_text,status,payment_method,created_at,memorials!inner(funeral_home_id,announce_mourner_name,deceased(name_kanji))"
     )
     .eq("memorials.funeral_home_id", DEMO_FUNERAL_HOME_ID)
     .neq("status", "error") // 決済失敗(error)は除外
-    .neq("status", "requires_payment") // カード決済の未確定(未入金)は除外
-    .order("created_at", { ascending: false });
+    .neq("status", "requires_payment"); // カード決済の未確定(未入金)は除外
+  if (!includeRefunded) q = q.neq("status", "refunded");
+  const { data } = await q.order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => {
     const m = Array.isArray(r.memorials) ? r.memorials[0] : r.memorials;
@@ -319,8 +324,8 @@ export async function listOrders(slug: string): Promise<OrderRow[]> {
   if (!c) return [];
   const mid = await memorialIdBySlug(slug);
   if (!mid) return [];
-  // status=error(決済失敗) / requires_payment(カード未入金) は一覧に出さない
-  const { data } = await c.from("offering_orders").select("id,product_name,quantity,unit_price_jpy,orderer_name,email,name_plate_text,status,created_at").eq("memorial_id", mid).neq("status", "error").neq("status", "requires_payment").order("created_at", { ascending: false });
+  // status=error(決済失敗) / requires_payment(カード未入金) / refunded(返金済み=納品しない) は一覧に出さない
+  const { data } = await c.from("offering_orders").select("id,product_name,quantity,unit_price_jpy,orderer_name,email,name_plate_text,status,created_at").eq("memorial_id", mid).neq("status", "error").neq("status", "requires_payment").neq("status", "refunded").order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => ({
     id: r.id, productName: r.product_name ?? "—", quantity: r.quantity ?? 1, amountJpy: (r.unit_price_jpy ?? 0) * (r.quantity ?? 1),
@@ -412,7 +417,11 @@ export interface ExportOrderRow {
   mournerName: string;
   deceasedName: string;
 }
-/** 供花・供物 注文一覧のエクスポート用データ（error=決済未成立は除外）。 */
+/**
+ * 供花・供物 注文一覧のエクスポート用データ。
+ * error(決済未成立) / requires_payment(カード未入金) に加え、refunded(返金済み)も除外する。
+ * 返金した注文は実際には納品されず売上にもならないため、載せると集計・報告がずれるため。
+ */
 export async function getOrdersForExport(slug: string): Promise<ExportOrderRow[]> {
   const c = await db();
   if (!c) return [];
@@ -424,6 +433,7 @@ export async function getOrdersForExport(slug: string): Promise<ExportOrderRow[]
     .eq("memorial_id", mid)
     .neq("status", "error")
     .neq("status", "requires_payment")
+    .neq("status", "refunded")
     .order("created_at", { ascending: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((r) => {

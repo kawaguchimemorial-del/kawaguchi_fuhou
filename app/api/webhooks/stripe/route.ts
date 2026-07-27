@@ -86,10 +86,29 @@ export async function POST(req: NextRequest) {
       }
       case "charge.refunded": {
         const ch = event.data.object as Stripe.Charge;
-        // 当システムの香典決済のみ対象（metadata が無い返金は他サービスのものなので無視）。
-        if (c && ch.payment_intent && ch.metadata?.koden_payment_id) {
-          await c.from("koden_payments").update({ status: "refunded", updated_at: new Date().toISOString() }).eq("id", ch.metadata.koden_payment_id);
+        const now = new Date().toISOString();
+        const pi = typeof ch.payment_intent === "string" ? ch.payment_intent : null;
+        if (!c || !pi) break;
+        if (ch.metadata?.kind === "offering") {
+          // 供花・供物: Stripeダッシュボードから返金された場合もここで追随する
+          // （管理画面の返金ボタン経由なら既に refunded_at が入っているので二重更新しない）。
+          // metadata には offering_order_id も引き継がれる。無い場合のみ PaymentIntent で引く。
+          const oid = ch.metadata.offering_order_id;
+          const q = c.from("offering_orders").select("id,refunded_at");
+          const { data: row } = await (oid ? q.eq("id", oid) : q.eq("provider_payment_intent_id", pi)).maybeSingle();
+          if (row && !row.refunded_at) {
+            await c.from("offering_orders").update({
+              status: "refunded",
+              refunded_at: now,
+              refunded_amount_jpy: ch.amount_refunded,
+              updated_at: now,
+            }).eq("id", row.id);
+          }
+        } else if (ch.metadata?.koden_payment_id) {
+          // 香典（現状フラグOFF・将来用）
+          await c.from("koden_payments").update({ status: "refunded", updated_at: now }).eq("id", ch.metadata.koden_payment_id);
         }
+        // metadata が無い返金は他サービスのものなので何もしない。
         break;
       }
       default:
