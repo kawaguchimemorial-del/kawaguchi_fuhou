@@ -2127,3 +2127,31 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
   固定バーだけだと広告的バーとして無視されるため、本文の流れの中にも導線を置く狙い。
 - 受付期限の表記を offeringDeadline() に共通化し「8月2日(土) 17:00」形式（曜日入り）に統一。従来は 08/02 17:00。
 - どちらも flowerOpen(受付終了・供花辞退でない)のときだけ表示。
+
+## 2026-07-27 本番決済(live)へ移行／返金機能／法務ページを新設
+### Stripe live 移行
+- 使用アカウントは **川口典礼(acct_1OlMDk)** ＝＠葬儀(スマート葬儀)と同じアカウント。
+  テストで使った「自社オンライン決済(acct_1TxcAt)」は本番審査未完了(charges_enabled:false)のため見送り。
+- Vercel(production)に live キー3点＋OFFERING_PAYMENT_ENABLED=1 を投入しデプロイ。pk_live の実使用を確認。
+- 本番Webhook: https://kawaguchi-fuhou.vercel.app/api/webhooks/stripe (succeeded / payment_failed)。
+- 実カードで本番テスト成功: pi_3Txfeq… succeeded 23,100円 → captured / 請求書自動作成 / メール送信。
+- **注意**: 同アカウントに ＠葬儀の Webhook (https://vsps.at-sougi.com/stripe/webhook/…) が
+  payment_intent.succeeded 等を購読しており、当システムの決済イベントも先方へ配信される。
+  当方は metadata で無視するガード済みだが、先方の挙動は制御不可。入金・レポートも合算される。
+
+### 返金機能（管理画面）
+- migration 0043→0042_offering_refund.sql: refunded_at / refund_id / refunded_amount_jpy / refunded_by を追加（本番適用済み）。
+- lib/admin/refund-actions.ts: refundOfferingOrder(orderId, password)。
+  - パスワードは環境変数 REFUND_ADMIN_PASSWORD（コードに埋めない）。値は kawa1117。
+  - 冪等キー refund_offering_<id> で二重返金防止。captured かつ PI あり かつ未返金のみ実行可。
+  - 連続5回失敗で5分ロック、比較は全文字走査（早期returnさせない）。
+- components/admin/RefundOrderButton.tsx: 確認ダイアログでパスワード再入力 → 全額返金。
+- /fuhou/orders/[id] に返金セクション（canRefund のときだけ表示）＋返金済みの表示。
+- ORDER_STATUS_LABEL に refunded:"返金済み" を追加。
+- 併せて修正: getOrderDetail の payment が常に「オンラインカード決済」固定だったのを実際の payment_method に。
+
+### 法務ページ（4本とも存在せず404だった）
+- /legal/tokushoho, /privacy, /policy, /company を新設。ゲストフッターと注文フォームのリンクが全て404だった。
+- lib/legal/company.ts に事業者情報を集約（株式会社川口典礼／代表取締役 吉田寿子／埼玉県川口市西新井宿440-1／
+  0120-963-765／flower@kawaguchi-memorial-hall.com）。
+- components/guest/LegalLayout.tsx で体裁を共通化。

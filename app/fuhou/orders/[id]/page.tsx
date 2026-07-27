@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrderDetail } from "@/lib/admin/data";
+import { RefundOrderButton } from "@/components/admin/RefundOrderButton";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,11 @@ export default async function OrderDetailPage({ params }: Params) {
         <Field label="ステータス">{o.status}</Field>
         <Field label="注文日時">{fmt(o.createdAt)}</Field>
         <Field label="お支払い方法">{o.payment}</Field>
+        {o.refundedAt && (
+          <Field label="返金">
+            {fmt(o.refundedAt)}に{(o.refundedAmount ?? 0).toLocaleString()}円を返金済み
+          </Field>
+        )}
         <Field label="対象葬儀">故 {o.deceasedName} 儀（喪主 {o.mournerName}）{o.ceremonySlug && <Link href={`/fuhou/ceremonies/${o.ceremonySlug}`} className="ml-2 text-[#9b2fae] underline">葬儀詳細 ›</Link>}</Field>
       </div>
 
@@ -70,6 +76,18 @@ export default async function OrderDetailPage({ params }: Params) {
         <Field label="領収書宛名">{o.invoiceName || "—"}</Field>
         {o.memo && <Field label="備考">{o.memo}</Field>}
       </div>
+
+      {/* 返金（カード決済のみ・管理者の再認証が必要） */}
+      {o.canRefund && (
+        <div className="rounded-lg border border-red-200 bg-white p-5 shadow-sm">
+          <p className="mb-2 font-bold text-red-600">返金</p>
+          <p className="mb-4 text-sm text-gray-600">
+            ご注文をお受けできない場合は、こちらから全額を返金できます。決済手数料も返還されます。
+            実行には返金用パスワードが必要です。
+          </p>
+          <RefundOrderButton id={o.id} amount={o.total} />
+        </div>
+      )}
     </div>
   );
 }

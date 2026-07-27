@@ -174,6 +174,7 @@ export interface AllOrderRow {
 }
 const ORDER_STATUS_LABEL: Record<string, string> = {
   captured: "決済完了", authorized: "与信中", canceled: "キャンセル", error: "エラー", pending_confirm: "受付",
+  refunded: "返金済み",
 };
 /** 葬儀社全体の供花・供物 注文一覧（offering_orders × memorials × deceased）。 */
 export async function listAllOrders(): Promise<AllOrderRow[]> {
@@ -348,6 +349,10 @@ export interface OrderDetail {
   payment: string;
   items: { productName: string; quantity: number; unitPrice: number }[];
   total: number;
+  /** 返金可否の判定に使う生の情報 */
+  canRefund: boolean;          // カード決済かつ決済完了・未返金
+  refundedAt: string | null;
+  refundedAmount: number | null;
 }
 /** 供花・供物 注文の詳細（1件の注文＝同一 memorial_id + created_at の明細をまとめる）。 */
 export async function getOrderDetail(id: string): Promise<OrderDetail | null> {
@@ -355,7 +360,7 @@ export async function getOrderDetail(id: string): Promise<OrderDetail | null> {
   if (!c) return null;
   const { data: row } = await c
     .from("offering_orders")
-    .select("id,memorial_id,created_at,status,orderer_name,orderer_kana,company,postal_code,address,phone,email,name_plate_text,old_char,invoice_name,memo,memorials(slug,announce_mourner_name,deceased(name_kanji))")
+    .select("id,memorial_id,created_at,status,orderer_name,orderer_kana,company,postal_code,address,phone,email,name_plate_text,old_char,invoice_name,memo,payment_method,provider_payment_intent_id,refunded_at,refunded_amount_jpy,memorials(slug,announce_mourner_name,deceased(name_kanji))")
     .eq("id", id)
     .single();
   if (!row) return null;
@@ -380,7 +385,13 @@ export async function getOrderDetail(id: string): Promise<OrderDetail | null> {
     ordererName: r.orderer_name ?? "—", ordererKana: r.orderer_kana ?? "", company: r.company ?? "",
     postalCode: r.postal_code ?? "", address: r.address ?? "", phone: r.phone ?? "", email: r.email ?? "",
     namePlate: r.name_plate_text ?? "", oldChar: !!r.old_char, invoiceName: r.invoice_name ?? "", memo: r.memo ?? "",
-    payment: "オンラインカード決済", items, total,
+    // 支払い方法は注文時に選ばれた実際の値を出す（旧実装は常に「オンラインカード決済」と表示していた）
+    payment: r.payment_method || "—",
+    items,
+    total,
+    canRefund: r.status === "captured" && !!r.provider_payment_intent_id && !r.refunded_at,
+    refundedAt: r.refunded_at ?? null,
+    refundedAmount: r.refunded_amount_jpy ?? null,
   };
 }
 
