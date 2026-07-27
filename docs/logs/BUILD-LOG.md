@@ -2204,3 +2204,12 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - ※ 仕様では /kanri/settings 自体をハブ化する案だったが、同URLは「葬儀会社」情報＋KPIの実画面であり、
   作り替えると既存画面を1つ失う（＝画面の増減なしという制約に反する）。
   実体のあるハブは /kanri/settings/masters（元々マスタ一覧の画面）に実装した。サイドバーの設定ノードも従来どおり。
+
+## 2026-07-27 /kanri UI刷新 第3弾: 誤操作ガードと金額表記の規格化
+- ConfirmSubmit を components/kanri/ へ移設(旧 app/kanri/estimates/ConfirmSubmit.tsx は削除)。extra で id 以外のhiddenも送れるよう拡張。
+- 誤操作ガード(金額・データに直結する即実行を確認ダイアログで保護):
+  - 見積一覧PC の「請求書」「発注書」が confirm 無しの素formだった → ConfirmSubmit に統一(モバイル側は元々ガード済み)。
+  - 一覧の削除も同様に保護: 請求書一覧 / 顧客一覧 / 見積一覧。
+- components/kanri/Money.tsx を新設。数値と単位「円」を別要素にし、右端が数値で揃うようにした(tabular-nums)。
+  未設定は「—」、0は「0円」で区別、負値・未収は --k-danger。CSSは theme-v2.css の .k-money に定義済み。
+  適用: 請求書一覧・見積一覧の合計金額列。

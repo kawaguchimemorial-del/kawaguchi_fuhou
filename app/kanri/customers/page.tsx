@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConfirmSubmit } from "@/components/kanri/ConfirmSubmit";
 import { listCustomers } from "@/lib/kanri/data";
 import { deleteCustomer } from "@/lib/kanri/actions";
 import { CUSTOMER_STATUSES } from "@/lib/kanri/constants";
@@ -82,7 +83,7 @@ export default async function CustomersPage({ searchParams }: SP) {
                       <div className="flex gap-1">
                         <Link href={`/kanri/customers/${c.id}`} className="rounded border border-blue-400 px-2 py-1 text-[11px] text-blue-500">詳細確認</Link>
                         <Link href={`/kanri/customers/${c.id}`} className="rounded border border-[#1aa39a] px-2 py-1 text-[11px] text-[#1aa39a]">編集</Link>
-                        <form action={deleteCustomer}><input type="hidden" name="id" value={c.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
+                        <ConfirmSubmit action={deleteCustomer} id={c.id} confirm="この顧客を削除します。取り消せません。よろしいですか？" className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</ConfirmSubmit>
                       </div>
                     </td>
                   </tr>

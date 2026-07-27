@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { Money } from "@/components/kanri/Money";
 import { SearchPanel, buildChips } from "@/components/kanri/SearchPanel";
 import { listEstimates, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
 import { createInvoiceFromEstimate, createPurchaseOrdersFromEstimate, deleteEstimate } from "@/lib/kanri/actions";
-import { ConfirmSubmit } from "./ConfirmSubmit";
+import { ConfirmSubmit } from "@/components/kanri/ConfirmSubmit";
 
 export const metadata = { title: "見積もり" };
 export const dynamic = "force-dynamic";
@@ -131,7 +132,7 @@ export default async function EstimatesPage({ searchParams }: SP) {
                     <td className="px-3 py-2 whitespace-nowrap">{e.customerId ? <Link href={`/kanri/customers/${e.customerId}`} className="text-[#1aa39a] underline">{e.customerName ?? mournerFullName(e) ?? "—"}</Link> : (e.customerName ?? mournerFullName(e) ?? "—")}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{deceasedFullName(e) || ""}</td>
                     <td className="px-3 py-2 max-w-[280px] truncate" title={e.title ?? ""}><Link href={`/kanri/estimates/${e.id}`} className="text-[#1aa39a] underline">{e.title || "（無題）"}</Link></td>
-                    <td className="px-3 py-2 whitespace-nowrap text-right">{e.total.toLocaleString()}円</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-right"><Money value={e.total} /></td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{fmt(e.estimateOn)}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{e.estimateNo ?? ""}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{e.staffName ?? ""}</td>
@@ -139,8 +140,9 @@ export default async function EstimatesPage({ searchParams }: SP) {
                       <div className="flex flex-wrap gap-1">
                         <Link href={`/kanri/estimates/${e.id}`} className="rounded bg-gray-100 px-2 py-1 text-[11px] text-gray-700">詳細</Link>
                         <a href={`/kanri/estimates/${e.id}/print`} target="_blank" rel="noopener noreferrer" className="rounded bg-[#e6f6f4] px-2 py-1 text-[11px] text-[#1aa39a]">見積書</a>
-                        <form action={createInvoiceFromEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded bg-[#eef4ff] px-2 py-1 text-[11px] text-[#4f7cff]">請求書</button></form>
-                        <form action={createPurchaseOrdersFromEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded bg-[#fff4ec] px-2 py-1 text-[11px] text-[#e8613c]">発注書</button></form>
+                        {/* 金額に影響する即時作成なので、モバイル側と同じく確認を挟む */}
+                        <ConfirmSubmit action={createInvoiceFromEstimate} id={e.id} confirm="この見積から請求書を作成します。よろしいですか？" className="rounded bg-[#eef4ff] px-2 py-1 text-[11px] text-[#4f7cff]">請求書</ConfirmSubmit>
+                        <ConfirmSubmit action={createPurchaseOrdersFromEstimate} id={e.id} confirm="この見積から発注書を作成します。よろしいですか？" className="rounded bg-[#fff4ec] px-2 py-1 text-[11px] text-[#e8613c]">発注書</ConfirmSubmit>
                         <details className="relative inline-block">
                           <summary className="cursor-pointer list-none rounded bg-[#f3e8ff] px-2 py-1 text-[11px] text-[#9b2fae] [&::-webkit-details-marker]:hidden">訃報案内 ▾</summary>
                           <div className="absolute left-0 z-20 mt-1 w-64 rounded border bg-white py-1 shadow-lg">
@@ -148,7 +150,7 @@ export default async function EstimatesPage({ searchParams }: SP) {
                             <Link href={`/fuhou/ceremonies/new?type=obituary_venue&from_estimate=${e.id}`} className="block px-3 py-2 text-[12px] text-gray-700 hover:bg-gray-50">訃報＋オンライン式場を作成する</Link>
                           </div>
                         </details>
-                        <form action={deleteEstimate}><input type="hidden" name="id" value={e.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
+                        <ConfirmSubmit action={deleteEstimate} id={e.id} confirm="この見積を削除します。取り消せません。よろしいですか？" className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</ConfirmSubmit>
                       </div>
                     </td>
                   </tr>

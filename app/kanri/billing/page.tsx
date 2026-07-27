@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Money } from "@/components/kanri/Money";
+import { ConfirmSubmit } from "@/components/kanri/ConfirmSubmit";
 import { SearchPanel, buildChips } from "@/components/kanri/SearchPanel";
 import { listInvoices } from "@/lib/kanri/invoices";
 import { deleteInvoice } from "@/lib/kanri/actions";
@@ -87,7 +89,7 @@ export default async function BillingPage({ searchParams }: SP) {
                     <td className="px-3 py-2 whitespace-nowrap">{iv.deceasedName ?? ""}</td>
                     <td className="px-3 py-2 max-w-[260px] truncate" title={iv.title ?? ""}>{iv.title ?? "—"}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-gray-500">{fmt(iv.billedOn)}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-right">{iv.total.toLocaleString()}円</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-right"><Money value={iv.total} /></td>
                     <td className="px-3 py-2 whitespace-nowrap">{iv.saleCategory ?? ""}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{iv.constructionNo ?? ""}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{iv.invoiceTargetName ?? ""}</td>
@@ -102,7 +104,7 @@ export default async function BillingPage({ searchParams }: SP) {
                         ) : (
                           <Link href={`/kanri/billing/${iv.id}/slip/new`} className="rounded border border-[#f2683f] bg-[#fff4f0] px-2 py-1 text-[11px] text-[#f2683f]">入金伝票発行</Link>
                         )}
-                        <form action={deleteInvoice}><input type="hidden" name="id" value={iv.id} /><button className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</button></form>
+                        <ConfirmSubmit action={deleteInvoice} id={iv.id} confirm="この請求書を削除します。取り消せません。よろしいですか？" className="rounded border border-red-400 px-2 py-1 text-[11px] text-red-500">削除</ConfirmSubmit>
                       </div>
                     </td>
                   </tr>
