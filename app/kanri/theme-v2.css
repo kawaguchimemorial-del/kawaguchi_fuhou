@@ -7,9 +7,13 @@
    ========================================================================== */
 
 [data-kanri-v2] {
-  /* ブランド(深緑) — bg/text/border を別トークンで管理 */
-  --k-brand-bg:     #1f6b54;  /* 白文字 5.9:1 AA。旧 #2c8c6f/#1aa39a/#2bb8ae/#57ab5a の統合先 */
-  --k-brand-strong: #17493d;  /* ヘッダー帯・hover。白文字 10.2:1 */
+  /* --- クローム(最上部の帯)。有彩色をやめて墨に。参照元との構造的な差分の要 --- */
+  --k-chrome:      #22262b;  /* 白文字 15.4:1 */
+  --k-chrome-line: #34393f;  /* 下辺1px。金ヘアラインは廃止 */
+
+  /* ブランド(深緑) — 主ボタン・進行中バッジ等の小面積に限定して使う */
+  --k-brand-bg:     #1f6b54;  /* 白文字 5.9:1 AA */
+  --k-brand-strong: #14564a;  /* 主ボタンhover */
   --k-brand-text:   #1f6b54;
   --k-brand-border: #1f6b54;
   --k-brand-tint:        #eef4f1;
@@ -31,22 +35,21 @@
   --k-obituary:      #6d4a7c;
   --k-obituary-tint: #f2edf5;
 
-  /* ニュートラル(緑がかったウォーム) */
-  --k-surface: #f4f4f0;
+  /* ニュートラル(和紙の生成り) */
+  --k-surface: #f6f4ef;
   --k-card:    #ffffff;
-  --k-line:      #e3e6e2;
-  --k-line-soft: #edefec;
-  --k-ink:      #1f2421;
-  --k-ink-soft: #57605a;
-  --k-row-hover: #e3ece7;
+  --k-line:      #e0ddd6;
+  --k-line-soft: #efece5;
+  --k-ink:       #1f2421;
+  --k-ink-soft:  #57605a;
+  --k-ink-faint: #6b7570;  /* 単位・空値・プレースホルダ(4.6:1)。text-gray-400の写像先 */
+  --k-row-hover: #f1efe9;
 
-  /* 装飾(唯一の金。ヘッダーヘアライン専用) */
-  --k-accent-hairline: #b08d3f;
-
-  /* 形状・密度 */
-  --k-radius:      8px;
-  --k-radius-sm:   6px;
-  --k-shadow-card: 0 1px 3px rgb(0 0 0 / .08);
+  /* 形状・密度 — 影を捨てて1px罫線の帳票質感へ */
+  --k-radius:      4px;
+  --k-radius-sm:   4px;
+  --k-shadow-card: none;
+  --k-shadow-overlay: 0 8px 24px rgb(0 0 0 / .18); /* 影はオーバーレイ/シートのみ */
   --k-focus:       0 0 0 2px #fff, 0 0 0 4px var(--k-brand-bg);
   --k-row-h:   44px;
   --k-input-h: 44px;
@@ -125,7 +128,25 @@
   font-size: 12px; font-weight: 600; color: var(--k-ink-soft);
   background: var(--k-surface); white-space: nowrap;
 }
-[data-kanri-v2] td { font-size: 14px; height: var(--k-row-h); }
+[data-kanri-v2] th { font-size: 13px; }
+[data-kanri-v2] td { font-size: 15px; height: var(--k-row-h); }
+/* 斎場の照明下でも読めるよう極小文字を底上げ(行高は据え置き)。
+   ただし表の中(操作列など)は列幅が決まっており、広げると行が縦に伸びるので対象外。 */
+[data-kanri-v2] .text-\[10px\] { font-size: 12px; }
+[data-kanri-v2] .text-\[11px\] { font-size: 13px; }
+[data-kanri-v2] td .text-\[10px\] { font-size: 10px; }
+[data-kanri-v2] td .text-\[11px\] { font-size: 11px; }
+/* 行内の操作リンク/ボタンは折り返さない(文字サイズ底上げで縦積みになるのを防ぐ) */
+[data-kanri-v2] td a,
+[data-kanri-v2] td button { white-space: nowrap; }
+/* 操作列は隣接ボタンの誤爆を避けて間隔を少し広めに(行を伸ばさない範囲で) */
+[data-kanri-v2] td .gap-1 { gap: .375rem; }
+
+/* 金額: 数値と単位を分離して右端を数値で揃える */
+[data-kanri-v2] .k-money { text-align: right; font-variant-numeric: tabular-nums; }
+[data-kanri-v2] .k-money > .num { font-size: 15px; font-weight: 600; color: var(--k-ink); }
+[data-kanri-v2] .k-money > .unit { font-size: 11px; color: var(--k-ink-faint); margin-left: 2px; }
+[data-kanri-v2] .k-money.is-danger > .num { color: var(--k-danger); }
 @media (hover: hover) {
   [data-kanri-v2] tbody tr:hover > td { background-color: var(--k-row-hover); }
 }
@@ -152,8 +173,60 @@
   [data-kanri-v2] button { min-height: 48px; }
 }
 
-/* カード質感 */
+/* カード質感: 影をやめて1px罫線＋角丸4pxの帳票調に */
 [data-kanri-v2] .rounded-lg.bg-white,
-[data-kanri-v2] .rounded.bg-white { box-shadow: var(--k-shadow-card); }
+[data-kanri-v2] .rounded.bg-white {
+  box-shadow: none;
+  border: 1px solid var(--k-line);
+  border-radius: var(--k-radius);
+}
+[data-kanri-v2] .shadow-sm,
+[data-kanri-v2] .shadow,
+[data-kanri-v2] .shadow-md { box-shadow: none; }
+/* 影を残すのはオーバーレイ/ドロワー/シートだけ */
+[data-kanri-v2] .shadow-xl { box-shadow: var(--k-shadow-overlay); }
+[data-kanri-v2] .rounded-lg, [data-kanri-v2] .rounded-xl { border-radius: var(--k-radius); }
+
+/* AA不合格だった素のユーティリティを是正(写像漏れ分) */
+[data-kanri-v2] .text-gray-400 { color: var(--k-ink-faint); }
+[data-kanri-v2] .text-blue-500  { color: var(--k-action); }
+[data-kanri-v2] .text-red-500   { color: var(--k-danger); }
+
+/* ===== 画面見出し: ベタ塗りの色帯 → 白地＋左縦罫＋下辺1px罫線 =====
+   各一覧が直書きしている `-m-5 ... bg-[#2c8c6f]` の帯を、
+   マークアップを触らずに PageHeader と同じ体裁へ寄せる。
+   (個別ファイルを書き換えないので差分が小さく、ロールバックもこのブロック削除で済む) */
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] {
+  background: var(--k-card) !important;
+  border-bottom: 1px solid var(--k-line);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] h1 {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 20px; font-weight: 700; color: var(--k-ink);
+}
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] h1::before {
+  content: ""; display: inline-block; flex: none;
+  width: 3px; height: 20px; border-radius: 2px; background: var(--k-brand-bg);
+}
+/* 帯の中の白文字・半透明ボタンを地の色に合わせて反転 */
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .text-white { color: var(--k-ink); }
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .bg-white\/15,
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .bg-white\/20 {
+  background: var(--k-brand-bg) !important; color: #fff; border-radius: var(--k-radius-sm);
+}
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .bg-white\/15.text-white,
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .bg-white\/20.text-white { color: #fff; }
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .border-white\/60,
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .border-white\/50,
+[data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .border-white {
+  border-color: var(--k-line) !important; color: var(--k-action);
+}
+@media (hover: hover) {
+  [data-kanri-v2] .-m-5.bg-\[\#2c8c6f\] .hover\:bg-white\/25:hover {
+    background: var(--k-brand-strong) !important;
+  }
+}
 
 /* ===== 例外ブロック(必要になったらここに後置宣言で追記) ===== */

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// ユーザー管理画面: 白ヘッダー＋上部緑ライン＋横タブ（実スマート葬儀と同一順序）
+// ユーザー管理画面: 白ヘッダー＋上部緑ライン＋横タブ
 const TABS = [
   { label: "故人", href: "/kanri/settings/deceased" },
   { label: "参列者", href: "/kanri/settings/attendees" },

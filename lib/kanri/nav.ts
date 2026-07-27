@@ -1,4 +1,4 @@
-// CRM サイドバー(リボン)の構成。スマート葬儀の実画面(トップ リボン展開状態)に準拠。
+// CRM サイドバー(リボン)の構成。業務の並び順に沿った構成。
 export interface NavNode { label: string; href?: string; children?: NavNode[]; icon?: string }
 
 export const CRM_NAV: NavNode[] = [
@@ -25,7 +25,7 @@ export const CRM_NAV: NavNode[] = [
     // EC売上・発注分析は現状不要のため非表示(ページ・機能は残置)。
   ] },
   // SMSは現状不要のため非表示(ページ・機能は残置)。
-  // 設定メニュー: 実スマート葬儀のリボン(設定展開時)の項目・順序に準拠
+  // 設定メニュー: 設定項目の並び
   { label: "設定", icon: "Settings", children: [
     { label: "基本", children: [
       { label: "会社情報", href: "/kanri/settings/company" },

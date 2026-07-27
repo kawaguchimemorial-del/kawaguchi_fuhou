@@ -56,7 +56,7 @@ function admin(): { from: (t: string) => any } {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return createAdminClient() as unknown as { from: (t: string) => any };
 }
-// 請求書番号を連番採番（スマート葬儀と同方式・移植済み最大値の次から）。
+// 請求書番号を連番採番（移植済み最大値の次から）。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function nextInvoiceNo(c: any): Promise<string | null> {
   const { data } = await c.rpc("next_invoice_no");
@@ -227,7 +227,7 @@ export async function saveProduct(_prev: KanriResult | null, fd: FormData): Prom
     product_kind: s(fd, "product_kind"), product_sub_kind: s(fd, "product_sub_kind"), name, kana: s(fd, "kana"),
     unit_price: num(fd, "unit_price") ?? 0, cost_price: num(fd, "cost_price"),
     tax_rate: num(fd, "tax_rate") ?? 0.1, unit: s(fd, "unit"), supplier: s(fd, "supplier"), note: s(fd, "note"),
-    // 実スマート葬儀の商品フィールド
+    // 商品の拡張フィールド
     product_code: s(fd, "product_code"), model_code: s(fd, "model_code"),
     cost_tax: num(fd, "cost_tax") ?? 0.1, deduction: s(fd, "deduction"),
     refundable: bool(fd, "refundable"), description: s(fd, "description"), remarks: s(fd, "remarks"),
@@ -288,7 +288,7 @@ export async function importProducts(_prev: KanriResult | null, fd: FormData): P
   let rows: Record<string, string>[] = [];
   try { rows = JSON.parse(s(fd, "rows") ?? "[]"); } catch { return { ok: false, error: "CSVの解析に失敗しました。" }; }
   const g = (r: Record<string, string>, ...k: string[]) => { for (const x of k) { if (r[x] != null && r[x] !== "") return r[x].trim(); } return null; };
-  // 実スマート葬儀「商品一括登録フォーマット」のヘッダー名に対応（旧フォーマットも受容）
+  // 社内標準CSV「商品一括登録フォーマット」のヘッダー名に対応（旧フォーマットも受容）
   const rate = (v: string | null) => {
     if (v == null || v === "") return 0.1;
     if (v.includes("非") || v === "0") return 0;
@@ -677,7 +677,7 @@ export async function deletePaymentSlip(fd: FormData): Promise<void> {
   revalidatePath(`/kanri/billing/${invoiceId}`);
 }
 
-// ===== 見積/請求 作成（実スマート葬儀フォーム準拠: 顧客直結・宛名/請求先・セット商品） =====
+// ===== 見積/請求 作成（顧客直結・宛名/請求先・セット商品） =====
 type FullItem = {
   lineKind: "item" | "discount"; productId?: string | null; name: string;
   unitPrice: number; quantity: number; taxRate: number;
@@ -903,7 +903,7 @@ export async function createBulkInvoices(fd: FormData): Promise<void> {
   redirect(`/kanri/billing?bulk=${created}`);
 }
 
-// ===== 請求書 CSVインポート（実スマート葬儀 請求書一括CSVフォーマット準拠） =====
+// ===== 請求書 CSVインポート（請求書一括CSVフォーマット） =====
 // 実物50列ヘッダーの列名で値を取得。件名がある行=新規請求書、無い行=直前の請求書の明細行。
 function splitCsvLine(line: string): string[] {
   const out: string[] = []; let cur = ""; let inQ = false;

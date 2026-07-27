@@ -9,7 +9,7 @@ import { CUSTOMER_STATUSES, PREFECTURES } from "@/lib/kanri/constants";
 import type { Product, ProductSet } from "@/lib/kanri/products";
 import type { MasterItem } from "@/lib/kanri/master-defs";
 
-// 実スマート葬儀の「見積もり作成」「請求書追加」フォーム準拠（両者ほぼ同一・請求は宛名→請求先情報）
+// 見積もり作成／請求書追加フォーム（両者ほぼ同一・請求は宛名→請求先情報）
 export interface FormInitial {
   id?: string;
   constructionNo?: string;
@@ -50,7 +50,7 @@ interface Props {
   purposes?: MasterItem[];         // 摘要設定マスタ
   templates?: MasterItem[];        // 見積書/請求書テンプレート
 }
-// 実スマート葬儀のオプションカード準拠の行データ
+// オプション行のデータ
 interface OptRow {
   key: number; productId: string; productName?: string;
   name: string; tagName: string;

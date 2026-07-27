@@ -14,7 +14,7 @@ export interface Invoice {
   id: string; invoiceNo?: string; estimateId?: string | null;
   billedOn?: string; dueOn?: string; total: number; paidTotal: number; status: string; createdAt: string;
   deceasedName?: string; mournerName?: string;
-  // リレーション（実スマート葬儀準拠: 請求書は顧客に直接紐付く）
+  // リレーション（請求書は顧客に直接紐付く）
   customerId?: string | null; customerName?: string;
   title?: string; saleCategory?: string; constructionNo?: string;
   invoiceTargetName?: string; // 請求先（顧客と異なる宛先に請求できる）

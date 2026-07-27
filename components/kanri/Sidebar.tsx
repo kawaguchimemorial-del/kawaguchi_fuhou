@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, Lightbulb, LogOut, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, FileText } from "lucide-react";
 import { CRM_NAV, type NavNode } from "@/lib/kanri/nav";
 
-const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, FileText };
+const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>> = { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, FileText };
 
 function hasActive(node: NavNode, path: string): boolean {
   if (node.href && (path === node.href || path.startsWith(node.href + "/"))) return true;
@@ -20,19 +20,26 @@ export function Section({ node, path, depth }: { node: NavNode; path: string; de
 
   if (!node.children) {
     const isActive = node.href && (path === node.href || path.startsWith(node.href + "/"));
+    // アクティブは「左3pxバー」ではなく角丸ピルの塗りで示す
     return (
-      <Link href={node.href ?? "#"} className={`relative flex min-h-[44px] items-center gap-3 py-2.5 text-sm ${pad} ${isActive ? "bg-[#f2fbfa] font-medium text-[#1aa39a]" : "text-gray-600 hover:bg-gray-50"}`}>
-        {isActive && <span className="absolute inset-y-1 left-0 w-[3px] rounded-r bg-[#1aa39a]" />}
-        {Icon && <Icon size={18} className={isActive ? "text-[#1aa39a]" : "text-gray-400"} />}
+      <Link
+        href={node.href ?? "#"}
+        aria-current={isActive ? "page" : undefined}
+        className={`mx-2 flex min-h-[44px] items-center gap-3 rounded-[4px] py-2.5 text-sm ${pad} ${isActive ? "font-semibold" : "text-gray-600 hover:bg-gray-50"}`}
+        style={isActive ? { background: "var(--k-brand-tint-strong, #dde9e3)", color: "var(--k-ink, #1f2421)" } : undefined}
+      >
+        {Icon && <Icon size={18} className={isActive ? "" : "text-gray-400"} style={isActive ? { color: "var(--k-brand-bg, #1f6b54)" } : undefined} />}
         {node.label}
       </Link>
     );
   }
   return (
     <div>
-      <button onClick={() => setOpen((o) => !o)} className={`flex min-h-[44px] w-full items-center gap-3 py-2.5 text-sm ${pad} ${active ? "text-[#1aa39a]" : "text-gray-700"} hover:bg-gray-50`}>
-        {Icon && <Icon size={18} className={active ? "text-[#1aa39a]" : "text-gray-400"} />}
+      <button onClick={() => setOpen((o) => !o)} className={`flex min-h-[44px] w-full items-center gap-3 py-2.5 text-sm ${pad} text-gray-700 hover:bg-gray-50`}>
+        {Icon && <Icon size={18} className={active ? "" : "text-gray-400"} style={active ? { color: "var(--k-brand-bg, #1f6b54)" } : undefined} />}
         <span className="flex-1 text-left font-medium">{node.label}</span>
+        {/* 配下に現在地があることを丸ドットで示す(色だけに依存しない) */}
+        {active && <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--k-brand-bg, #1f6b54)" }} />}
         {open ? <ChevronDown size={15} className="text-gray-400" /> : <ChevronRight size={15} className="text-gray-400" />}
       </button>
       {open && <div className="pb-1">{node.children.map((c) => <Section key={c.label} node={c} path={path} depth={depth + 1} />)}</div>}
@@ -45,7 +52,10 @@ function RailItem({ node, path, onExpand }: { node: NavNode; path: string; onExp
   const active = hasActive(node, path);
   const Icon = node.icon ? ICONS[node.icon] : FileText;
   const inner = (
-    <span className={`flex h-11 w-11 items-center justify-center rounded-lg ${active ? "bg-[#f2fbfa] text-[#1aa39a]" : "text-gray-500 hover:bg-gray-100"}`}>
+    <span
+      className={`flex h-11 w-11 items-center justify-center rounded-[4px] ${active ? "" : "text-gray-500 hover:bg-gray-100"}`}
+      style={active ? { background: "var(--k-brand-tint-strong, #dde9e3)", color: "var(--k-brand-bg, #1f6b54)" } : undefined}
+    >
       <Icon size={20} />
     </span>
   );

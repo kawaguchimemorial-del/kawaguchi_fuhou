@@ -4,7 +4,7 @@ import Link from "next/link";
 import { saveProduct, type KanriResult } from "@/lib/kanri/actions";
 import type { Product } from "@/lib/kanri/products";
 
-// 実スマート葬儀 /users/products/new のフォーム項目に準拠
+// 自社の登録項目
 export function ProductForm({ product, kinds, suppliers, subKinds }: { product?: Product; kinds: string[]; suppliers?: string[]; subKinds?: { name: string; parent?: string }[] }) {
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(saveProduct, null);
   const [exPrice, setExPrice] = useState<string>(String(product?.unitPrice ?? ""));

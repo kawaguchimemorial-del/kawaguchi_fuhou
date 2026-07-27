@@ -3,7 +3,7 @@ import { KANRI_HOME_ID } from "@/lib/kanri/constants";
 
 export const dynamic = "force-dynamic";
 
-// 実スマート葬儀 product_sets.csv と同一の17列
+// 会計取込で使う product_sets.csv と同一の17列
 const COLS = ["セットコード", "セット名", "セット価格(税抜)", "セット価格(税込)", "消費税率", "セルフプランニングに表示する", "非表示", "内訳:商品ID", "内訳:個数", "内訳:請求(見積)書に出力しない", "内訳:発注しない", "選択式メニュー:名称", "選択式メニュー:商品ID", "選択式メニュー:追加料金", "会員価格:会員種別ID", "セットメンバーシップ:価格(税抜)", "セットメンバーシップ:価格(税込)"];
 
 function esc(v: string | number | null | undefined) { const s = String(v ?? ""); return s === "" ? '""' : /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }

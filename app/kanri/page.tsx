@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { UserPlus, Users, FileText, Receipt, CircleDollarSign, ClipboardList, AlertTriangle, CalendarClock } from "lucide-react";
-import { listCustomers, monthlyCustomerCounts, countCustomers } from "@/lib/kanri/data";
+import { UserPlus, Users, FileText, Receipt, CircleDollarSign, ClipboardList, AlertTriangle, CalendarClock, ChevronRight } from "lucide-react";
+import { listCustomers, countCustomers } from "@/lib/kanri/data";
 import { listEstimates, deceasedFullName } from "@/lib/kanri/estimates";
 import { listInvoices } from "@/lib/kanri/invoices";
 import { Calendar } from "@/components/kanri/Calendar";
+import { PageHeader } from "@/components/kanri/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +47,10 @@ function fmt(iso?: string): string {
 }
 
 export default async function KanriDashboard() {
-  const [recent, monthly, total, estimates, invoices] = await Promise.all([
-    listCustomers(), monthlyCustomerCounts(), countCustomers(), listEstimates(), listInvoices(),
+  // 月別顧客登録数のグラフは廃止（顧客のcreated_atが一括取込で取込月に寄り、実態と異なる数字を描くため）
+  const [recent, total, estimates, invoices] = await Promise.all([
+    listCustomers(), countCustomers(), listEstimates(), listInvoices(),
   ]);
-  const max = Math.max(1, ...monthly.map((m) => m.count));
 
   // カレンダー用イベント
   const events = estimates.flatMap((e) => {
@@ -92,8 +93,37 @@ export default async function KanriDashboard() {
   ).size;
   const outstanding = invoices.reduce((a, iv) => a + Math.max(0, iv.total - iv.paidTotal), 0);
 
+  const todayLabel = (() => {
+    const d = new Date();
+    const w = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+    return `${d.getMonth() + 1}月${d.getDate()}日(${w})`;
+  })();
+  const wakeToday = upcoming.filter((u) => u.kind === "通夜" && jstYmd(new Date(u.at)) === today).length;
+  const funeralToday = upcoming.filter((u) => u.kind !== "通夜" && jstYmd(new Date(u.at)) === today).length;
+
   return (
     <div className="space-y-6">
+      <PageHeader title="ホーム" />
+
+      {/* 0. 当日帯 — 今日の状況と受付導線を最上部に固定 */}
+      <section className="flex flex-wrap items-center gap-4 rounded-lg bg-white px-5 py-4">
+        <span className="text-2xl font-bold" style={{ color: "var(--k-ink)" }}>{todayLabel}</span>
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <Link href="/kanri/schedule" className="hover:underline">今日の通夜 <b className="tabular-nums">{wakeToday}</b> 件</Link>
+          <Link href="/kanri/schedule" className="hover:underline">葬儀 <b className="tabular-nums">{funeralToday}</b> 件</Link>
+          <Link href="/kanri/receivables" className="hover:underline" style={{ color: attention.length ? "var(--k-danger)" : undefined }}>
+            未入金超過 <b className="tabular-nums">{attention.length}</b> 件
+          </Link>
+        </div>
+        <Link
+          href="/kanri/customers/new"
+          className="ml-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-[4px] px-4 text-sm text-white"
+          style={{ background: "var(--k-brand-bg)" }}
+        >
+          <UserPlus size={15} />新規受付
+        </Link>
+      </section>
+
       {/* 1. 今日の予定 */}
       <section className="rounded-lg bg-white p-5 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
@@ -142,68 +172,58 @@ export default async function KanriDashboard() {
         </section>
       )}
 
-      {/* 3. クイックアクション(全機能維持) */}
-      <section>
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="space-y-5">
-            {GROUPS.map((g) => (
-              <div key={g.title}>
-                <p className="mb-2 text-sm font-bold text-gray-600">{g.title}</p>
-                <div className="flex flex-wrap gap-3">
-                  {g.items.map((it) => {
-                    const Icon = it.icon;
-                    return (
-                      <Link key={it.label} href={it.href} className="flex h-24 w-24 flex-col items-center justify-center gap-2 rounded-lg bg-white shadow-sm transition hover:shadow-md">
-                        <Icon size={26} className="text-[#2bb8ae]" />
-                        <span className="text-center text-[11px] text-gray-600">{it.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* カレンダー */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-bold text-gray-600">スケジュール</p>
-              <span className="text-xs text-gray-400">顧客総数 {total} 件</span>
-            </div>
-            <Calendar events={events} />
-          </div>
-        </div>
-      </section>
-
-      {/* 4. KPI行 */}
+      {/* 3. KPI行 — 数字は上に置く。数値と単位を分けて桁を揃える */}
       <section className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: "今月の葬儀件数", value: `${funeralsThisMonth} 件`, href: "/kanri/estimates" },
-          { label: "今月の請求顧客数", value: `${customersThisMonth} 件`, href: "/kanri/billing" },
-          { label: "未回収残高", value: `${outstanding.toLocaleString()} 円`, href: "/kanri/receivables" },
+          { label: "今月の葬儀件数", value: funeralsThisMonth, unit: "件", href: "/kanri/estimates", danger: false },
+          { label: "今月の請求顧客数", value: customersThisMonth, unit: "件", href: "/kanri/billing", danger: false },
+          { label: "未回収残高", value: outstanding, unit: "円", href: "/kanri/receivables", danger: outstanding > 0 },
         ].map((k) => (
-          <Link key={k.label} href={k.href} className="rounded-lg bg-white p-4 shadow-sm transition hover:shadow-md">
-            <p className="text-sm text-gray-500">{k.label}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-800">{k.value}</p>
+          <Link key={k.label} href={k.href} className="rounded-lg bg-white p-4">
+            <p className="text-xs" style={{ color: "var(--k-ink-soft)" }}>{k.label}</p>
+            <p className="mt-1">
+              <span className="text-[26px] font-bold tabular-nums" style={{ color: k.danger ? "var(--k-danger)" : "var(--k-ink)" }}>
+                {k.value.toLocaleString()}
+              </span>
+              <span className="ml-1 text-xs" style={{ color: "var(--k-ink-faint)" }}>{k.unit}</span>
+            </p>
           </Link>
         ))}
       </section>
 
-      {/* 5. 月別顧客登録数 */}
-      <section className="rounded-lg bg-white p-5 shadow-sm">
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-gray-400">Customers</p>
-        <p className="mb-4 text-sm font-bold text-gray-700">月別顧客登録数</p>
-        {monthly.length === 0 ? <p className="text-sm text-gray-400">データがありません。</p> : (
-          <div className="flex items-end gap-4" style={{ height: 180 }}>
-            {monthly.map((m) => (
-              <div key={m.month} className="flex flex-1 flex-col items-center justify-end">
-                <span className="mb-1 text-xs text-gray-600">{m.count}</span>
-                <div className="w-full rounded-t bg-[#f2683f]" style={{ height: `${(m.count / max) * 140}px` }} />
-                <span className="mt-2 text-[10px] text-gray-500">{m.month}</span>
-              </div>
-            ))}
+      {/* 4. クイックアクション(リンクは1つも削らない。正方タイル→横長リスト) */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        {GROUPS.map((g) => (
+          <div key={g.title} className="rounded-lg bg-white p-4">
+            <p className="mb-3 text-xs font-bold" style={{ color: "var(--k-ink-soft)", letterSpacing: ".06em" }}>{g.title}</p>
+            <div className="space-y-2">
+              {g.items.map((it) => {
+                const Icon = it.icon;
+                return (
+                  <Link
+                    key={it.label}
+                    href={it.href}
+                    className="flex min-h-[48px] items-center gap-2.5 rounded-[4px] border px-3"
+                    style={{ borderColor: "var(--k-line)" }}
+                  >
+                    <Icon size={18} style={{ color: "var(--k-ink-soft)" }} />
+                    <span className="flex-1 text-sm" style={{ color: "var(--k-ink)" }}>{it.label}</span>
+                    <ChevronRight size={14} style={{ color: "var(--k-ink-faint)" }} />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        )}
+        ))}
+      </section>
+
+      {/* 5. スケジュール — 右カラム固定をやめて幅いっぱいに */}
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-bold" style={{ color: "var(--k-ink-soft)" }}>スケジュール</h2>
+          <span className="text-xs" style={{ color: "var(--k-ink-faint)" }}>顧客総数 {total.toLocaleString()} 件</span>
+        </div>
+        <Calendar events={events} />
       </section>
 
       {/* 6. 新規登録顧客 */}

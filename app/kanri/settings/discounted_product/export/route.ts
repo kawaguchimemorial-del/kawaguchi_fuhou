@@ -2,7 +2,7 @@ import { listMasterItems } from "@/lib/kanri/masters";
 
 export const dynamic = "force-dynamic";
 
-// 実スマート葬儀「割引商品一覧.csv」と同一の14列
+// 会計取込で使う「割引商品一覧.csv」と同一の14列
 const COLS = ["ID（空の場合は新規登録）", "商品種別:大", "商品種別:中", "商品種別:小", "商品種別:細", "商品コード", "商品名", "型番", "価格", "税率", "下代", "下代用税率", "適用税率", "非表示"];
 
 function esc(v: string | number | null | undefined) { const s = String(v ?? ""); return s === "" ? '""' : /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }

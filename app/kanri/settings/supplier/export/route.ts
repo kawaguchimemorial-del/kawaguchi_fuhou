@@ -2,7 +2,7 @@ import { listMasterItems } from "@/lib/kanri/masters";
 
 export const dynamic = "force-dynamic";
 
-// 実スマート葬儀「発注先一括登録フォーマット.csv」と同一の14列
+// 会計取込で使う「発注先一括登録フォーマット.csv」と同一の14列
 const COLS = ["発注先ID(空の場合は新規登録)", "適格請求書発行事業者", "適格請求書発行事業者登録番号", "発注先名", "メールアドレス", "電話番号", "FAX番号", "郵便番号", "都道府県", "市区町村", "番地", "建物名など", "非表示", "順番"];
 
 function esc(v: string | number | null | undefined) { const s = String(v ?? ""); return s === "" ? '""' : /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }

@@ -21,7 +21,7 @@ export interface Product {
   unit?: string;
   supplier?: string;
   note?: string;
-  // 実スマート葬儀の商品フィールド
+  // 商品の拡張フィールド
   productCode?: string;
   modelCode?: string;
   costTax?: number;

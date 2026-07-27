@@ -172,7 +172,7 @@ export function EstimateForm({ products, estimate, defaultCustomerId, asInvoice 
         <Link href={asInvoice ? "/kanri/billing" : "/kanri/estimates"} className="rounded border px-6 py-2.5 text-sm">キャンセル</Link>
       </div>
 
-      {/* 右下 固定 合計バー（スマート葬儀準拠） */}
+      {/* 右下 固定 合計バー */}
       <div className="fixed bottom-0 right-0 z-30 flex items-center gap-6 bg-[#f2683f] px-6 py-3 text-white shadow-lg">
         <span className="text-sm">合計（税込）</span>
         <span className="text-xl font-bold">{totals.total.toLocaleString()} 円</span>

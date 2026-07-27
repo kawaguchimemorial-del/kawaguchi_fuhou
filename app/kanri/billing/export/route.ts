@@ -3,7 +3,7 @@ import { KANRI_HOME_ID } from "@/lib/kanri/constants";
 
 export const dynamic = "force-dynamic";
 
-// 実スマート葬儀「入金一覧_.csv」と同一の25列
+// 会計取込で使う「入金一覧_.csv」と同一の25列
 const COLS = ["請求書ID", "顧客名", "対象者", "請求先名", "請求先郵便番号", "請求先住所", "件名", "売上区分", "計上組織", "施行番号", "喪主", "札名", "請求日", "葬儀日", "請求額", "入金日", "入金額", "支払方法", "支払種別", "未入金残", "入金期限", "施行担当", "発行会社", "計上担当者", "備考"];
 
 function esc(v: string | number | null | undefined) { const s = String(v ?? ""); return s === "" ? '""' : /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }

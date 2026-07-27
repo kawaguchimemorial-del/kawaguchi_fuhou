@@ -1,4 +1,4 @@
-// 葬儀管理(kanri) 共通定数。スマート葬儀の選択肢を踏襲（名称は自社化）。
+// 葬儀管理(kanri) 共通定数。自社の選択肢。
 export const KANRI_HOME_ID = "11111111-1111-1111-1111-111111111111";
 
 export const CUSTOMER_STATUSES = [

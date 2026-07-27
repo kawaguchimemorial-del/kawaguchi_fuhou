@@ -1,7 +1,7 @@
 export const metadata = { title: "売掛残高" };
 export const dynamic = "force-dynamic";
 
-// 実スマート葬儀: 条件指定(対象日範囲/発行会社/計上組織)＋CSVダウンロードのみのシンプル画面
+// 条件指定(対象日範囲/発行会社/計上組織)＋CSVダウンロードのみのシンプル画面
 export default async function ReceivablesPage() {
   const today = new Date();
   const first = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;

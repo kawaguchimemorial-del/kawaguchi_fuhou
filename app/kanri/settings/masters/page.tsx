@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold">設定（マスタ）</h1>
-      <p className="text-sm text-gray-500">見積・請求・発注で使う基本情報を登録します。スマート葬儀に準拠した各種マスタを細分化して管理できます。</p>
+      <p className="text-sm text-gray-500">見積・請求・発注で使う基本情報を登録します。各種マスタを細分化して管理できます。</p>
 
       {/* 特別: 会社情報 / 商品 */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
