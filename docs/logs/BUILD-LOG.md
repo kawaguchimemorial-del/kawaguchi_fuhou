@@ -2213,3 +2213,12 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - components/kanri/Money.tsx を新設。数値と単位「円」を別要素にし、右端が数値で揃うようにした(tabular-nums)。
   未設定は「—」、0は「0円」で区別、負値・未収は --k-danger。CSSは theme-v2.css の .k-money に定義済み。
   適用: 請求書一覧・見積一覧の合計金額列。
+
+## 2026-07-28 AI遺影(/iei-photo): 重複していた「書き出し」と「仕上げ候補」を削除
+- 左カラム下部の「書き出し」セクション（基準写真/手札/四つ切り/16:9＋4サイズまとめて保存）を削除。
+  同じ操作が画面右上のツールバー（4サイズDL / 基準写真DL / 保存(PC＋一覧)）にあり重複していたため。
+  handleExport / handleExportAll 自体は右上から使うので残す。
+- 中央の「仕上げ候補」サムネイル列を削除。candidates 配列と handleToggleCandidate、
+  StudioCandidates のインポートも併せて撤去（コンポーネント本体は未使用として残置）。
+- 左サイドバーのナビから「書き出し」項目を削除（遷移先セクションが無くなるため）。
+  StudioNavId から "export" を除去し、exportSectionRef と分岐も削除。

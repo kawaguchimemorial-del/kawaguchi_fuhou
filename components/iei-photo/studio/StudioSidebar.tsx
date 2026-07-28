@@ -3,7 +3,6 @@
 import { cn } from "@/lib/simulatorUtils";
 import {
   IconAdjust,
-  IconExport,
   IconFinish,
   IconLotus,
   IconPreview,
@@ -15,8 +14,7 @@ export type StudioNavId =
   | "adjust"
   | "background"
   | "finish"
-  | "preview"
-  | "export";
+  | "preview";
 
 type NavItem = {
   id: StudioNavId;
@@ -30,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "background", label: "背景", icon: <IconPreview /> },
   { id: "finish", label: "仕上げ", icon: <IconFinish /> },
   { id: "preview", label: "プレビュー", icon: <IconPreview /> },
-  { id: "export", label: "書き出し", icon: <IconExport /> },
+  // 書き出しは画面右上のツールバーに集約したため、ここには置かない
 ];
 
 /**

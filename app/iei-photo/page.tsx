@@ -9,9 +9,6 @@ import StudioSidebar, {
   type StudioNavId,
 } from "@/components/iei-photo/studio/StudioSidebar";
 import StudioCanvas from "@/components/iei-photo/studio/StudioCanvas";
-import StudioCandidates, {
-  type StudioCandidate,
-} from "@/components/iei-photo/studio/StudioCandidates";
 import {
   StudioSectionHeading,
   StudioSlider,
@@ -1097,7 +1094,6 @@ export default function IeiPhotoPage() {
   const uploadSectionRef = useRef<HTMLDivElement | null>(null);
   const backgroundSectionRef = useRef<HTMLDivElement | null>(null);
   const finishSectionRef = useRef<HTMLDivElement | null>(null);
-  const exportSectionRef = useRef<HTMLDivElement | null>(null);
 
   const handleNavigate = useCallback(
     (id: StudioNavId) => {
@@ -1113,9 +1109,7 @@ export default function IeiPhotoPage() {
                 ? finishSectionRef.current
                 : id === "preview"
                   ? previewRef.current
-                  : id === "export"
-                    ? exportSectionRef.current
-                    : null;
+                  : null;
       target?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     [],
@@ -1197,68 +1191,6 @@ export default function IeiPhotoPage() {
   };
   const signedPosition = (v: number) => `${v > 0 ? "+" : ""}${v}`;
 
-  // 仕上げ候補（ワンタップ・プリセット）
-  const candidates: StudioCandidate[] = [
-    {
-      id: "auto-bright",
-      label: "明るさ補正",
-      thumbUrl: outputUrl,
-      active: Boolean(outputUrl) && autoCorrect,
-    },
-    {
-      id: "compose-close",
-      label: "構図：クローズアップ",
-      thumbUrl: outputUrl,
-      active: Boolean(outputUrl) && adjustments.zoom >= 130,
-    },
-    {
-      id: "center-face",
-      label: "中央配置",
-      thumbUrl: outputUrl,
-      active:
-        Boolean(outputUrl) &&
-        faceCenter &&
-        adjustments.offsetX === 0 &&
-        adjustments.offsetY === 0,
-    },
-    ...IEI_PHOTO_BACKGROUND_OPTIONS.map((option) => ({
-      id: `bg-${option.type}`,
-      label: `背景：${compactBackgroundLabel(option.type)}`,
-      thumbUrl: outputUrl,
-      active: Boolean(outputUrl) && background.type === option.type,
-    })),
-  ];
-
-  const handleToggleCandidate = useCallback(
-    (id: string) => {
-      switch (id) {
-        case "auto-bright":
-          setAutoCorrect((v) => !v);
-          break;
-        case "compose-close":
-          setAdjustments((prev) => ({
-            ...prev,
-            zoom: prev.zoom >= 130 ? 100 : 130,
-          }));
-          break;
-        case "center-face":
-          handleToggleFaceCenter(true);
-          break;
-        default:
-          if (id.startsWith("bg-")) {
-            const type = id.slice(3) as IeiPhotoBackgroundType;
-            const exists = IEI_PHOTO_BACKGROUND_OPTIONS.some(
-              (option) => option.type === type,
-            );
-            if (exists) {
-              handleBackgroundType(type);
-            }
-          }
-          break;
-      }
-    },
-    [handleBackgroundType, handleToggleFaceCenter],
-  );
 
   return (
     <div className="flex min-h-screen w-full bg-stone-50">
@@ -1794,57 +1726,16 @@ export default function IeiPhotoPage() {
               )}
             </section>
 
-            {/* 書き出し */}
-            <section
-              ref={exportSectionRef}
-              className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"
-            >
-              <StudioSectionHeading
-                icon={<IconExport className="h-4 w-4" />}
-                title="書き出し"
-              />
-              <div className="grid gap-2">
-                {IEI_PHOTO_EXPORT_ORDER.map((kind) => {
-                  const size = IEI_PHOTO_EXPORT_SIZES[kind];
-                  return (
-                    <button
-                      key={kind}
-                      type="button"
-                      onClick={() => void handleExport(kind)}
-                      disabled={!canExport}
-                      className="flex items-center justify-between gap-2 rounded-md border border-stone-300 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-stone-100 disabled:opacity-50"
-                    >
-                      <span>{size.label}</span>
-                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-slate-500">
-                        {size.aspectRatio}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                onClick={handleExportAll}
-                disabled={!canExport}
-                className="mt-3 w-full rounded-md bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
-              >
-                4サイズまとめて保存
-              </button>
-            </section>
+            {/* 書き出しは画面右上のツールバー（4サイズDL / 基準写真DL / 保存）に集約 */}
           </div>
 
-          {/* 中央: キャンバス + 仕上げ候補 */}
+          {/* 中央: キャンバス */}
           <div ref={previewRef} className="min-w-0 flex-1 space-y-4">
             <StudioCanvas
               beforeUrl={previewUrl}
               outputUrl={outputUrl}
               aspect={previewAspect}
               showGuides={guidesVisible}
-            />
-            <StudioCandidates
-              items={candidates}
-              disabled={controlsDisabled}
-              onToggle={handleToggleCandidate}
             />
             <div className="grid gap-4 xl:grid-cols-2">
               <IeiPhotoStatus
