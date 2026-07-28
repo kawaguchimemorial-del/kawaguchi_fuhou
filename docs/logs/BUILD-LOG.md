@@ -2222,3 +2222,15 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
   StudioCandidates のインポートも併せて撤去（コンポーネント本体は未使用として残置）。
 - 左サイドバーのナビから「書き出し」項目を削除（遷移先セクションが無くなるため）。
   StudioNavId から "export" を除去し、exportSectionRef と分岐も削除。
+
+## 2026-07-28 AI遺影: 背景の選択肢を19種へ差し替え
+- 旧: 空/グレー/ベージュ/ブルー/ピンク/お任せ の6種 → 新: 指定の19種。
+  単色系9: ホワイト/グレー/ブラウン/オレンジ/イエロー/グリーン/ブルー/パープル/ピンク
+  情景系10: 淡光/銀雪/琥珀霞/紅葉/向日葵/若葉雲/澄空/淡藤霞/桜雲/桜
+- types.ts の IeiPhotoBackgroundType に新タイプを追加。旧タイプ(sky/warm_beige/auto/gradient/photo)は
+  保存済みデータを壊さないよう型・色・プロンプトを残置（UIには出さない）。
+- backgrounds.ts: OPTIONS(表示順・ラベル・スウォッチ)、SOLID_COLORS(Canvas fallback)、
+  COLOR_GRADIENTS、GRADIENT_CAPABLE(単色系のみ対象。情景系はAIが情景を描くため除外)を更新。
+- ai-prompts.ts: 19種すべてに背景指示を用意。情景系は「形をはっきり描かず、人物より背景が目立たない」方針で統一。
+- 既定背景は お任せ(auto) が一覧から消えるため、先頭の ホワイト に変更。
+- page.tsx の compactBackgroundLabel を廃止し、OPTIONS の label を単一の情報源にした（ラベルの二重管理をやめる）。

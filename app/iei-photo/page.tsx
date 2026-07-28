@@ -1137,7 +1137,7 @@ export default function IeiPhotoPage() {
     css: string;
   }[] = IEI_PHOTO_BACKGROUND_OPTIONS.map((option) => ({
     value: option.type,
-    label: compactBackgroundLabel(option.type),
+    label: option.label,
     css: option.swatchCss,
   }));
   const canUseBackgroundGradient = supportsBackgroundGradient(background.type);
@@ -1786,30 +1786,6 @@ export default function IeiPhotoPage() {
   );
 }
 
-function compactBackgroundLabel(type: IeiPhotoBackgroundType): string {
-  switch (type) {
-    case "sky":
-      return "空";
-    case "light_gray":
-      return "グレー";
-    case "warm_beige":
-      return "ベージュ";
-    case "pale_blue":
-      return "ブルー";
-    case "pale_pink":
-      return "ピンク";
-    case "auto":
-      return "お任せ";
-    case "white":
-      return "白";
-    case "gradient":
-      return "グラデ";
-    case "photo":
-      return "写真";
-    default:
-      return type;
-  }
-}
 
 function compactExportLabel(kind: IeiPhotoExportKind): string {
   switch (kind) {

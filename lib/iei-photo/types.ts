@@ -171,15 +171,33 @@ export type IeiPhotoAiCheckItem = {
  * white / gradient / photo は旧UI互換の内部値。新しい画面には表示しない。
  */
 export type IeiPhotoBackgroundType =
-  | "sky" // 空
-  | "light_gray" // 薄いグレー
-  | "warm_beige" // 淡いベージュ
-  | "pale_blue" // 淡いブルー
-  | "pale_pink" // 淡いピンク
-  | "auto" // AIにお任せ
-  | "white" // 旧UI互換: 白
-  | "gradient" // グラデーション
-  | "photo"; // 旧UI互換: 写真背景
+  // --- 単色系 ---
+  | "white" // ホワイト
+  | "light_gray" // グレー
+  | "brown" // ブラウン
+  | "orange" // オレンジ
+  | "yellow" // イエロー
+  | "green" // グリーン
+  | "pale_blue" // ブルー
+  | "purple" // パープル
+  | "pale_pink" // ピンク
+  // --- 情景系 ---
+  | "awa_hikari" // 淡光
+  | "gin_setsu" // 銀雪
+  | "kohaku_kasumi" // 琥珀霞
+  | "kouyou" // 紅葉
+  | "himawari" // 向日葵
+  | "wakaba_gumo" // 若葉雲
+  | "sumizora" // 澄空
+  | "awafuji_kasumi" // 淡藤霞
+  | "sakura_gumo" // 桜雲
+  | "sakura" // 桜
+  // --- 旧データ互換（UIには出さないが、保存済みの値を壊さない） ---
+  | "sky"
+  | "warm_beige"
+  | "auto"
+  | "gradient"
+  | "photo";
 
 export type IeiPhotoBackgroundSettings = {
   type: IeiPhotoBackgroundType;
