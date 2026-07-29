@@ -2250,3 +2250,18 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
   服装・体勢より前に置いて優先度を上げた。
 - ※ 併せて判明した重大な問題（未対応）: /account/sign-in は認証していないデモ実装で、middleware も無く
   /kanri /fuhou が誰でも閲覧可能。顧客1,086件・請求1,277件・本番決済の返金機能が公開状態。次に対応する。
+
+## 2026-07-30 管理画面をBasic認証で保護（応急処置）
+- 問題: app/account/sign-in/page.tsx は入力を検証せず router.push("/kanri") するデモ実装で、
+  middleware も無かったため、URLを知っていれば誰でも管理画面に入れた。
+  公開されていたもの: 顧客1,086件・請求1,277件・見積958件・訃報225件（下書き含む）・本番Stripeの返金機能。
+- middleware.ts を新設し、以下の配下のみ Basic 認証を要求:
+  /kanri /fuhou /account /iei-photo /funeral-script /api/iei-photo /api/funeral-script
+  ※ /iei-photo と /funeral-script は OpenAI 課金が発生するため併せて保護。
+- 保護しない: /m/*(参列者)・/mypage/*(遺族。別途ログインあり)・/api/webhooks/*(Stripe通知)・
+  /legal /privacy /policy /company・トップ。
+- 資格情報は環境変数（ADMIN_BASIC_USER=kawaguchi / ADMIN_BASIC_PASSWORD）。コードには書かない。
+  パスワード未設定時は素通しではなく401（無防備になるのを防ぐ）。開発環境(NODE_ENV=development)のみ素通し。
+- ※ Next.js 16 では middleware.ts は deprecated(proxy.ts 推奨)。現状は "Proxy (Middleware)" として
+  認識され動作するため、動作確認できている middleware.ts を採用。将来 proxy.ts へ移行する。
+- ※ これは応急処置。恒久対応は Supabase Auth による実ログイン（アカウント別・権限・操作ログ）。
