@@ -400,7 +400,8 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
     })),
     ...osonae.filter((m) => (osonaeQty[m.id] ?? 0) > 0).map((m) => ({ lineKind: "item", name: m.name, unitPrice: m.price ?? 0, quantity: osonaeQty[m.id], taxRate: 0.1, isOsonae: true })),
     ...cuisineLines,
-    ...discRows.filter((d) => d.name).map((d) => ({ lineKind: "discount", name: d.name, unitPrice: Math.abs(d.amount), quantity: 1, taxRate: 0.1 })),
+    // 金額さえ入っていれば拾う。名称未選択で丸ごと捨てていたため値引きが0円になっていた。
+    ...discRows.filter((d) => d.name || d.amount).map((d) => ({ lineKind: "discount", name: d.name || "値引き", unitPrice: Math.abs(d.amount), quantity: 1, taxRate: 0.1 })),
   ]);
 
   const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#2c8c6f] focus:outline-none";
@@ -780,7 +781,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>単価</span>
                       <input inputMode="decimal" type="text" value={r.unitPrice} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { unitPrice: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
-                      <span className="text-xs leading-tight text-gray-500">税抜か税込どちらか必須</span>
+                      <span className="text-xs leading-tight text-gray-500">税抜か税込どちらか必須<br />値引きは「-50000」のようにマイナスで入力</span>
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>税込単価</span>

@@ -480,9 +480,11 @@ export async function saveEstimate(_prev: KanriResult | null, fd: FormData): Pro
     const price = Number(it.unitPrice) || 0;
     const amount = it.lineKind === "discount" ? -Math.abs(price * qty) : price * qty;
     const rate = Number(it.taxRate) || 0;
-    if (it.lineKind === "discount") discountTotal += Math.abs(amount); else subtotal += amount;
+    // 金額の符号で振り分ける（単価マイナスの行も控除として集計する）
+    const isMinus = amount < 0;
+    if (isMinus) discountTotal += Math.abs(amount); else subtotal += amount;
     taxTotal += amount * rate;
-    return { product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i };
+    return { product_id: it.productId || null, line_kind: isMinus ? "discount" : it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i };
   });
   taxTotal = Math.round(taxTotal);
   const total = subtotal - discountTotal + taxTotal;
@@ -729,13 +731,16 @@ function computeItems(fd: FormData) {
     const qty = Number(it.quantity) || 0;
     const price = Number(it.unitPrice) || 0;
     const disc = Number(it.discount) || 0;
-    // 割引(税抜)は行金額から控除
-    const amount = it.lineKind === "discount" ? -Math.abs(price * qty) : Math.max(0, price * qty - disc);
+    // 単価にマイナスを入力できる。金額がマイナスになった行は「マイナス項目」として扱い、
+    // 0で切り捨てない（従来は Math.max(0, …) で値引きが消えていた）。
+    const amount = it.lineKind === "discount" ? -Math.abs(price * qty) : price * qty - disc;
     const rate = Number(it.taxRate) || 0;
-    if (it.lineKind === "discount") discountTotal += Math.abs(amount); else subtotal += amount;
+    // 種別ではなく金額の符号で振り分ける（単価マイナスの通常行も控除として集計する）
+    const isMinus = amount < 0;
+    if (isMinus) discountTotal += Math.abs(amount); else subtotal += amount;
     taxTotal += amount * rate;
     return {
-      product_id: it.productId || null, line_kind: it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i,
+      product_id: it.productId || null, line_kind: isMinus ? "discount" : it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i,
       is_set_item: !!it.isSetItem, hidden_paper: !!it.hidden,
       tag_name: it.tagName ?? null, cost: Number(it.cost) || 0, discount: disc,
       deposit: !!it.deposit, refundable: !!it.refundable,
