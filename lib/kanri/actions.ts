@@ -728,7 +728,7 @@ function addresseeCols(fd: FormData) {
 function computeItems(fd: FormData) {
   let items: FullItem[] = [];
   try { items = JSON.parse(s(fd, "items") ?? "[]"); } catch { /* noop */ }
-  let subtotal = 0, discountTotal = 0, taxTotal = 0;
+  let subtotal = 0, discountTotal = 0, incTotal = 0;
   const computed = items.map((it, i) => {
     const qty = Number(it.quantity) || 0;
     const price = Number(it.unitPrice) || 0;
@@ -740,7 +740,12 @@ function computeItems(fd: FormData) {
     // 種別ではなく金額の符号で振り分ける（単価マイナスの通常行も控除として集計する）
     const isMinus = amount < 0;
     if (isMinus) discountTotal += Math.abs(amount); else subtotal += amount;
-    taxTotal += amount * rate;
+    // 税込は行ごとに確定させ、合計税額は「Σ税込 − Σ税抜」で求める。
+    // 率を掛けて丸めると、印刷(行ごとの税込を積む)と一覧(合計に率を掛ける)で1円ずれるため。
+    const inc = it.priceIncludingTax != null
+      ? Math.round(Number(it.priceIncludingTax)) * qty * (isMinus ? -1 : 1)
+      : Math.sign(amount) * Math.round(Math.abs(amount) * (1 + rate));
+    incTotal += inc;
     return {
       product_id: it.productId || null, line_kind: isMinus ? "discount" : it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i,
       is_set_item: !!it.isSetItem, hidden_paper: !!it.hidden,
@@ -753,8 +758,9 @@ function computeItems(fd: FormData) {
       remarks: it.remarks ?? null, divide_title: it.divideTitle ?? null,
     };
   });
-  taxTotal = Math.round(taxTotal);
-  return { computed, subtotal, discountTotal, taxTotal, total: subtotal - discountTotal + taxTotal };
+  // 税額と合計は行ごとの税込の積み上げから逆算する（印刷と必ず一致させる）
+  const taxTotal = incTotal - (subtotal - discountTotal);
+  return { computed, subtotal, discountTotal, taxTotal, total: incTotal };
 }
 
 export async function saveEstimateFull(_prev: KanriResult | null, fd: FormData): Promise<KanriResult> {
