@@ -24,6 +24,9 @@ function daysBetween(from: string | null, to: string | null): number | null {
 export default async function OnlinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!(await assertMournerAccess(id))) redirect("/mypage/sign-in");
+  // オンライン式場が無い案件では、この画面自体を出さない
+  const mm = await getMournerMemorial(id);
+  if (!mm?.hasVenue) redirect(`/mypage/${id}`);
 
   const m = await getMournerMemorial(id);
   if (!m) notFound();

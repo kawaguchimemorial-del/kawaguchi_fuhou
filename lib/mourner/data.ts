@@ -18,13 +18,15 @@ export type MournerMemorial = {
   publicFrom: string | null;
   publicUntil: string | null;
   loginId: string | null;
+  /** オンライン式場を開設しているか。訃報のみの案件では式場に付帯する画面を出さない。 */
+  hasVenue: boolean;
 };
 
 export async function getMournerMemorial(memorialId: string): Promise<MournerMemorial | null> {
   const { data } = await db()
     .from("memorials")
     .select(
-      "id, slug, status, announce_mourner_name, mourner_greeting, venue_public_from, venue_public_until, mourner_login_id, published_at, archive_at, deceased(name_kanji)"
+      "id, slug, status, announce_mourner_name, mourner_greeting, venue, venue_public_from, venue_public_until, mourner_login_id, published_at, archive_at, deceased(name_kanji)"
     )
     .eq("id", memorialId)
     .maybeSingle();
@@ -41,6 +43,7 @@ export async function getMournerMemorial(memorialId: string): Promise<MournerMem
     publicFrom: data.venue_public_from ?? data.published_at ?? null,
     publicUntil: data.venue_public_until ?? data.archive_at ?? null,
     loginId: data.mourner_login_id ?? null,
+    hasVenue: data.venue != null,
   };
 }
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Download, FileText } from "lucide-react";
 import { assertMournerAccess } from "@/lib/mourner/auth";
-import { listAttendees } from "@/lib/mourner/data";
+import { listAttendees, getMournerMemorial } from "@/lib/mourner/data";
 import { PageHeader, SiteFooter } from "@/components/mourner/Shell";
 
 // 芳名録。＠葬儀は先頭に香典精算テーブルを置くが、自社版は香典機能を提供しないため
@@ -26,6 +26,9 @@ export default async function AttendeesPage({
 }) {
   const { id } = await params;
   if (!(await assertMournerAccess(id))) redirect("/mypage/sign-in");
+  // オンライン式場が無い案件では、この画面自体を出さない
+  const mm = await getMournerMemorial(id);
+  if (!mm?.hasVenue) redirect(`/mypage/${id}`);
 
   const { show } = await searchParams;
   const limit = Math.min(Math.max(Number(show) || PAGE, PAGE), 1000);

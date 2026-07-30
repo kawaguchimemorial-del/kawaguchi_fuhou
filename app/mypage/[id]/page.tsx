@@ -21,20 +21,33 @@ export default async function MournerHome({ params }: { params: Promise<{ id: st
 
   const name = memorial.mournerName || memorial.deceasedName;
 
+  // オンライン式場を開設していない（訃報のみの）案件では、式場に付帯する項目を出さない。
+  // 出しても中身が空で、ご遺族には「使えない機能」に見えてしまうため。
+  const venueCards = memorial.hasVenue
+    ? [
+        { href: `/mypage/${id}/online`, Icon: MessageSquare, title: "オンライン式場",
+          badge: memorial.status === "published" ? "公開中" : "準備中",
+          desc: "オンライン式場のご確認と、挨拶文の編集ができます。" },
+        { href: `/mypage/${id}/attendees`, Icon: BookUser, title: "芳名録", badge: `${counts.attendees}件`,
+          desc: "参列者の一覧・メッセージはこちらからご確認いただけます。" },
+        { href: `/mypage/${id}/funeral-photos`, Icon: Images, title: "葬儀の写真", badge: `${counts.funeralPhotos}枚`,
+          desc: "オンライン式場に表示する葬儀の写真を編集できます。" },
+        { href: `/mypage/${id}/album`, Icon: Album, title: "アルバム", badge: `${counts.albumPhotos}枚`,
+          desc: "オンライン式場に表示する故人の思い出写真を編集できます。" },
+      ]
+    : [];
+
   const cards = [
     { href: `/mypage/${id}/announcement`, Icon: Share2, title: "参列者へのご案内", badge: null,
-      desc: "参列者にご案内する訃報・オンライン式場ページはこちらからご確認いただけます。" },
-    { href: `/mypage/${id}/online`, Icon: MessageSquare, title: "オンライン式場",
-      badge: memorial.status === "published" ? "公開中" : "準備中",
-      desc: "オンライン式場のご確認と、挨拶文の編集ができます。" },
-    { href: `/mypage/${id}/attendees`, Icon: BookUser, title: "芳名録", badge: `${counts.attendees}件`,
-      desc: "参列者の一覧・メッセージはこちらからご確認いただけます。" },
+      desc: memorial.hasVenue
+        ? "参列者にご案内する訃報・オンライン式場ページはこちらからご確認いただけます。"
+        : "参列者にご案内する訃報ページはこちらからご確認いただけます。" },
+    ...venueCards,
+    // 入場記録は訃報ページの閲覧も含むため、式場が無くても残す（説明文だけ実態に合わせる）
     { href: `/mypage/${id}/visitors`, Icon: ClipboardList, title: "入場記録", badge: `${counts.visitors}件`,
-      desc: "オンライン式場に入場された方の一覧はこちらからご確認いただけます。" },
-    { href: `/mypage/${id}/funeral-photos`, Icon: Images, title: "葬儀の写真", badge: `${counts.funeralPhotos}枚`,
-      desc: "オンライン式場に表示する葬儀の写真を編集できます。" },
-    { href: `/mypage/${id}/album`, Icon: Album, title: "アルバム", badge: `${counts.albumPhotos}枚`,
-      desc: "オンライン式場に表示する故人の思い出写真を編集できます。" },
+      desc: memorial.hasVenue
+        ? "訃報・オンライン式場ページをご覧になった方の一覧はこちらからご確認いただけます。"
+        : "訃報ページをご覧になった方の一覧はこちらからご確認いただけます。" },
     { href: `/mypage/${id}/password`, Icon: KeyRound, title: "アカウント情報", badge: null,
       desc: "アカウント確認・パスワード変更はこちらから。" },
   ];
