@@ -55,6 +55,7 @@ interface OptRow {
   key: number; productId: string; productName?: string;
   name: string; tagName: string;
   unitPrice: number;            // 単価(税抜)
+  unitPriceText: string;        // 単価の入力中テキスト（"-" だけの状態を保つため）
   priceInclTax: string;         // 税込単価(入力時はこちらを税込金額として利用)
   cost: number;                 // 下代
   taxRate: number;              // 消費税率
@@ -75,7 +76,7 @@ const AUTO_MEAL_NAMES = new Set(["通夜料理配膳人", "告別料理配膳人
 
 function newOpt(p?: Product): OptRow {
   return { key: seq++, productId: p?.id ?? "", productName: p?.name, name: p?.name ?? "", tagName: "",
-    unitPrice: p?.unitPrice ?? 0, priceInclTax: "", cost: p?.costPrice ?? 0, taxRate: p?.taxRate ?? 0.1,
+    unitPrice: p?.unitPrice ?? 0, unitPriceText: String(p?.unitPrice ?? 0), priceInclTax: "", cost: p?.costPrice ?? 0, taxRate: p?.taxRate ?? 0.1,
     discount: 0, quantity: 1, deposit: false, depositOn: "", refundable: !!p?.refundable, hiddenPaper: false,
     tradedOn: "", returnedQty: 0, remarks: "", divideTitle: "" };
 }
@@ -155,12 +156,12 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const [opts, setOpts] = useState<OptRow[]>(() => {
     const restored = initItems
       .filter((it) => it.lineKind === "item" && !it.isSetItem && it.name !== initSetName && !isOsonaeLine(it) && !(!asInvoice && AUTO_MEAL_NAMES.has(it.name)))
-      .map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, quantity: it.quantity }));
+      .map((it) => ({ ...newOpt(), productId: it.productId ?? "", name: it.name, unitPrice: it.unitPrice, unitPriceText: String(it.unitPrice), quantity: it.quantity }));
     // 新規の見積もりのみ、時間外搬送のカードを1枚あらかじめ出しておく。
     // 夜間搬送の割増を取り忘れる事故が多いため。日中の施行なら削除して使う運用。
     // 編集時(initial.id あり)と請求書には入れない。
     if (restored.length === 0 && !asInvoice && !initial?.id) {
-      return [{ ...newOpt(), name: DEFAULT_OPT_NAME, unitPrice: DEFAULT_OPT_PRICE, quantity: 1 }];
+      return [{ ...newOpt(), name: DEFAULT_OPT_NAME, unitPrice: DEFAULT_OPT_PRICE, unitPriceText: String(DEFAULT_OPT_PRICE), quantity: 1 }];
     }
     return restored;
   });
@@ -388,12 +389,15 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   }, [chosenSet, setEffInc, opts, osonae, osonaeQty, discRows, hasCuisine, wakeMealCount, funeralMealCount, imibaraiFee]);
 
   const itemsJson = JSON.stringify([
-    ...(chosenSet ? [{ lineKind: "item", name: chosenSet.name, unitPrice: setEffEx, quantity: 1, taxRate: chosenSet.tax, isSet: true }] : []),
+    // セットは登録済みの税込価格も一緒に送る（印刷で税抜から掛け直すと1円ずれるため）
+    ...(chosenSet ? [{ lineKind: "item", name: chosenSet.name, unitPrice: setEffEx, priceIncludingTax: setEffInc, quantity: 1, taxRate: chosenSet.tax, isSet: true }] : []),
     // セット内訳（金額0・isSetItem、非表示チェックはhiddenで保持 → 印刷で除外）
     ...(chosenSet ? setItems.map((it) => ({ lineKind: "item", name: it.name, unitPrice: 0, quantity: it.quantity, taxRate: 0, isSetItem: true, hidden: it.hidden })) : []),
     ...opts.filter((r) => r.name).map((r) => ({
       lineKind: "item", productId: r.productId || null, name: r.name,
       unitPrice: optExUnit(r), quantity: r.quantity, taxRate: r.taxRate,
+      // 税込単価で入力された行は、その値を確定値として保持する
+      priceIncludingTax: r.priceInclTax !== "" && !isNaN(Number(r.priceInclTax)) ? Math.round(Number(r.priceInclTax)) : null,
       tagName: r.tagName || null, cost: r.cost, discount: r.discount,
       deposit: r.deposit, refundable: r.refundable, hidden: r.hiddenPaper,
       tradedOn: r.tradedOn || null, returnedQty: r.returnedQty, remarks: r.remarks || null, divideTitle: r.divideTitle || null,
@@ -780,7 +784,14 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className={nLbl}>単価</span>
-                      <input inputMode="decimal" type="text" value={r.unitPrice} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updOpt(r.key, { unitPrice: Number(e.target.value) || 0 })} className={nInp + " text-right"} />
+                      <input inputMode="text" type="text" value={r.unitPriceText ?? String(r.unitPrice)} onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/[^0-9.-]/g, "");
+                          // "-" や "-." だけの入力途中も消さずに保持する（0のときにマイナスを打てるように）
+                          updOpt(r.key, { unitPriceText: v, unitPrice: Number(v) || 0 });
+                        }}
+                        onBlur={(e) => { const n = Number(e.target.value) || 0; updOpt(r.key, { unitPrice: n, unitPriceText: String(n) }); }}
+                        className={nInp + " text-right"} />
                       <span className="text-xs leading-tight text-gray-500">税抜か税込どちらか必須<br />値引きは「-50000」のようにマイナスで入力</span>
                     </label>
                     <label className="flex flex-col gap-1">

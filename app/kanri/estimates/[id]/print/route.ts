@@ -44,7 +44,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   };
 
   // 税率別内訳用の行データ(税抜=amount, 税込=行確定値)
-  const toBd = (it: { taxRate: number; amount: number }) => ({ taxRate: it.taxRate, amount: it.amount, incTax: lineIncTax(it.amount, it.taxRate) });
+  // 登録済みの税込単価があればそれを採用する（税抜から掛け直すと1円ずれるため）
+  const incOf = (it: { taxRate: number; amount: number; quantity?: number; priceIncludingTax?: number }) =>
+    it.priceIncludingTax != null ? Math.round(it.priceIncludingTax * (it.quantity ?? 1)) : lineIncTax(it.amount, it.taxRate);
+  const toBd = (it: { taxRate: number; amount: number; quantity?: number; priceIncludingTax?: number }) =>
+    ({ taxRate: it.taxRate, amount: it.amount, incTax: incOf(it) });
   const itemBd = items.map(toBd);
   const discBd = discounts.map(toBd);
   const reduced = hasReduced([...itemBd, ...discBd]); // 8%(軽減税率)の有無
@@ -66,14 +70,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const mk = Math.abs(it.taxRate - 0.08) < 0.005 ? "● " : "";
     itemRows += `<tr>
     <td>${on}</td><td class="l">${mk}${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(withTax(it.amount, it.taxRate))}</td></tr>`;
+    <td class="r">${yen(it.unitPrice)}</td><td class="r">${yen(it.amount)}</td><td class="r">${yen(incOf(it))}</td></tr>`;
   }
   if (inSetGroup) itemRows += `<tr class="setmark"><td colspan="6">【ここまでセットに含まれる】</td></tr>`;
   const discRows = discounts.map((it) => {
     const mk = Math.abs(it.taxRate - 0.08) < 0.005 ? "●" : "";
     return `<tr>
     <td>${on}</td><td class="l">▲${mk}${esc(it.name)}</td><td class="c">${it.quantity}</td>
-    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(withTax(it.amount, it.taxRate))}</td></tr>`;
+    <td class="r">${neg(it.unitPrice)}</td><td class="r">${neg(it.amount)}</td><td class="r">${neg(incOf(it))}</td></tr>`;
   }).join("");
   const discSubtotal = `<tr><td colspan="4" class="r" style="font-weight:bold">小計</td><td class="r">${neg(discExTax)}</td><td class="r">${neg(discIncTax)}</td></tr>`;
 

@@ -683,6 +683,8 @@ export async function deletePaymentSlip(fd: FormData): Promise<void> {
 type FullItem = {
   lineKind: "item" | "discount"; productId?: string | null; name: string;
   unitPrice: number; quantity: number; taxRate: number;
+  /** 登録済みの税込単価。あれば印刷はこれを使い、税抜から掛け直さない（1円ずれ防止） */
+  priceIncludingTax?: number | null;
   isSetItem?: boolean; hidden?: boolean;
   tagName?: string | null; cost?: number; discount?: number;
   deposit?: boolean; refundable?: boolean;
@@ -742,6 +744,9 @@ function computeItems(fd: FormData) {
     return {
       product_id: it.productId || null, line_kind: isMinus ? "discount" : it.lineKind, name: it.name, unit_price: price, quantity: qty, tax_rate: rate, amount, sort_order: i,
       is_set_item: !!it.isSetItem, hidden_paper: !!it.hidden,
+      // 登録済みの税込価格を保持する。印刷時に税抜から掛け直すと
+      // セット価格(例: 189,000円)が189,001円のように1円ずれるため、確定値をそのまま持たせる。
+      price_including_tax: it.priceIncludingTax != null ? Math.round(Number(it.priceIncludingTax)) : null,
       tag_name: it.tagName ?? null, cost: Number(it.cost) || 0, discount: disc,
       deposit: !!it.deposit, refundable: !!it.refundable,
       traded_on: it.tradedOn ?? null, returned_quantity: Number(it.returnedQty) || 0,
