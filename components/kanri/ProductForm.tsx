@@ -13,7 +13,12 @@ export function ProductForm({ product, kinds, suppliers, subKinds }: { product?:
   const subOptions = (subKinds ?? []).filter((s) => !kind || !s.parent || s.parent === kind).map((s) => s.name);
   const [taxRate, setTaxRate] = useState<number>(product?.taxRate ?? 0.1);
   const [imageUrl, setImageUrl] = useState<string>(product?.imageUrl ?? "");
-  const incPrice = exPrice !== "" && !isNaN(Number(exPrice)) ? Math.round(Number(exPrice) * (1 + taxRate)) : "";
+  // 入力した金額を税込として扱うか。税込価格をそのまま入れてしまう登録ミスを防ぐ。
+  const [inputIsTaxIncluded, setInputIsTaxIncluded] = useState(false);
+  const entered = exPrice !== "" && !isNaN(Number(exPrice)) ? Number(exPrice) : null;
+  // 税込入力なら、保存する税抜は入力値から割り戻す
+  const exValue = entered == null ? "" : inputIsTaxIncluded ? Math.round(entered / (1 + taxRate)) : entered;
+  const incPrice = entered == null ? "" : inputIsTaxIncluded ? entered : Math.round(entered * (1 + taxRate));
   const inp = "w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[#2c8c6f] focus:outline-none";
 
   return (
@@ -40,8 +45,21 @@ export function ProductForm({ product, kinds, suppliers, subKinds }: { product?:
         <F label="商品名" required><input name="name" required defaultValue={product?.name ?? ""} className={inp} /></F>
         <F label="型番"><input name="model_code" defaultValue={product?.modelCode ?? ""} className={inp} /></F>
         <F label="単位"><input name="unit" defaultValue={product?.unit ?? ""} placeholder="式 / 個 / 名 など" className={inp} /></F>
-        <F label="価格(税抜)"><input name="unit_price" type="number" value={exPrice} onChange={(e) => setExPrice(e.target.value)} className={inp} /></F>
-        <F label="価格(税込)"><input type="number" value={incPrice} readOnly className={inp + " bg-gray-50"} /></F>
+        <F label={inputIsTaxIncluded ? "価格(税込を入力)" : "価格(税抜)"}>
+          <input type="number" value={exPrice} onChange={(e) => setExPrice(e.target.value)} className={inp} />
+          {/* 実際に保存するのは常に税抜。税込入力時は割り戻した値を送る */}
+          <input type="hidden" name="unit_price" value={exValue} />
+          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-600">
+            <input type="checkbox" checked={inputIsTaxIncluded} onChange={(e) => setInputIsTaxIncluded(e.target.checked)} className="h-4 w-4" />
+            入力した金額は税込
+          </label>
+        </F>
+        <F label={inputIsTaxIncluded ? "価格(税抜・自動計算)" : "価格(税込)"}>
+          <input type="number" value={inputIsTaxIncluded ? exValue : incPrice} readOnly className={inp + " bg-gray-50"} />
+          <span className="mt-1.5 block text-xs text-gray-500">
+            {inputIsTaxIncluded ? "税込から割り戻した税抜価格を登録します" : "税抜から計算した税込価格です"}
+          </span>
+        </F>
         <F label="税率" required>
           <select name="tax_rate" value={String(taxRate)} onChange={(e) => setTaxRate(Number(e.target.value))} className={inp}>
             <option value="0.1">10%</option>
