@@ -43,6 +43,42 @@ export function seasonalExpression(month: number | null): string | null {
   return SEASONAL_BY_MONTH[month] ?? null;
 }
 
+/** 自由記入の日付文字列から西暦の年を取り出す（和暦にも対応）。取れなければ null。 */
+export function extractYear(dateStr?: string): number | null {
+  if (!dateStr) return null;
+  const s = dateStr.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+  const wareki: { re: RegExp; base: number }[] = [
+    { re: /昭和\s*(\d{1,2})/, base: 1925 },
+    { re: /平成\s*(\d{1,2})/, base: 1988 },
+    { re: /令和\s*(\d{1,2})/, base: 2018 },
+    { re: /大正\s*(\d{1,2})/, base: 1911 },
+  ];
+  for (const w of wareki) {
+    const m = s.match(w.re);
+    if (m) return w.base + Number(m[1]);
+  }
+  const m = s.match(/(1[89]\d{2}|20\d{2})\s*年?/);
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * お生まれの年から、その方が歩まれた時代を表す句を返す。
+ *
+ * マニュアルの導入例（「以来、激動の昭和、そして平成から令和へと移りゆく時代の中…」）に倣う。
+ * 返すのは「その時代がどんな時代であったか」だけで、
+ * その方個人が何を経験したか（戦地・空襲・被災など）は含めない。
+ * 個人の経験は取材で伺った事実がある場合にのみ書く、という切り分けにしている。
+ */
+export function eraExpression(birthYear: number | null): string | null {
+  if (birthYear === null) return null;
+  if (birthYear <= 1926) return "激動の大正から昭和へ、そして平成、令和へと移りゆく時代";
+  if (birthYear <= 1945) return "激動の昭和、そして平成から令和へと移りゆく時代";
+  if (birthYear <= 1964) return "戦後の復興から高度成長へと、国が大きく歩みを進めた昭和の時代";
+  if (birthYear <= 1988) return "移り変わりの激しい昭和の後半から、平成、令和へと続く時代";
+  if (birthYear <= 2018) return "平成から令和へと移りゆく時代";
+  return null;
+}
+
 /**
  * 最丁寧で活用する参考表現バンク（汎用・短句）。
  * いずれも「丸写しせず、故人に合う場合のみ自然に取り入れる」前提。
