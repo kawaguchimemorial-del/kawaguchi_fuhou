@@ -109,6 +109,21 @@ export type FuneralScriptFormData = {
   episodes?: string;
   personality?: string;
 
+  // 取材で伺うこと（司会マニュアル準拠。ナレーションの質はここで決まる）
+  /** 故人ご本人が実際におっしゃっていたお言葉。『　』でそのまま引用する素材 */
+  deceasedWords?: string;
+  /** ご遺族が式で伝えてほしいとおっしゃっていること。芯の選定はこれを最優先 */
+  familyWish?: string;
+  /** このお話を伺った方（例: ご長男様）。出典に触れる場合に使う */
+  interviewSource?: string;
+  /** 祭壇のお飾り・思い出の品（会場に実際にあるものだけ） */
+  altarItems?: string;
+  /**
+   * ご闘病・ご入院に触れてよいか。
+   * 未指定(undefined)は「触れない」として扱う（既存データを安全側に倒すため）。
+   */
+  mayMentionIllness?: boolean;
+
   // オリジナル会葬礼状（任意）
   hasOriginalCondolenceLetter: boolean;
   letterDate?: string;

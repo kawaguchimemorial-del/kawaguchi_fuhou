@@ -394,6 +394,63 @@ export default function FuneralScriptForm({
         </div>
       </FormSection>
 
+      {/* 取材で伺うこと。司会マニュアル準拠でナレーションの質はここで決まる */}
+      <FormSection
+        id="fs-interview"
+        icon="🎙️"
+        title="ご遺族への取材"
+        summary="ここが埋まるほどナレーションは良くなります。特に「故人のお言葉」は、そのまま台本に引用されます。"
+      >
+        <div className="grid gap-3">
+          <TextAreaField
+            label="故人が実際におっしゃっていたお言葉（口癖・遺されたお言葉）"
+            value={form.deceasedWords}
+            onChange={(v) => onChange({ deceasedWords: v })}
+            placeholder="例：家族で食卓を囲んだ時間が家族の絆を強くするんだ／大事なのは、今この瞬間なんだ"
+          />
+          <p className="-mt-1 text-xs text-gray-500">
+            伺ったままの言葉づかいでご記入ください。敬語に直さず、そのまま『　』で引用されます。
+          </p>
+          <TextAreaField
+            label="ご遺族が式で伝えてほしいとおっしゃっていること"
+            value={form.familyWish}
+            onChange={(v) => onChange({ familyWish: v })}
+            placeholder="例：父が家族のためにどれだけ働いてくれたかを伝えたい"
+          />
+          <p className="-mt-1 text-xs text-gray-500">
+            台本の芯になります。他の情報はこれを支える形で構成されます。
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField
+              label="このお話を伺った方"
+              value={form.interviewSource}
+              onChange={(v) => onChange({ interviewSource: v })}
+              placeholder="例：ご長男様"
+            />
+            <TextField
+              label="祭壇のお飾り・思い出の品"
+              value={form.altarItems}
+              onChange={(v) => onChange({ altarItems: v })}
+              placeholder="例：愛用の釣り竿、手作りの本棚の写真"
+            />
+          </div>
+          <label className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={form.mayMentionIllness === true}
+              onChange={(e) => onChange({ mayMentionIllness: e.target.checked })}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              ご闘病・ご入院に触れてよい（ご遺族の同意あり）
+              <span className="mt-0.5 block text-xs text-gray-600">
+                チェックが無い場合は一切触れません。チェックした場合も、病名や症状は書かず、その場面での故人の行いだけを述べます。
+              </span>
+            </span>
+          </label>
+        </div>
+      </FormSection>
+
       {/* オリジナル会葬礼状 */}
       <FormSection
         id="fs-letter"

@@ -64,6 +64,46 @@ function buildMostDetailedBlock(form: FuneralScriptFormData): string[] {
   return block;
 }
 
+
+/**
+ * 取材で伺った内容から、プロンプトへ載せるブロックを作る。
+ * 未入力の項目は行ごと出さない（既存データは undefined なので従来どおりの動作になる）。
+ */
+function buildInterviewBlock(form: FuneralScriptFormData): string[] {
+  const words = form.deceasedWords?.trim();
+  const wish = form.familyWish?.trim();
+  const source = form.interviewSource?.trim();
+  const mayIllness = form.mayMentionIllness === true;
+  if (!words && !wish && !source && !mayIllness) return [];
+
+  const block: string[] = ["", "# 取材で伺ったこと（最優先で扱う）"];
+  if (wish) {
+    block.push(
+      `- ご遺族が式で伝えてほしいとおっしゃっていること: ${wish}`,
+      "  指示: 台本の芯はこれに合わせる。他の素材はこれを支える形で従える。",
+    );
+  }
+  if (words) {
+    block.push(
+      `- 故人ご本人が実際におっしゃっていたお言葉: ${words}`,
+      "  指示: この言葉は要約も敬語化もせず、伺ったままの口語で『　』に入れて一度だけ引用する。引用の直前で改行して間を作る。",
+      "  ここに書かれていない言葉を『　』に入れることは絶対に禁じる。",
+    );
+  }
+  if (source) {
+    block.push(
+      `- このお話を伺った方: ${source}`,
+      "  指示: 出典に触れるのは台本全体で一度だけ。短い前置きで済ませる（例:「ご長男様に、生前のお姿を伺いました。」）。",
+    );
+  }
+  block.push(
+    mayIllness
+      ? "- ご闘病・ご入院に触れてよい: はい。ただし病名・症状・経過・期間・苦痛や衰えの様子は書かず、その場面で故人がとった行いだけを一文で述べ、人柄へ着地させる。"
+      : "- ご闘病・ご入院には一切触れないこと（ご遺族の同意が取れていないため）。入院・療養・病状を示す語を使わない。",
+  );
+  return block;
+}
+
 /** セクションIDの接頭辞から式種別を判定（通夜・告別式の統合台本で日ごとに使い分けるため） */
 function ceremonyTypeFromSectionId(
   id: string,
@@ -206,6 +246,7 @@ function deceasedInfoLines(form: FuneralScriptFormData): string[] {
     ["家族構成", form.familyStructure],
     ["エピソード", form.episodes],
     ["人柄", form.personality],
+    ["祭壇のお飾り・思い出の品（会場に実際にあるもの）", form.altarItems],
   ];
   return pairs
     .filter(([, v]) => v && v.trim())
@@ -349,6 +390,7 @@ export function buildFuneralNarrationPrompt(params: {
     "- 並列: 同格の事柄が三つ以上あるときに限り、説明を挟まず短い語句を読点で連ねる（例「優しくて、頼りがいがあって、情に厚くて、いつでもお洒落。帽子はハンチング、タバコはラーク。」）。台本全体で一箇所まで。数を揃えるために語を足さない。この並列は「同一台本内で反復しない」原則の例外とする。",
     "- 強調（倒置）: 印象づけたい語が入力の中に明確にあるときに限り、修飾を先に述べてその語を文の最後に置き、体言止めで着地させる。1セクションに一箇所まで。着地に置く語は入力にある語だけとし、表情・仕草・情景を新たに作らない。",
     "- 引用: 故人ご本人やご家族が実際に口にされた言葉が入力にある場合のみ、要約・敬語化せず『　』でそのまま入れる。引用文の直前で改行して間を作る。入力に無い言葉を『　』に入れることは絶対に禁じる。引用は台本全体で一度だけ。",
+    ...buildInterviewBlock(form),
     "",
     "# 文体・構成ルール（必ず守る）",
     ...rules.map((r) => `- ${r}`),
