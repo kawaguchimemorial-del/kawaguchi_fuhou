@@ -26,7 +26,7 @@ import type {
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const DEFAULT_TEXT_MODEL = "claude-opus-4-8";
+const DEFAULT_TEXT_MODEL = "claude-opus-5";
 const GENERIC_FAIL =
   "オリジナル会葬礼状のAI再生成に失敗しました。現在の本文はそのまま編集・利用できます。";
 

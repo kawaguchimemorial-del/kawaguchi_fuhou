@@ -867,11 +867,12 @@ export default function FuneralScriptPage() {
               <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleSaveFile}
-                  disabled={!hasScript}
+                  onClick={handleSaveToList}
+                  disabled={!hasScript || saving}
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span aria-hidden>🗂</span>保存・引き継ぎ
+                  <span aria-hidden>🗂</span>
+                  {saving ? "保存中…" : "保存（一覧へ）"}
                 </button>
                 <button
                   type="button"
@@ -960,7 +961,7 @@ export default function FuneralScriptPage() {
               />
               <FuneralScriptFileControls
                 canSave={hasScript}
-                onSave={handleSaveFile}
+                onSave={handleSaveToList}
                 onLoaded={handleLoadFile}
               />
             </div>
