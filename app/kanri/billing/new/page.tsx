@@ -1,3 +1,4 @@
+import { getAdminUser } from "@/lib/admin/auth";
 import { EstimateCreateForm, type FormInitial } from "@/components/kanri/EstimateCreateForm";
 import { getEstimate, deceasedFullName } from "@/lib/kanri/estimates";
 import { listProducts, listProductSets } from "@/lib/kanri/products";
@@ -9,6 +10,8 @@ type SP = { searchParams: Promise<{ from_estimate?: string }> };
 
 export default async function NewInvoice({ searchParams }: SP) {
   const sp = await searchParams;
+  // ログイン中の担当者名。計上担当者/担当者（葬儀担当）の初期値に使う。
+  const staffName = (await getAdminUser())?.displayName ?? "";
   const [products, productSets, osonae, discounts, purposes, templates] = await Promise.all([
     listProducts({ excludeHiddenKinds: true }), listProductSets(), listMasterItems("rough_product_osonae"), listMasterItems("discounted_product"),
     listMasterItems("purpose"), listMasterItems("invoice_template"),
@@ -42,7 +45,7 @@ export default async function NewInvoice({ searchParams }: SP) {
     <div className="mx-auto max-w-4xl">
       <div className="-m-5 mb-4 bg-[#2c8c6f] px-5 py-3"><h1 className="text-lg font-bold text-white">請求書</h1></div>
       <p className="mb-3 font-bold text-gray-700">登録{initial ? "（見積もりから作成）" : ""}</p>
-      <EstimateCreateForm asInvoice initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} purposes={purposes} templates={templates} />
+      <EstimateCreateForm asInvoice defaultStaffName={staffName} initial={initial} products={products} productSets={productSets} osonae={osonae} discounts={discounts} purposes={purposes} templates={templates} />
     </div>
   );
 }

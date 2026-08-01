@@ -1,13 +1,15 @@
 // 管理画面（/kanri /fuhou 等）のアカウント発行・停止・一覧。
 // 自己登録は用意していないため、アカウントはここでのみ作る。
 //
-// 使い方:
+// 使い方（<ID> は ishikawa のような半角小文字。ログイン画面で入力するもの）:
 //   node scripts/manage-admin-user.mjs list
-//   node scripts/manage-admin-user.mjs create <メールアドレス> <お名前> [パスワード]
+//   node scripts/manage-admin-user.mjs create <ID> <お名前> [パスワード]
 //        … パスワードを省略すると自動生成して表示する（本人に伝えて初回ログイン後に変更してもらう）
-//   node scripts/manage-admin-user.mjs password <メールアドレス> [新しいパスワード]
-//   node scripts/manage-admin-user.mjs disable <メールアドレス>   … 退職・異動時。行は残す
-//   node scripts/manage-admin-user.mjs enable  <メールアドレス>
+//        … <お名前> は見積の「計上担当者／担当者（葬儀担当）」に自動で入る名前。
+//           選択肢(EstimateCreateForm の STAFF_OPTIONS)と同じ表記にすること。
+//   node scripts/manage-admin-user.mjs password <ID> [新しいパスワード]
+//   node scripts/manage-admin-user.mjs disable <ID>   … 退職・異動時。行は残す
+//   node scripts/manage-admin-user.mjs enable  <ID>
 //
 // 許可の正本は admin_users テーブル。あわせて auth ユーザーの app_metadata.admin も
 // 同じ値にする（middleware がDB問い合わせ無しで門前払いするために参照する）。
@@ -26,8 +28,14 @@ if (!url || !key) { console.error(".env.local に NEXT_PUBLIC_SUPABASE_URL / SUP
 
 const sb = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const [cmd, email, ...rest] = process.argv.slice(2);
-const norm = (email || "").trim().toLowerCase();
+// Supabase Auth はメールアドレスで人を識別するため、IDに社内専用ドメインを付けて内部の
+// メールアドレスとして扱う（lib/admin/login-id.ts と同じ規則。実在しないドメインなので送信はしない）。
+const LOGIN_DOMAIN = "kawaguchi-tenrei.local";
+const toEmail = (v) => (v.includes("@") ? v : `${v}@${LOGIN_DOMAIN}`);
+const toId = (v) => (v.endsWith(`@${LOGIN_DOMAIN}`) ? v.slice(0, -1 - LOGIN_DOMAIN.length) : v);
+
+const [cmd, loginId, ...rest] = process.argv.slice(2);
+const norm = loginId ? toEmail(loginId.trim().toLowerCase()) : "";
 
 /** 覚えやすさより強度。伝達は口頭/電話を想定し記号は控えめにする。 */
 function genPassword() {
@@ -48,16 +56,16 @@ async function findAuthUser(mail) {
 }
 
 async function setActive(active) {
-  if (!norm) { console.error("メールアドレスを指定してください"); process.exit(1); }
+  if (!norm) { console.error("IDを指定してください"); process.exit(1); }
   const user = await findAuthUser(norm);
-  if (!user) { console.error("該当ユーザーがいません:", norm); process.exit(1); }
+  if (!user) { console.error("該当ユーザーがいません:", toId(norm)); process.exit(1); }
   const { error: e1 } = await sb.from("admin_users").update({ is_active: active }).eq("user_id", user.id);
   if (e1) { console.error("admin_users の更新に失敗:", e1.message); process.exit(1); }
   const { error: e2 } = await sb.auth.admin.updateUserById(user.id, { app_metadata: { admin: active } });
   if (e2) { console.error("app_metadata の更新に失敗:", e2.message); process.exit(1); }
   // 停止時は発行済みのセッションも切る（次のアクセスからではなく即座に締め出す）
   if (!active) await sb.auth.admin.signOut(user.id, "global").catch(() => {});
-  console.log(active ? "✓ 有効化:" : "✓ 停止:", norm);
+  console.log(active ? "✓ 有効化:" : "✓ 停止:", toId(norm));
 }
 
 switch (cmd) {
@@ -70,7 +78,7 @@ switch (cmd) {
     if (!data.length) { console.log("登録なし"); break; }
     for (const r of data) {
       console.log(
-        `${r.is_active ? "有効" : "停止"}  ${r.email.padEnd(32)} ${(r.display_name || "").padEnd(12)} ${r.role}  最終ログイン: ${r.last_login_at ?? "—"}`,
+        `${r.is_active ? "有効" : "停止"}  ${toId(r.email).padEnd(20)} ${(r.display_name || "").padEnd(12)} ${r.role}  最終ログイン: ${r.last_login_at ?? "—"}`,
       );
     }
     break;
@@ -78,7 +86,7 @@ switch (cmd) {
 
   case "create": {
     const name = rest[0] || "";
-    if (!norm || !name) { console.error("使い方: create <メールアドレス> <お名前> [パスワード]"); process.exit(1); }
+    if (!norm || !name) { console.error("使い方: create <ID> <お名前> [パスワード]"); process.exit(1); }
     const password = rest[1] || genPassword();
 
     let user = await findAuthUser(norm);
@@ -103,20 +111,20 @@ switch (cmd) {
     await sb.auth.admin.updateUserById(user.id, { app_metadata: { admin: true } });
 
     console.log("✓ 発行しました");
-    console.log("  メールアドレス:", norm);
-    console.log("  お名前        :", name);
-    if (!rest[1]) console.log("  パスワード    :", password, "（本人に伝えて、ログイン後に変更してもらってください）");
+    console.log("  ID        :", toId(norm));
+    console.log("  お名前    :", name);
+    if (!rest[1]) console.log("  パスワード:", password, "（本人に伝えて、ログイン後に変更してもらってください）");
     break;
   }
 
   case "password": {
-    if (!norm) { console.error("使い方: password <メールアドレス> [新しいパスワード]"); process.exit(1); }
+    if (!norm) { console.error("使い方: password <ID> [新しいパスワード]"); process.exit(1); }
     const user = await findAuthUser(norm);
-    if (!user) { console.error("該当ユーザーがいません:", norm); process.exit(1); }
+    if (!user) { console.error("該当ユーザーがいません:", toId(norm)); process.exit(1); }
     const password = rest[0] || genPassword();
     const { error } = await sb.auth.admin.updateUserById(user.id, { password });
     if (error) { console.error("変更に失敗:", error.message); process.exit(1); }
-    console.log("✓ パスワードを変更しました:", norm);
+    console.log("✓ パスワードを変更しました:", toId(norm));
     if (!rest[0]) console.log("  新しいパスワード:", password);
     break;
   }

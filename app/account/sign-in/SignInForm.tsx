@@ -37,9 +37,9 @@ export function SignInForm({ next }: { next: string }) {
       )}
 
       <label className="block">
-        <span className="text-sm text-[var(--muted)]">メールアドレス</span>
+        <span className="text-sm text-[var(--muted)]">ID</span>
         <input
-          type="email"
+          type="text"
           name="email"
           // 失敗して再描画されたときに、打ち直させないよう入力値を戻す
           defaultValue={state.email}
@@ -48,7 +48,11 @@ export function SignInForm({ next }: { next: string }) {
           autoComplete="username"
           autoFocus={!state.email}
           className="mt-1 w-full border-b py-2 focus:border-[var(--accent)] focus:outline-none"
-          placeholder="you@example.com"
+          placeholder="ishikawa"
+          // IDは半角小文字。スマホの自動大文字化・自動補正を切る
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           // スマホで自動ズームしないよう16px
           style={{ fontSize: 16 }}
         />

@@ -13,6 +13,7 @@ type Props = {
   discounts: MasterItem[];
   purposes: MasterItem[];
   templates: MasterItem[];
+  defaultStaffName?: string; // ログイン中の担当者名（計上担当者/葬儀担当の初期値）
 };
 
 // お客様入力(intake)画面から sessionStorage 経由で渡された内容をプリフィルして見積もり作成フォームを表示する。

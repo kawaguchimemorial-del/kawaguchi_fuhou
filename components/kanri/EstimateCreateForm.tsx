@@ -49,6 +49,7 @@ interface Props {
   discounts: MasterItem[];   // 値引商品マスタ
   purposes?: MasterItem[];         // 摘要設定マスタ
   templates?: MasterItem[];        // 見積書/請求書テンプレート
+  defaultStaffName?: string;       // ログイン中の担当者名。新規作成時の計上担当者/葬儀担当の初期値
 }
 // オプション行のデータ
 interface OptRow {
@@ -108,7 +109,7 @@ function toLocal(iso?: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, productSets, osonae, discounts, purposes = [], templates = [] }: Props) {
+export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, productSets, osonae, discounts, purposes = [], templates = [], defaultStaffName }: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<KanriResult | null, FormData>(asInvoice ? saveInvoiceFull : saveEstimateFull, null);
@@ -256,8 +257,11 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const [funeralAt, setFuneralAt] = useState(toLocal(initial?.funeralAt));
   // 事前相談・担当者(バリデーション用に制御化)
   const [isPre, setIsPre] = useState(initial?.preConsultation ?? false);
-  const [chargedUser, setChargedUser] = useState(initial?.chargedUser ?? "");
-  const [staffName, setStaffName] = useState(initial?.staffName ?? "");
+  // 新規作成時はログイン中の担当者を初期値にする（毎回選び直さなくてよいように）。
+  // 選択肢に無い名前（例: 管理者アカウント）は入れない。selectの値が選択肢と合わず空欄に見えるため。
+  const loginStaff = defaultStaffName && STAFF_OPTIONS.includes(defaultStaffName) ? defaultStaffName : "";
+  const [chargedUser, setChargedUser] = useState(initial?.chargedUser ?? loginStaff);
+  const [staffName, setStaffName] = useState(initial?.staffName ?? loginStaff);
   // 顧客を同時に新規登録の入力(バリデーション用に制御化)
   const [ncLast, setNcLast] = useState(initial?.newCustomerLastName ?? "");
   const [ncFirst, setNcFirst] = useState(initial?.newCustomerFirstName ?? "");
