@@ -22,11 +22,98 @@ import {
   extractYear,
   seasonalExpression,
 } from "./expressions";
+import {
+  CRAFT_NOTES,
+  GENERAL_CLOSERS,
+  WORD_GLOSSARY,
+  selectThemeExamples,
+  seasonalPhrasesFor,
+} from "./phrase-book";
 import type {
   FuneralScriptCeremonyType,
   FuneralScriptFormData,
   FuneralScriptSection,
 } from "./types";
+
+/**
+ * 司会マニュアル「ショートフレーズ集」の実素材ブロック。
+ *
+ * これまでは要約した短句（expressions.ts）しか渡しておらず、
+ * 実際の司会者が書いた文章そのものはプロンプトに載っていなかった。
+ * ここでは故人情報に合致するテーマの文例だけを原文で渡し、
+ * 「文体の見本であって穴埋めテンプレートではない」ことを明示する。
+ */
+function buildPhraseBookBlock(form: FuneralScriptFormData): string[] {
+  // テーマ選定に使う自由記入欄をひとまとめにする
+  const haystack = [
+    form.hobbies,
+    form.portraitPhotoDescription,
+    form.education,
+    form.career,
+    form.workDescription,
+    form.communityActivities,
+    form.achievements,
+    form.familyStructure,
+    form.episodes,
+    form.personality,
+    form.deceasedWords,
+    form.familyWish,
+    form.altarItems,
+    form.birthPlace,
+    form.wakeImpression,
+    form.birthDate,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const themes = selectThemeExamples(haystack);
+  const deathSeason = seasonalPhrasesFor(extractMonth(form.deathDate));
+  const birthSeason = seasonalPhrasesFor(extractMonth(form.birthDate));
+
+  const block: string[] = [
+    "",
+    "# 司会マニュアル『ショートフレーズ集』の実例（当社の現役司会者が実際に読み上げた原文）",
+    "これは文体と組み立ての見本です。次の三点を必ず守ってください。",
+    "- 丸写ししない。地名・年数・お名前・品物など、実例の中の具体は他家の事実であり、この方の事実ではない。",
+    "- 実例に出てくる要素（お孫様・愛犬・お庭・お仲間など）が「# 故人情報」に無いなら、その実例は使わない。",
+    "- 学ぶのは、どこから語り出し、どの順で情景を積み、どう着地させるか、という運び方だけ。",
+  ];
+
+  if (themes.length) {
+    block.push("", "## この方に近いテーマの実例");
+    for (const t of themes) {
+      block.push(`### ${t.title}`, `例文: ${t.example}`);
+      if (t.note) block.push(`書き方の要点: ${t.note}`);
+    }
+  }
+
+  if (deathSeason.length || birthSeason.length) {
+    block.push("", "## 季節のフレーズ（原文。使うなら一箇所だけ、言い回しは整えてよい）");
+    for (const p of deathSeason) {
+      block.push(`- 旅立たれた月: ${p.text}${p.gloss ? `（${p.gloss}）` : ""}`);
+    }
+    for (const p of birthSeason) {
+      block.push(`- お生まれの月: ${p.text}${p.gloss ? `（${p.gloss}）` : ""}`);
+    }
+    block.push(
+      "  注意: 上の例文にある〇〇は故人名の位置。日付や行年が入力に無い場合、その部分は書かずに整えること。",
+    );
+  }
+
+  block.push(
+    "",
+    "## 結びの汎用文（本書が汎用と明記しているもの。〇〇は故人名の位置。使うなら一つだけ）",
+    ...GENERAL_CLOSERS.map((c) => `- ${c}`),
+    "",
+    "## 読み上げを前提にした書き方の技法",
+    ...CRAFT_NOTES.map((c) => `- ${c}`),
+    "",
+    "## 語彙（司会者が実際に使う言葉。合う場面があれば使う）",
+    ...WORD_GLOSSARY.map((g) => `- ${g.word}: ${g.meaning}`),
+  );
+
+  return block;
+}
 
 /**
  * 「最丁寧（most_detailed）」のときだけ付与する追加素材。
@@ -395,6 +482,7 @@ export function buildFuneralNarrationPrompt(params: {
     "# 文体・構成ルール（必ず守る）",
     ...rules.map((r) => `- ${r}`),
     ...mostDetailedBlock,
+    ...buildPhraseBookBlock(form),
     "",
     "# 特に注意する題材",
     "- ご闘病・ご入院・事故・介護・死因は、病名・症状・経過・期間・苦痛や衰えの様子を描写しない。入力に記述がある場合に限り、その場面で故人がとった行いだけを一文で述べ、そこに表れた人柄へ着地させる。「長い闘病の末」のように闘病自体を主題にしない。",
