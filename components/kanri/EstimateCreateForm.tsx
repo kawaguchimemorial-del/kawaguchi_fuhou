@@ -166,11 +166,14 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
     return restored;
   });
   // 旧データ救済: セット選択済みなのに保存済みセット内訳が無い場合のみ、セット定義から内訳を読み込む。
+  // サーバーからの取得を伴うマウント時一度きりの初期化のため、effect が正しい置き場所。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (chosenSet && initSetItems.length === 0) loadSetItems(chosenSet.id);
     // マウント時のみ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const [optPickKey, setOptPickKey] = useState<number | null>(null); // カード単位の商品選択対象
   // 商品選択モーダルの絞り込み（種別を選んで商品名で検索）
   const [pickKind, setPickKind] = useState("");
@@ -221,30 +224,30 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const [dGender, setDGender] = useState(initial?.deceasedGender ?? "");
   const [dBirth, setDBirth] = useState(initial?.deceasedBirthDate ?? "");
   const [dDeath, setDDeath] = useState(initial?.deceasedDeathDate ?? "");
-  // 没年月日の既定値＝本日。ほとんどの施行は当日〜前日の逝去のため。
-  // サーバー(UTC)とブラウザ(JST)で日付がずれてhydration不整合になるのを避けるため、
-  // 初期値ではなくマウント後に入れる。編集時と入力済みのときは触らない。
-  useEffect(() => {
-    if (initial?.id) return;
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    // 没年月日の既定＝本日
-    if (!initial?.deceasedDeathDate) setDDeath(today);
-    // 見積日の既定＝本日
-    if (!initial?.date1) setEstimateOn(today);
-    // マウント時のみ
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   // 件名を「対象者氏名 御葬儀」に自動追従（手入力があるまで）
   useEffect(() => {
     if (titleEdited.current) return;
     const nm = `${deceasedLast}${deceasedFirst ? "　" + deceasedFirst : ""}`.trim();
     setTitleVal(nm ? `${nm}　御葬儀` : "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deceasedLast, deceasedFirst]);
   const [dRelation, setDRelation] = useState(initial?.deceasedRelation ?? "");
   // 見積日（必須）・通夜日時・告別式日時
   const [estimateOn, setEstimateOn] = useState(initial?.date1 ?? "");
+  // 没年月日・見積日の既定値＝本日。ほとんどの施行は当日〜前日の逝去のため。
+  // サーバー(UTC)とブラウザ(JST)で日付がずれてhydration不整合になるのを避けるため、
+  // useStateの初期値ではなくマウント後に入れる。編集時と入力済みのときは触らない。
+  // （setEstimateOn を宣言前に参照しないよう、この位置に置いている）
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (initial?.id) return;
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (!initial?.deceasedDeathDate) setDDeath(today);
+    if (!initial?.date1) setEstimateOn(today);
+    // マウント時のみ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
   // 料理: 通夜/告別式の料理人数 → 配膳人自動計算、告別式は忌中払会場費入力
   const [wakeMealCount, setWakeMealCount] = useState(initial?.wakeMealCount != null ? String(initial.wakeMealCount) : "");
   const [funeralMealCount, setFuneralMealCount] = useState(initial?.funeralMealCount != null ? String(initial.funeralMealCount) : "");
@@ -270,7 +273,6 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   useEffect(() => {
     if (statusEdited.current) return;
     setNcStatus(isPre ? "事前相談・見積もり" : "受注");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPre]);
   const [valErrors, setValErrors] = useState<string[]>([]);
   // 年齢: 没年月日 - 生年月日 で自動計算(いずれか未入力なら手入力値を保持)
@@ -371,11 +373,13 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
   const wServers = wCount > 0 ? Math.ceil(wCount / 15) : 0;
   const fServers = fCount > 0 ? Math.ceil(fCount / 15) : 0;
   const imibarai = Number(imibaraiFee) || 0;
-  const cuisineLines = hasCuisine ? [
+  // 合計計算(totals)の依存に正しく載せるためmemo化する。
+  // 中身は hasCuisine / 各人数 / 忌中払会場費 だけから決まる。
+  const cuisineLines = useMemo(() => (hasCuisine ? [
     ...(wServers > 0 ? [{ lineKind: "item", name: "通夜料理配膳人", unitPrice: MEAL_SERVER_UNIT, quantity: wServers, taxRate: 0.1 }] : []),
     ...(fServers > 0 ? [{ lineKind: "item", name: "告別料理配膳人", unitPrice: MEAL_SERVER_UNIT, quantity: fServers, taxRate: 0.1 }] : []),
     ...(fCount > 0 && imibarai > 0 ? [{ lineKind: "item", name: "忌中払会場費", unitPrice: imibarai, quantity: 1, taxRate: 0.1 }] : []),
-  ] : [];
+  ] : []), [hasCuisine, wServers, fServers, fCount, imibarai]);
 
   const totals = useMemo(() => {
     // 税込合計 = セット税込 + 各オプションの税込金額 + お供え税込 - 値引(税込換算)
@@ -386,7 +390,7 @@ export function EstimateCreateForm({ asInvoice, intakeMode, initial, products, p
     for (const l of cuisineLines) inc += Math.round(l.unitPrice * l.quantity * 1.1);
     let disc = 0; for (const d of discRows) disc += Math.round(Math.abs(d.amount) * 1.1);
     return { total: inc - disc };
-  }, [chosenSet, setEffInc, opts, osonae, osonaeQty, discRows, hasCuisine, wakeMealCount, funeralMealCount, imibaraiFee]);
+  }, [chosenSet, setEffInc, opts, osonae, osonaeQty, discRows, cuisineLines]);
 
   const itemsJson = JSON.stringify([
     // セットは登録済みの税込価格も一緒に送る（印刷で税抜から掛け直すと1円ずれるため）

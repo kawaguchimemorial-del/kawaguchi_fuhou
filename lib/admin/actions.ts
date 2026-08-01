@@ -10,6 +10,14 @@ const DEMO_FUNERAL_HOME_ID = "11111111-1111-1111-1111-111111111111";
 const PHOTO_BUCKET = "product-images"; // 公開読取バケットを流用（遺影は portraits/ 配下）
 
 /**
+ * DBの型生成をしていないため、テーブルごとの行の型が存在しない。
+ * PostgREST のクエリビルダを緩く受けるための最小型で、any の使用をここに閉じ込める。
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseTable = any;
+type AdminDb = { from: (table: string) => LooseTable };
+
+/**
  * 遺影写真アップロード用の署名付きURLを発行する。
  * 実ファイルはブラウザから Supabase Storage へ直接アップロードするため、
  * Next.js Server Action(1MB) や Vercel関数(4.5MB) のボディ上限を回避できる。
@@ -44,8 +52,7 @@ export async function savePortrait(
 ): Promise<{ ok: boolean; error?: string }> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY)
     return { ok: false, error: "Supabaseが未設定です。" };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   const { data: mem, error } = await supabase
     .from("memorials")
     .select("id, venue, form_state")
@@ -114,8 +121,7 @@ export async function saveVenuePhotos(
   if (field !== "albumPaths" && field !== "scenePaths")
     return { ok: false, error: "不正な保存先です。" };
   const clean = (Array.isArray(paths) ? paths : []).filter((p) => typeof p === "string" && p).slice(0, MAX_ALBUM);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   const { data: mem, error } = await supabase
     .from("memorials")
     .select("id, venue, form_state")
@@ -290,7 +296,7 @@ export async function createCeremony(p: CeremonyPayload): Promise<CreateResult> 
   const err = guard(p);
   if (err) return { ok: false, error: err };
 
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   const slug = randomUUID().replace(/-/g, "");
   const memorialId = randomUUID();
   // 削除済み見積IDによるFK違反を防止(form_stateも同時に自己修復)
@@ -349,7 +355,7 @@ export async function updateCeremony(slug: string, p: CeremonyPayload): Promise<
   const err = guard(p);
   if (err) return { ok: false, error: err };
 
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: mem, error: findErr } = await (supabase.from("memorials").select("id,status,published_at,deleted_at").eq("slug", slug).single() as any);
   if (findErr || !mem) return { ok: false, error: "対象の案件が見つかりません。" };
@@ -490,8 +496,7 @@ export async function findMemorialSlugByEstimate(
 ): Promise<string | null> {
   if (!estimateId) return null;
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   const { data } = await supabase
     .from("memorials")
     .select("slug")
@@ -533,8 +538,7 @@ export async function findMemorialSlugByDeceasedName(
   // 追加照合キーが一切無ければ、名前だけの照合は行わない（厳格化）。
   if (!estDeath && !estMourner) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   const { data: mems } = await supabase
     .from("memorials")
     .select("id, slug, announce_mourner_name, estimate_id, created_at")
@@ -582,13 +586,12 @@ export async function getCeremonyFormState(
   slug: string
 ): Promise<{ withVenue: boolean; isTest: boolean; status: string; state: Record<string, string> } | null> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: mem, error } = await (supabase
+  const supabase = createAdminClient() as unknown as AdminDb;
+  const { data: mem, error } = await supabase
     .from("memorials")
     .select("id, status, form_state, venue, obituary_title, obituary_body, announce_mourner_name, religion_type, koden_decline, flower_decline, offering_accept_until")
     .eq("slug", slug)
-    .single() as any);
+    .single();
   if (error || !mem) return null;
   // 故人・式1を取得
   const [{ data: dec }, { data: evs }] = await Promise.all([
@@ -623,8 +626,7 @@ export async function getCeremonyFormState(
 // 訃報のみ → 訃報+式場 へ変換。venue を既定JSONで初期化し form_state.withVenue=true にする(既存の訃報/故人/式は保持)。
 export async function convertToVenue(slug: string): Promise<CreateResult> {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { ok: false, error: "Supabaseが未設定です。" };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: mem } = await (supabase.from("memorials").select("id, venue, form_state").eq("slug", slug).single() as any);
   if (!mem) return { ok: false, error: "対象の案件が見つかりません。" };
@@ -662,8 +664,7 @@ export async function deleteCeremony(slug: string, password?: string): Promise<{
   if (!slug) return { ok: false, error: "対象が指定されていません。" };
   if ((password ?? "") !== CEREMONY_DELETE_PASSWORD) return { ok: false, error: "パスワードが違います。" };
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { ok: false, error: "Supabase未設定" };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createAdminClient() as unknown as { from: (t: string) => any };
+  const supabase = createAdminClient() as unknown as AdminDb;
   const { data: mem } = await supabase.from("memorials").select("id").eq("slug", slug).is("deleted_at", null).maybeSingle();
   if (!mem) return { ok: false, error: "対象の葬儀が見つかりません。" };
   const { error } = await supabase.from("memorials").update({ deleted_at: new Date().toISOString() }).eq("id", mem.id);

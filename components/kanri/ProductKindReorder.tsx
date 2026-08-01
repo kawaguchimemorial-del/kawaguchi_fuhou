@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { updateMasterItem, deleteMasterItem, reorderMasterItems, setProductKindHidden } from "@/lib/kanri/actions";
 
 type Item = { id: string; name: string; hidden: boolean };
@@ -13,7 +13,13 @@ export function ProductKindReorder({ type, items }: { type: string; items: Item[
 
   // 名称変更・削除・並び替え後、サーバーから来た最新の内容に同期する。
   const sig = items.map((i) => i.id + ":" + i.name).join("|");
-  useEffect(() => { setList(items); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [sig]);
+  // effect ではなくレンダー中に前回値と比較して調整する（Reactの推奨手順）。
+  // effect 内の setState は描画が一度余計に走るため。
+  const [prevSig, setPrevSig] = useState(sig);
+  if (sig !== prevSig) {
+    setPrevSig(sig);
+    setList(items);
+  }
 
   function handleDrop(targetId: string) {
     const from = dragId.current;
@@ -70,7 +76,11 @@ export function ProductKindReorder({ type, items }: { type: string; items: Item[
 function HiddenToggle({ id, hidden }: { id: string; hidden: boolean }) {
   const [on, setOn] = useState(hidden);
   const [pending, start] = useTransition();
-  useEffect(() => { setOn(hidden); }, [hidden]);
+  const [prevHidden, setPrevHidden] = useState(hidden);
+  if (hidden !== prevHidden) {
+    setPrevHidden(hidden);
+    setOn(hidden);
+  }
   return (
     <label className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-gray-600" title="オプション選択に出さない（セットには利用可）">
       <input type="checkbox" className="h-4 w-4" checked={on} disabled={pending}

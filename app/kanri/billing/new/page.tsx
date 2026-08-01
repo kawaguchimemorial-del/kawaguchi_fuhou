@@ -18,6 +18,8 @@ export default async function NewInvoice({ searchParams }: SP) {
   if (sp.from_estimate) {
     const e = await getEstimate(sp.from_estimate);
     if (e) {
+      // サーバーコンポーネントのため、描画のたびに現在時刻を読むのが正しい挙動。
+      // eslint-disable-next-line react-hooks/purity
       const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); // JST今日
       initial = {
         estimateId: e.id, // 保存時に fk_invoices.estimate_id へ紐付け

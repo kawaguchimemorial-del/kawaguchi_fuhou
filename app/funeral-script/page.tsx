@@ -443,6 +443,9 @@ export default function FuneralScriptPage() {
     const customerId = sp.get("customer_id") ?? undefined;
     const estimateId = sp.get("estimate_id") ?? undefined;
     const deceased = (sp.get("deceased") ?? "").trim();
+    // URLパラメータはサーバー描画時には読めないため、初期描画後に反映するのが正しい。
+    // レンダー中やuseStateの初期化で読むとサーバーとクライアントで内容が食い違う。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScriptCtx({ customerId, estimateId, scriptId });
     if (scriptId) {
       (async () => {

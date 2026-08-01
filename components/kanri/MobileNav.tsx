@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X, Megaphone, FileText, ImageIcon, Home, Users, ClipboardList, CalendarDays, Menu } from "lucide-react";
 import { CRM_NAV, type NavNode } from "@/lib/kanri/nav";
 import { Section } from "./Sidebar";
@@ -31,14 +31,13 @@ const TABS = [
 
 export function KanriMobileNav() {
   const path = usePathname();
-  const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState("");
-
-  // ルート遷移で自動的に閉じる
-  useEffect(() => {
-    setOpen(false);
-    setFilter("");
-  }, [path]);
+  // 「どのパスで開いたか」と検索語をまとめて持つ。ルートが変われば open が false に
+  // なり検索語も初期化されるため、閉じるための effect が要らない。
+  const [menu, setMenu] = useState<{ path: string; filter: string } | null>(null);
+  const open = menu !== null && menu.path === path;
+  const filter = open ? menu.filter : "";
+  const setOpen = (next: boolean) => setMenu(next ? { path, filter: "" } : null);
+  const setFilter = (next: string) => setMenu({ path, filter: next });
 
   const isActive = (href: string, exact?: boolean) => (exact ? path === href : path === href || path.startsWith(href + "/"));
 

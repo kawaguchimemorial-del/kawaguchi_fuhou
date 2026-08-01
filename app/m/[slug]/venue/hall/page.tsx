@@ -7,7 +7,6 @@ import { AlbumGallery } from "@/components/guest/AlbumGallery";
 import { HlsPlayer } from "@/components/guest/HlsPlayer";
 import { logView } from "@/lib/memorial/db";
 import { getSiteOrigin } from "@/lib/site-url";
-import type { Memorial } from "@/lib/memorial/types";
 
 type Params = { params: Promise<{ slug: string }> };
 

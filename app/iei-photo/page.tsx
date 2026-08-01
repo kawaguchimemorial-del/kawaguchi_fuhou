@@ -214,6 +214,9 @@ export default function IeiPhotoPage() {
   const [portraitCtx, setPortraitCtx] = useState<{ portraitId?: string; customerId?: string; customerName?: string; deceased?: string; estimateId?: string }>({});
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
+    // URLパラメータはサーバー描画時には読めないため、初期描画後に反映するのが正しい。
+    // レンダー中やuseStateの初期化で読むとサーバーとクライアントで内容が食い違う。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPortraitCtx({
       portraitId: sp.get("portrait_id") || undefined,
       customerId: sp.get("customer_id") || undefined,

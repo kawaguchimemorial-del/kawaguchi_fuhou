@@ -62,6 +62,9 @@ export default async function KanriDashboard() {
 
   // 今日の予定(今日+明日、時刻昇順)
   const today = jstYmd(new Date());
+  // サーバーコンポーネントのため、描画のたびに現在時刻を読むのが正しい挙動。
+  // （purity ルールはクライアントコンポーネント向けの規則）
+  // eslint-disable-next-line react-hooks/purity
   const tomorrow = jstYmd(new Date(Date.now() + 86400000));
   const upcoming = estimates
     .flatMap((e) => {

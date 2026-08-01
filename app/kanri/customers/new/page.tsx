@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/kanri/PageHeader";
 import { CustomerForm } from "@/components/kanri/CustomerForm";
 

@@ -495,7 +495,6 @@ export async function getViewStats(slug: string, kind: "venue" | "obituary" = "v
     .eq("kind", kind)
     .order("created_at", { ascending: false })
     .limit(10000);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (data ?? []) as { ip_hash: string | null; created_at: string }[];
   const since = Date.now() - 30 * 60 * 1000;
   const uniq = new Set<string>();

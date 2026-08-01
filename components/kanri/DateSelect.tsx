@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 // タブレットで扱いやすい「年・月・日」プルダウン式の日付入力。
 // ネイティブの type="date" は年を1年ずつしか送れず高齢者の生年入力が大変なため、こちらを使う。
@@ -49,12 +49,14 @@ export function DateSelect({
   const minY = fromYear ?? curY - 120;
   const [[y, m, d], setParts] = useState<[string, string, string]>(() => parse(value));
 
-  // 施行番号読込やプリフィルなど、外部から非空の値が入った場合に同期（空での初期化ミスは無視）
-  useEffect(() => {
+  // 施行番号読込やプリフィルなど、外部から非空の値が入った場合に同期（空での初期化ミスは無視）。
+  // effect ではなくレンダー中に前回値と比較して調整する（Reactの推奨手順）。
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     const cur = y && m && d ? `${y}-${pad(m)}-${pad(d)}` : "";
     if (value && value !== cur) setParts(parse(value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }
 
   function update(ny: string, nm: string, nd: string) {
     // 日が月末を超えたら丸める

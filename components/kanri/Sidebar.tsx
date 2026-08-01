@@ -1,11 +1,54 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, Lightbulb, LogOut, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, FileText } from "lucide-react";
 import { CRM_NAV, type NavNode } from "@/lib/kanri/nav";
 
 const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>> = { Users, Receipt, ShoppingCart, CalendarDays, ImageIcon, LineChart, Send, Settings, FileText };
+
+// ── サイドバーの折りたたみ設定（localStorage / Reactの外の状態） ──────────
+const COLLAPSE_KEY = "kanri-sidebar";
+const collapseListeners = new Set<() => void>();
+
+function subscribeCollapsed(onChange: () => void): () => void {
+  collapseListeners.add(onChange);
+  // 他タブでの変更も反映する（キャッシュを捨ててから再読込させる）
+  const onStorage = () => {
+    collapsedCache = null;
+    onChange();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    collapseListeners.delete(onChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+// 真値はこのメモリ側。localStorage へ書けない環境（プライベートブラウジング等）でも
+// セッション中の開閉は効くようにしておく。
+let collapsedCache: boolean | null = null;
+
+function getCollapsed(): boolean {
+  if (collapsedCache === null) {
+    try {
+      collapsedCache = localStorage.getItem(COLLAPSE_KEY) === "collapsed";
+    } catch {
+      collapsedCache = false;
+    }
+  }
+  return collapsedCache;
+}
+
+function setCollapsedPref(next: boolean): void {
+  collapsedCache = next;
+  try {
+    localStorage.setItem(COLLAPSE_KEY, next ? "collapsed" : "open");
+  } catch {
+    /* 書けなくてもメモリ側で開閉は成立する */
+  }
+  collapseListeners.forEach((fn) => fn());
+}
 
 function hasActive(node: NavNode, path: string): boolean {
   if (node.href && (path === node.href || path.startsWith(node.href + "/"))) return true;
@@ -68,19 +111,14 @@ function RailItem({ node, path, onExpand }: { node: NavNode; path: string; onExp
 export function KanriSidebar() {
   const path = usePathname();
   // lg+ の折りたたみ状態(localStorage保持)。md〜lgは常にレール+タップでオーバーレイ展開。
-  const [collapsed, setCollapsed] = useState(false);
-  const [overlay, setOverlay] = useState(false); // レール時のオーバーレイ展開
-  useEffect(() => {
-    try { setCollapsed(localStorage.getItem("kanri-sidebar") === "collapsed"); } catch { /* noop */ }
-  }, []);
-  useEffect(() => { setOverlay(false); }, [path]); // ルート遷移で閉じる
-  const toggleCollapsed = () => {
-    setCollapsed((c) => {
-      const next = !c;
-      try { localStorage.setItem("kanri-sidebar", next ? "collapsed" : "open"); } catch { /* noop */ }
-      return next;
-    });
-  };
+  // localStorage は React の外にある状態なので useSyncExternalStore で購読する。
+  // effect 内で setState するとハイドレーション後に余計な再描画が連鎖するため。
+  const collapsed = useSyncExternalStore(subscribeCollapsed, getCollapsed, () => false);
+  // オーバーレイは「どのパスで開いたか」で持つ。ルートが変われば自動で閉じるので effect が要らない。
+  const [overlayPath, setOverlayPath] = useState<string | null>(null);
+  const overlay = overlayPath !== null && overlayPath === path;
+  const setOverlay = (open: boolean) => setOverlayPath(open ? path : null);
+  const toggleCollapsed = () => setCollapsedPref(!getCollapsed());
 
   const fullNav = (
     <nav className="py-2">

@@ -55,8 +55,9 @@ export default async function MessagesPage({ params, searchParams }: Params) {
                 {msg.imagePaths.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-3">
                     {msg.imagePaths.map((src, j) => (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <a key={j} href={src} target="_blank" rel="noopener noreferrer">
+                        {/* 参列者が投稿した任意サイズの画像。next/image の最適化対象外のため素の img を使う */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={src} alt={`${msg.senderName}様のお写真${j + 1}`} className="h-28 w-28 rounded object-cover" />
                       </a>
                     ))}

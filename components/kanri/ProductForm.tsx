@@ -122,6 +122,3 @@ export function ProductForm({ product, kinds, suppliers, subKinds }: { product?:
 function F({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return <div><label className="block text-sm text-gray-600">{label}{required && <span className="ml-1 rounded bg-orange-400 px-1.5 py-0.5 text-[10px] text-white">必須</span>}</label><div className="mt-1">{children}</div></div>;
 }
-function Check({ name, label, checked }: { name: string; label: string; checked?: boolean }) {
-  return <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name={name} defaultChecked={checked} /> {label}</label>;
-}

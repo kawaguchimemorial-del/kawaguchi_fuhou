@@ -20,6 +20,9 @@ type Props = {
 export function EstimateCreateWithIntake(props: Props) {
   const [initial, setInitial] = useState<FormInitial | undefined>(undefined);
   const [ready, setReady] = useState(false);
+  // sessionStorage の読み出しと「一度使ったら消す」という副作用はレンダー中に行えず、
+  // サーバー描画時にも読めない。初期描画後に一度だけ反映するのが正しい。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(INTAKE_KEY);
@@ -32,6 +35,7 @@ export function EstimateCreateWithIntake(props: Props) {
     }
     setReady(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!ready) return <div className="py-16 text-center text-sm text-gray-400">読み込み中…</div>;
   return <EstimateCreateForm initial={initial} {...props} />;

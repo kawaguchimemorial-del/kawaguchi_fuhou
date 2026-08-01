@@ -1,4 +1,4 @@
-import { getEstimate, deceasedFullName, mournerFullName } from "@/lib/kanri/estimates";
+import { getEstimate, mournerFullName } from "@/lib/kanri/estimates";
 import { getCompanyInfo } from "@/lib/kanri/masters";
 import { getCustomer } from "@/lib/kanri/data";
 import { breakdownRows, hasReduced, lineIncTax } from "@/lib/kanri/print-breakdown";
@@ -30,7 +30,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const items = (e.items ?? []).filter((it) => it.lineKind === "item" && !it.hiddenPaper);
   const discounts = (e.items ?? []).filter((it) => it.lineKind === "discount");
   const on = fmtd(e.estimateOn) || fmtd(e.createdAt);
-  const withTax = (amt: number, rate: number) => lineIncTax(amt, rate);
   const mournerAddr = [e.addresseePrefecture ?? e.mourner.prefecture, e.addresseeCity ?? e.mourner.addressCity, e.addresseeStreet ?? e.mourner.addressStreet, e.addresseeBuilding ?? e.mourner.addressBuilding].filter(Boolean).join("");
   // 宛名: 宛名情報 → 喪主 → 顧客名 の順で解決(移植データは宛名/顧客のみのことがある)
   const toName = [e.addresseeLastName, e.addresseeFirstName].filter(Boolean).join(" ") || mournerFullName(e) || e.customerName || "";

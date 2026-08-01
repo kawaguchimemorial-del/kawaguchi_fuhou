@@ -21,7 +21,6 @@ export function PaymentSlipForm({ invoiceId, prefill }: { invoiceId: string; pre
   const [note, setNote] = useState(noteInit ?? "");
   // 入金額の初期値: 1行目に残高をセット（入れられる内容は入れておく）
   const [amounts, setAmounts] = useState<Record<number, string>>({ 0: remaining > 0 ? String(remaining) : "" });
-  let seq = rows.length;
 
   return (
     <form action={createPaymentSlip} className="rounded-lg bg-white p-6 shadow-sm">
@@ -74,7 +73,7 @@ export function PaymentSlipForm({ invoiceId, prefill }: { invoiceId: string; pre
             </div>
           ))}
         </div>
-        <button type="button" onClick={() => setRows((rs) => [...rs, { key: (seq++, Math.max(0, ...rs.map((x) => x.key)) + 1) }])} className="mt-3 rounded bg-sky-400 px-3 py-1.5 text-xs text-white">入金を追加</button>
+        <button type="button" onClick={() => setRows((rs) => [...rs, { key: Math.max(0, ...rs.map((x) => x.key)) + 1 }])} className="mt-3 rounded bg-sky-400 px-3 py-1.5 text-xs text-white">入金を追加</button>
       </div>
 
       <div className="mt-6 flex gap-3">

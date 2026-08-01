@@ -452,7 +452,9 @@ function StepGuestbook() {
 function StepFlowers({ g, set, flowerProducts, selectedIds, toggle }: { g: (k: string) => string; set: (k: string, v: string) => void; flowerProducts: FlowerProduct[]; selectedIds: string[]; toggle: (id: string) => void }) {
   const flowers = flowerProducts.filter((p) => p.type === "供花");
   const offerings = flowerProducts.filter((p) => p.type === "供物");
-  const Group = ({ title, items }: { title: string; items: FlowerProduct[] }) => (
+  // コンポーネントとして定義するとレンダーのたびに別物と見なされ再マウントされるため、
+  // ただの描画関数として呼び出す。
+  const renderGroup = (title: string, items: FlowerProduct[]) => (
     items.length === 0 ? null : (
       <div className="mt-3">
         <p className="mb-1 text-sm font-bold text-gray-600">{title}</p>
@@ -479,8 +481,8 @@ function StepFlowers({ g, set, flowerProducts, selectedIds, toggle }: { g: (k: s
           <p className="mt-2 text-xs text-gray-400">商品が未登録です（設定 › 供花・供物の設定・商品登録）。</p>
         ) : (
           <>
-            <Group title="供花" items={flowers} />
-            <Group title="供物" items={offerings} />
+            {renderGroup("供花", flowers)}
+            {renderGroup("供物", offerings)}
             <p className="mt-2 text-xs text-gray-500">選択中: {selectedIds.length === 0 ? "全商品を表示" : `${selectedIds.length} 件`}</p>
           </>
         )}

@@ -16,9 +16,6 @@ export const dynamic = "force-dynamic";
 function esc(v?: string | null): string {
   return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-function nl2br(v?: string | null): string {
-  return esc(v).replace(/\r?\n/g, "<br>");
-}
 /** "18:00" 形式。時刻を持たない値は空文字。 */
 function hm(iso?: string): string {
   if (!iso) return "";

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { deleteProductSet, reorderProductSets } from "@/lib/kanri/actions";
 import { SetHiddenToggle } from "./SetHiddenToggle";
 
@@ -14,7 +14,12 @@ export function ProductSetReorder({ sets }: { sets: SetRow[] }) {
   const dragId = useRef<string | null>(null);
 
   const sig = sets.map((s) => s.id + ":" + s.name + ":" + (s.hidden ? 1 : 0)).join("|");
-  useEffect(() => { setList(sets); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [sig]);
+  // effect ではなくレンダー中に前回値と比較して調整する（Reactの推奨手順）。
+  const [prevSig, setPrevSig] = useState(sig);
+  if (sig !== prevSig) {
+    setPrevSig(sig);
+    setList(sets);
+  }
 
   function handleDrop(targetId: string) {
     const from = dragId.current;
