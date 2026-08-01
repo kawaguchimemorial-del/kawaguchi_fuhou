@@ -2393,3 +2393,25 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
   7月と3月の季節句が付与された。プロンプト全体は約9,600字。
 - 献酒・献奏の例文からは「これより〜行います」の進行宣言を外した（進行案内の生成防止）。
 - 補足: `npm run lint` はリポジトリ全体で以前から eslintrc の設定エラーで起動しない（本変更とは無関係）。型検査は通過。
+
+## 2026-08-01 lint: 既存指摘21件を解消（lint 0件 / 型検査 / 本番ビルド すべて通過）
+- eslint.config.mjs を FlatCompat 経由からフラット設定の直接読込へ変更し、lint が起動する状態にした。
+  併せて @next/next/no-html-link-for-pages を無効化（Pages Router 用のルールで pages/ が無く、
+  Excel出力などの Route Handler へのダウンロードリンクを誤検出。<Link> にすると壊れる）。
+- 実バグ・実害:
+  - EstimateCreateForm 合計計算の useMemo に cuisineLines が依存として載っていなかった
+    （元になる4値は入っていたため計算結果は従来と同じ）。cuisineLines を useMemo 化して依存を正した
+  - EstimateCreateForm 既定日 effect が宣言前の setEstimateOn を参照（TDZ）→ 宣言直後へ移動
+  - CeremonyWizard の Group をレンダー内でコンポーネント定義していた（再レンダーごとに再マウント）
+    → 描画関数 renderGroup へ
+  - PaymentSlipForm の (seq++, ...) は値に寄与しない残骸 → 削除
+  - messages の eslint-disable が <a> の上にあり <img> に効いていなかった → 位置修正
+- effect からの脱却（挙動は同じ）: Sidebar(useSyncExternalStore + 開いたパス方式)、
+  MobileNav(同方式)、ProductKindReorder / ProductSetReorder / DateSelect(props同期を
+  レンダー中の前回値比較へ)
+- 抑制（effect が正しい実装。理由をコメントに明記）: URLパラメータ読取(funeral-script / iei-photo)、
+  sessionStorage 消費(EstimateCreateWithIntake)、既定日設定、セット内訳の初回読込。
+  いずれもサーバー描画時に読めずハイドレーション不整合になるため。
+  react-hooks/purity 2件はサーバーコンポーネントでの Date.now（同ルールはクライアント向け）。
+- lib/admin/actions.ts の any は AdminDb 型に集約。未使用 import/変数/eslint-disable を削除。
+- 未コミットだった components/guest/parts.tsx・ShareRow.tsx・public/tmp は対象外（別作業のため温存）。
