@@ -2502,3 +2502,9 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
   `node scripts/manage-admin-user.mjs password <ID> <新パスワード>`）。
 - 検証: 旧パスワード(kenta/souta)では入れないこと、新パスワードでログインでき担当者2欄に
   本人名が入ることを、本番ビルドをローカル起動しPlaywrightで確認（6項目 ✓）。
+
+## 2026-08-02 本番反映（実ログイン）
+- push 済み(30514f7)。Vercelのビルド完了後、本番 kawaguchi-fuhou.vercel.app で確認（10項目 ✓）:
+  未ログインで /kanri /fuhou /iei-photo /funeral-script → ログイン画面へ／保護API → 401／
+  公開トップ → 200／ishikawa・matsuura の両方でログインでき、ヘッダーに本人名、
+  見積もり登録の計上担当者・担当者にも本人名が入る。Basic認証のダイアログは出なくなった。
