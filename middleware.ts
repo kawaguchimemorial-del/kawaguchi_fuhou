@@ -1,12 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 /**
- * 管理系ルートのBasic認証。
+ * 管理系ルートの認証（Supabase Auth）。
  *
- * 経緯: /account/sign-in が認証していないデモ実装で、middleware も無かったため、
- * URLを知っていれば誰でも管理画面（顧客・請求・本番決済の返金）に入れる状態だった。
- * 恒久対応（Supabase Auth による実ログイン）までの応急処置として、
- * ブラウザ標準のBasic認証で1枚壁を置く。
+ * 経緯: もともと /account/sign-in が認証していないデモ実装だったため、
+ * 2026-07-30 に応急処置として全社員共通のBasic認証を置いた。
+ * 共通パスワードでは「誰が操作したか」が残らず、退職者の締め出しもできないため、
+ * アカウント別の実ログインへ移行した（Basic認証は廃止）。
+ *
+ * ここでの判定は2つだけ。重い問い合わせはしない。
+ *   1. 有効なセッションがあるか（supabase.auth.getUser で認証サーバーに確認）
+ *   2. そのユーザーが管理画面の許可を持つか（app_metadata.admin）
+ * 許可の正本は admin_users テーブルで、画面側は requireAdmin() が改めて参照する。
+ * app_metadata はJWTに載る検証済みの値なので、ここでは追加のDB問い合わせ無しで門前払いできる。
  *
  * 保護しない（＝一般の方・外部サービスが使う）:
  *   /m/*            訃報案内・オンライン式場・供花注文（参列者）
@@ -19,65 +26,74 @@ import { NextResponse, type NextRequest } from "next/server";
 const PROTECTED = [
   "/kanri",
   "/fuhou",
-  "/account",
   "/iei-photo", // AI遺影スタジオ（OpenAI課金が発生するため公開しない）
   "/funeral-script", // 司会台本・会葬礼状（同上）
   "/api/iei-photo",
   "/api/funeral-script",
 ];
 
-function unauthorized(): NextResponse {
-  return new NextResponse("認証が必要です", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="Kawaguchi Tenrei", charset="UTF-8"',
-      "Cache-Control": "no-store",
+// /account 配下はログイン画面自体を含むため、保護対象から外す。
+// （ログインしていない人が入れないと、そもそもログインできない）
+const SIGN_IN_PATH = "/account/sign-in";
+
+function isProtected(pathname: string): boolean {
+  return PROTECTED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+export async function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+
+  // レスポンスは常にこれを返す。Supabaseがトークンを更新した場合、
+  // 更新後のCookieをここに載せてブラウザへ返す必要がある（載せ忘れるとログインが切れる）。
+  let res = NextResponse.next({ request: req });
+
+  // 公開ページ（訃報案内など）で毎回 Supabase に問い合わせると表示が遅くなるため、
+  // 保護対象でなければ何もしない。トークンの更新は管理画面側の遷移で行われる。
+  if (!isProtected(pathname)) return res;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // 設定が無い環境で素通しすると無防備になるため、保護対象は明示的に拒否する。
+  if (!url || !key) {
+    return new NextResponse("認証を設定できていません", { status: 503 });
+  }
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+        res = NextResponse.next({ request: req });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          res.cookies.set(name, value, options),
+        );
+      },
     },
   });
-}
 
-/** 長さの差で早期に判定しないよう全文字を走査する */
-function safeEqual(a: string, b: string): boolean {
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  // getUser() は認証サーバーに問い合わせて検証する。ここを getSession() にすると
+  // Cookieの中身を信じるだけになり、権限の判定には使えない。
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+
+  const allowed = Boolean(user) && user?.app_metadata?.admin === true;
+  if (allowed) return res;
+
+  // APIはリダイレクトしても意味がないので401。画面はログインへ送り、元のURLへ戻す。
+  if (pathname.startsWith("/api/")) {
+    return new NextResponse(JSON.stringify({ error: "認証が必要です" }), {
+      status: 401,
+      headers: { "content-type": "application/json", "Cache-Control": "no-store" },
+    });
   }
-  return diff === 0;
-}
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const needsAuth = PROTECTED.some(
-    (p) => pathname === p || pathname.startsWith(p + "/"),
-  );
-  if (!needsAuth) return NextResponse.next();
-
-  // ローカル開発は素通し（毎回の入力を避ける）。本番は必ず認証する。
-  if (process.env.NODE_ENV === "development") return NextResponse.next();
-
-  const expectUser = process.env.ADMIN_BASIC_USER || "kawaguchi";
-  const expectPass = process.env.ADMIN_BASIC_PASSWORD;
-  // パスワード未設定のまま通してしまうと無防備になるため、その場合も拒否する。
-  if (!expectPass) return unauthorized();
-
-  const header = req.headers.get("authorization") || "";
-  if (!header.toLowerCase().startsWith("basic ")) return unauthorized();
-
-  let decoded = "";
-  try {
-    decoded = atob(header.slice(6).trim());
-  } catch {
-    return unauthorized();
-  }
-  const i = decoded.indexOf(":");
-  if (i < 0) return unauthorized();
-  const user = decoded.slice(0, i);
-  const pass = decoded.slice(i + 1);
-
-  if (!safeEqual(user, expectUser) || !safeEqual(pass, expectPass)) {
-    return unauthorized();
-  }
-  return NextResponse.next();
+  const to = req.nextUrl.clone();
+  to.pathname = SIGN_IN_PATH;
+  to.search = "";
+  to.searchParams.set("next", pathname + search);
+  return NextResponse.redirect(to);
 }
 
 export const config = {

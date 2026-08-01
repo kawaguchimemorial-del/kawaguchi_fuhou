@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Search, UserPlus, Bell, HelpCircle, Megaphone } from "lucide-react";
 import { KanriSidebar } from "@/components/kanri/Sidebar";
 import { KanriMobileNav } from "@/components/kanri/MobileNav";
+import { requireAdmin } from "@/lib/admin/auth";
+import { AdminAccountMenu } from "@/components/kanri/AdminAccountMenu";
 import "./theme-v2.css";
 
 export const metadata = {
@@ -9,7 +11,9 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function KanriLayout({ children }: { children: React.ReactNode }) {
+export default async function KanriLayout({ children }: { children: React.ReactNode }) {
+  // middleware でも門前払いしているが、ここでも許可リスト(admin_users)を正本として確認する。
+  const admin = await requireAdmin("/kanri");
   // UIテーマv2。NEXT_PUBLIC_KANRI_V2=0 で旧デザインへ即時切替(キルスイッチ)。
   const v2 = process.env.NEXT_PUBLIC_KANRI_V2 !== "0";
   return (
@@ -40,7 +44,7 @@ export default function KanriLayout({ children }: { children: React.ReactNode })
           <Link href="/kanri/customers/new" className="flex items-center gap-1 rounded-[4px] px-3 py-1.5 text-sm text-white" style={{ background: "var(--k-action, #35597a)" }}><UserPlus size={15} />新規受付</Link>
           <Bell size={18} className="hidden sm:block" />
           <HelpCircle size={18} className="hidden sm:block" />
-          <span className="hidden text-sm text-white sm:inline">松澤 覚</span>
+          <AdminAccountMenu displayName={admin.displayName} />
         </div>
       </header>
 

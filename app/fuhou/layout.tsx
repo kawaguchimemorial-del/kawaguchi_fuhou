@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getFuneralHomeName } from "@/lib/admin/data";
 import { Home, List, Flower2, Settings } from "lucide-react";
+import { requireAdmin } from "@/lib/admin/auth";
+import { AdminAccountMenu } from "@/components/kanri/AdminAccountMenu";
 import "./theme-fuhou-v2.css";
 
 // 管理画面（葬儀社/operator）レイアウト。実物に倣い紫テーマ。
-// TODO(auth): middleware＋Supabase Authでセッション保護。未ログインは /account/sign-in へ。
 
 // 香典決済・贈答品・お悔やみ品（おくりもの）は今回実装しないため非表示。
 const NAV = [
@@ -17,6 +18,8 @@ const NAV = [
 const ADMIN = "#9b2fae";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // middleware でも門前払いしているが、ここでも許可リスト(admin_users)を正本として確認する。
+  const admin = await requireAdmin("/fuhou");
   const homeName = await getFuneralHomeName();
   // UIテーマv2。NEXT_PUBLIC_FUHOU_V2=0 で旧デザインへ即時切替(キルスイッチ)。
   const v2 = process.env.NEXT_PUBLIC_FUHOU_V2 !== "0";
@@ -32,9 +35,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/kanri" className="flex items-center gap-1.5 rounded bg-white/95 px-3 py-1.5 text-sm font-medium text-[#1aa39a] hover:bg-white">
             <List size={15} /> 葬儀管理へ
           </Link>
-          <span className="rounded bg-white/95 px-3 py-1.5 text-sm text-[#333]">
+          <span className="hidden rounded bg-white/95 px-3 py-1.5 text-sm text-[#333] sm:inline">
             👤 {homeName}
           </span>
+          <AdminAccountMenu displayName={admin.displayName} />
         </div>
       </header>
 

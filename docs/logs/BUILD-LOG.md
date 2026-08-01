@@ -2431,3 +2431,41 @@ intake→入力完了の流れで お供え=1,1,1,0(寝台車),1 を確認。顧
 - 画面側: 入力済みの欄は上書きしない。取り込んだ項目名をフォーム上部に表示し確認を促す。
 - 検証: 実データ3件(20231125-1 / E20260712-8314 / 20231030-1)で期待どおりの取り込みを確認。
   元号境界9パターンの変換も確認済み。lint 0件・型検査・本番ビルドすべて通過。
+
+## 2026-08-02 管理画面を Supabase Auth の実ログインへ（Basic認証を廃止）
+- 経緯: 7/30 の応急処置（全社員で共通のBasic認証）を、アカウント別の実ログインに置き換えた。
+  共通パスワードでは「誰が操作したか」が残らず、退職者だけを締め出すこともできなかった。
+- **0043_admin_users.sql**: `admin_users`(user_id→auth.users / email / display_name /
+  role(admin|staff|viewer) / is_active / last_login_at) を新設。認証情報そのものは auth.users 側で、
+  この表は「管理画面に入ってよい人」の許可リスト。auth.users に居るだけでは入れない
+  （遺族マイページ側の仕組みと混ざらないようにするため）。停止は行を消さず is_active=false。
+  RLSは本人の行の読み取りのみ。書き込みは service_role（スクリプト）に限定。
+- `middleware.ts`: Basic認証を撤去し、(1)有効なセッションがあるか(getUser) (2)app_metadata.admin が真か、
+  の2点だけを見る。許可の正本は admin_users だが、middleware からDBを引くと全リクエストが重くなるため、
+  JWTに載る検証済みの値で門前払いする。保護対象でないパスでは Supabase に問い合わせない
+  （公開の訃報ページが遅くなるため）。未ログインは画面→/account/sign-in?next=元URL、API→401。
+  環境変数が無い場合は素通しではなく503。
+- `lib/admin/auth.ts`: `getAdminUser()` / `requireAdmin()`。getSession ではなく getUser を使う
+  （getSession はCookieの中身を信じるだけで権限判定には使えない）。許可リストは service_role で参照し、
+  RLSの設定漏れでログイン不能にならないようにした。
+- `app/account/sign-in`: デモ実装（入力を検証せず router.push("/kanri")）を廃止し、Server Action で
+  signInWithPassword。認証は通っても admin_users に有効な行が無ければサインアウトして拒否。
+  失敗時の文言はメール・パスワードのどちらが違うか伝えない（存在するアドレスを探られないため）。
+  next= は自サイト内の絶対パスのみ許可（外部URLへ飛ばさない）。
+- 各画面: /kanri /fuhou と /iei-photo /funeral-script（レイアウトを新設）で requireAdmin。
+  /kanri ヘッダーに直書きだった「松澤 覚」をログイン中の氏名＋ログアウトボタンに置換（/fuhou にも設置）。
+- `scripts/manage-admin-user.mjs`: 発行/一覧/パスワード変更/停止/再開。自己登録は無い。
+  停止時は admin_users.is_active と app_metadata.admin を同時に落とし、発行済みセッションも失効させる。
+- 途中で見つけて直した不具合: ログイン失敗のたびにフォームが再描画されてメールアドレス欄まで空になり、
+  パスワードだけ打ち直した人が何度やっても入れなかった。失敗時は入力されたメールアドレスを state で戻し、
+  フォーカスをパスワードへ移すようにした（パスワードは返さない）。
+- 検証（本番ビルドをローカル起動し Playwright で実行、全項目 ✓）:
+  未ログインで /kanri /fuhou /iei-photo /funeral-script /kanri/customers → ログイン画面へ（next付き）／
+  保護API2本 → 401／公開ページ（トップ・特商法・喪主サインイン・ログイン画面）→ 200／
+  誤パスワード → エラー表示で留まる／正しいパスワード → 元のURL(/kanri/customers)へ戻り氏名が出る／
+  ログイン後は保護画面3本と保護APIが通る／ログイン済みでログイン画面 → /kanri へ／
+  ログアウト → 以後 /kanri に入れない／next=https://example.com/evil を渡しても /kanri へ／
+  停止したアカウントは既存セッションでも即締め出し・再ログインも拒否・再開すれば入れる。
+  `npm run lint` 0件・`tsc --noEmit` 0件・`next build` 成功。
+- 残: Vercel の `ADMIN_BASIC_USER` / `ADMIN_BASIC_PASSWORD` は未使用になったので削除してよい。
+  権限の出し分け（role の実利用）と操作ログは次段階。
