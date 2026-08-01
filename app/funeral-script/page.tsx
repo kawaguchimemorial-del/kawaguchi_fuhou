@@ -167,6 +167,8 @@ export default function FuneralScriptPage() {
     estimateId?: string;
     scriptId?: string;
   }>({});
+  // 施行から取り込んだ項目名（画面に「どこから何が入ったか」を出すため）
+  const [prefilledLabels, setPrefilledLabels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{
     ok: boolean;
@@ -478,8 +480,40 @@ export default function FuneralScriptPage() {
           /* 読み込み失敗時は空のフォームのまま */
         }
       })();
-    } else if (deceased) {
-      setForm((prev) => ({ ...prev, deceasedName: deceased }));
+    } else {
+      // 新規作成: 施行（見積）に登録済みの生年月日・没日・喪主などを取り込む。
+      // 手入力し直す手間と、打ち間違いがそのままナレーションの事実誤りになるのを防ぐ。
+      if (deceased) setForm((prev) => ({ ...prev, deceasedName: deceased }));
+      if (customerId || estimateId) {
+        (async () => {
+          try {
+            const qs = new URLSearchParams();
+            if (estimateId) qs.set("estimate_id", estimateId);
+            else if (customerId) qs.set("customer_id", customerId);
+            const res = await fetch(`/api/funeral-script/prefill?${qs.toString()}`);
+            const data: {
+              ok?: boolean;
+              prefill?: (Partial<FuneralScriptFormData> & { filledLabels?: string[] }) | null;
+            } = await res.json();
+            if (!res.ok || !data.prefill) return;
+            const { filledLabels, ...values } = data.prefill;
+            // 既に入力済みの欄は上書きしない（URLの deceased など、利用者の入力が優先）
+            setForm((prev) => {
+              const next = { ...prev };
+              for (const [k, v] of Object.entries(values)) {
+                const key = k as keyof FuneralScriptFormData;
+                if (v === undefined || v === "") continue;
+                if (typeof prev[key] === "string" && prev[key] !== "") continue;
+                (next as Record<string, unknown>)[key] = v;
+              }
+              return next;
+            });
+            if (filledLabels?.length) setPrefilledLabels(filledLabels);
+          } catch {
+            /* 取り込めなくても手入力で作成できる */
+          }
+        })();
+      }
     }
     // 初回マウント時のみ
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -956,6 +990,13 @@ export default function FuneralScriptPage() {
                 activeView === "form" ? "grid" : "hidden",
               )}
             >
+              {prefilledLabels.length > 0 && (
+                <div className="rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-900">
+                  登録済みの施行内容から
+                  <span className="font-bold">{prefilledLabels.join("・")}</span>
+                  を入力しました。内容をご確認のうえ、必要に応じて直してください。
+                </div>
+              )}
               <FuneralScriptForm
                 form={form}
                 onChange={handleChange}
