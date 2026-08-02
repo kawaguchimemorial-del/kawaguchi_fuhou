@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import IeiPhotoStatus from "@/components/iei-photo/IeiPhotoStatus";
+import { IeiPhotoClothingPicker } from "@/components/iei-photo/IeiPhotoClothingPicker";
 import IeiPhotoQualityCheck from "@/components/iei-photo/IeiPhotoQualityCheck";
 import IeiPhotoAiQualityCheck from "@/components/iei-photo/IeiPhotoAiQualityCheck";
 import StudioSidebar, {
@@ -51,11 +52,14 @@ import {
   supportsBackgroundGradient,
 } from "@/lib/iei-photo/backgrounds";
 import {
-  IEI_PHOTO_CLOTHING_LABELS,
-  IEI_PHOTO_CLOTHING_ORDER,
   IEI_PHOTO_POSE_LABELS,
   IEI_PHOTO_POSE_ORDER,
 } from "@/lib/iei-photo/ai-prompts";
+import {
+  clothingSampleUrl,
+  findClothingItem,
+  type IeiPhotoClothingGender,
+} from "@/lib/iei-photo/clothing";
 import {
   IEI_PHOTO_DEFAULT_ADJUSTMENTS,
   IEI_PHOTO_ADJUSTMENT_RANGES,
@@ -237,8 +241,15 @@ export default function IeiPhotoPage() {
   const [hasBase, setHasBase] = useState<boolean>(false);
   const [imgLoaded, setImgLoaded] = useState<boolean>(false);
   // AIモード（高度AI補正 / AI肖像生成 / AIに全てお任せ）の状態
-  const [clothingStyle, setClothingStyle] =
-    useState<IeiPhotoClothingStyle>("none");
+  // 服装は見本写真から選ぶ。gender は見本の一覧を切り替えるだけで、生成には渡さない。
+  const [clothingGender, setClothingGender] =
+    useState<IeiPhotoClothingGender>("male");
+  const [clothingItemId, setClothingItemId] = useState<string | null>(null);
+  const clothingItem = findClothingItem(clothingItemId);
+  // 見本が未選択なら「服装はそのまま」。文字指定だけだった頃の経路をそのまま使う。
+  const clothingStyle: IeiPhotoClothingStyle = clothingItem
+    ? clothingItem.category
+    : "none";
   const [pose, setPose] = useState<IeiPhotoPose>("none");
   const [handsDown, setHandsDown] = useState<boolean>(false);
   const [aiResultMode, setAiResultMode] = useState<IeiPhotoAiResultMode>(null);
@@ -567,8 +578,8 @@ export default function IeiPhotoPage() {
     }
   }, [isCompleted, hasBase]);
 
-  const handleChangeClothing = useCallback((style: IeiPhotoClothingStyle) => {
-    setClothingStyle(style);
+  const handleChangeClothing = useCallback((id: string | null) => {
+    setClothingItemId(id);
   }, []);
 
   const handleChangePose = useCallback((next: IeiPhotoPose) => {
@@ -618,6 +629,17 @@ export default function IeiPhotoPage() {
       let pendingUrl: string | null = null;
       let pendingWideUrl: string | null = null;
       try {
+        // 選ばれている服の見本写真を読み込み、2枚目の入力としてAIへ渡す。
+        // 取得に失敗しても生成自体は止めない（見本なしの文字指定にフォールバック）。
+        let clothingSample: Blob | null = null;
+        if (clothingItemId) {
+          try {
+            const sampleRes = await fetch(clothingSampleUrl(clothingItemId));
+            if (sampleRes.ok) clothingSample = await sampleRes.blob();
+          } catch {
+            clothingSample = null;
+          }
+        }
         const handsPrompt = handsDown ? HANDS_DOWN_PROMPT : HANDS_KEEP_PROMPT;
         const aiPrompt = [handsPrompt, options.extraPrompt?.trim()]
           .filter(Boolean)
@@ -637,6 +659,7 @@ export default function IeiPhotoPage() {
             teethVisibility,
           },
           aiPrompt,
+          clothingSample,
         );
         const url = URL.createObjectURL(blob);
         pendingUrl = url;
@@ -736,6 +759,7 @@ export default function IeiPhotoPage() {
       allowPortrait,
       allowAuto,
       clothingStyle,
+      clothingItemId,
       pose,
       handsDown,
       expressionEnabled,
@@ -1156,11 +1180,6 @@ export default function IeiPhotoPage() {
     label: IEI_PHOTO_MODE_RULES[m].label.replace("AI", ""),
   }));
 
-  const clothingOptions = IEI_PHOTO_CLOTHING_ORDER.map((style) => ({
-    value: style,
-    label: IEI_PHOTO_CLOTHING_LABELS[style],
-  }));
-
   const poseOptions = IEI_PHOTO_POSE_ORDER.map((p) => ({
     value: p,
     label: IEI_PHOTO_POSE_LABELS[p],
@@ -1489,6 +1508,25 @@ export default function IeiPhotoPage() {
               </button>
             </section>
 
+            {/* 服装（背景の下・独立） */}
+            <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+              <StudioSectionHeading
+                icon={<IconShirt className="h-4 w-4" />}
+                title="服装"
+              />
+              <IeiPhotoClothingPicker
+                gender={clothingGender}
+                onChangeGender={setClothingGender}
+                value={clothingItemId}
+                onChange={handleChangeClothing}
+                disabled={controlsDisabled || isProcessing || aiProcessing}
+              />
+              <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                選んだ服の見本を元に、お顔・髪・体格はそのままで服だけを着せ替えます。
+                反映されるのは「背景込みでAI生成」または下のAI生成を実行したときです。
+              </p>
+            </section>
+
             {/* AI仕上げ */}
             <section
               ref={finishSectionRef}
@@ -1530,17 +1568,6 @@ export default function IeiPhotoPage() {
 
               {showAiDetails && (
                 <div className="mt-3 space-y-3 border-t border-stone-100 pt-3">
-                  <div>
-                    <p className="mb-2 text-xs font-semibold text-slate-600">
-                      服装
-                    </p>
-                    <StudioPillGroup
-                      options={clothingOptions}
-                      value={clothingStyle}
-                      disabled={controlsDisabled || isProcessing || aiProcessing}
-                      onChange={handleChangeClothing}
-                    />
-                  </div>
                   <div>
                     <p className="mb-2 text-xs font-semibold text-slate-600">
                       体勢・向き

@@ -223,6 +223,8 @@ async function requestAiImageOnce(
   backgroundGradient: boolean,
   expression: IeiPhotoExpressionSettings,
   extraPrompt?: string,
+  /** 服の見本画像。選ばれている場合だけ渡す（無ければ従来どおり文字指定のみ）。 */
+  clothingSample?: Blob | null,
 ): Promise<Blob> {
   const imageBlob = await downscaleCanvasForAi(baseCanvas);
 
@@ -237,6 +239,9 @@ async function requestAiImageOnce(
   form.append("smileLevel", expression.smile);
   form.append("eyeBrightness", expression.eyeBrightness ? "true" : "false");
   form.append("teethVisibility", expression.teethVisibility);
+  if (clothingSample) {
+    form.append("clothingRef", clothingSample, "clothing.webp");
+  }
   if (extraPrompt && extraPrompt.trim()) {
     form.append("prompt", extraPrompt.trim());
   }
@@ -324,6 +329,7 @@ export async function requestAiImage(
   backgroundGradient: boolean,
   expression: IeiPhotoExpressionSettings,
   extraPrompt?: string,
+  clothingSample?: Blob | null,
 ): Promise<Blob> {
   try {
     return await requestAiImageOnce(
@@ -335,6 +341,7 @@ export async function requestAiImage(
       backgroundGradient,
       expression,
       extraPrompt,
+      clothingSample,
     );
   } catch (error) {
     if (
@@ -360,6 +367,7 @@ export async function requestAiImage(
       backgroundGradient,
       expression,
       safetyPrompt,
+      clothingSample,
     );
   } catch (retryError) {
     if (retryError instanceof IeiPhotoAiImageError) {

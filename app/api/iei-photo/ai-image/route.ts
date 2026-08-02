@@ -8,6 +8,8 @@
  *  - image:        加工対象画像（基準写真など。クライアント側で長辺1600pxに縮小済み想定）
  *  - mode:         advanced | portrait | auto
  *  - clothingStyle: none | mourning_japanese | mourning_western | suit | casual
+ *  - clothingRef:  任意。服の見本画像（public/iei-clothing/*.webp）。
+ *                  付いている場合は2枚目の入力画像として渡し、その服に着せ替える。
  *  - backgroundType: sky | light_gray | warm_beige | pale_blue | pale_pink | auto
  *  - backgroundGradient: true | false
  *  - expressionEnabled: true | false
@@ -228,6 +230,14 @@ export async function POST(request: Request): Promise<Response> {
       "closed",
     ),
   };
+  // 服の見本画像。付いていれば「文字で服装を指定」ではなく「見本の服に着せ替え」になる。
+  // 16:9(wide)はマスク付き編集で左右背景を伸ばす処理なので、見本は使わない。
+  const clothingRefRaw = form.get("clothingRef");
+  const clothingRef =
+    target === "portrait" && clothingRefRaw instanceof File && clothingRefRaw.size > 0
+      ? clothingRefRaw
+      : null;
+
   const extraPromptRaw = form.get("prompt");
   const extraPrompt =
     typeof extraPromptRaw === "string" ? extraPromptRaw : undefined;
@@ -243,12 +253,19 @@ export async function POST(request: Request): Promise<Response> {
           backgroundGradient,
           expression,
           extraPrompt,
+          Boolean(clothingRef),
         );
 
   // OpenAI Images edit へ転送する multipart を組み立てる。
   const upstreamForm = new FormData();
   upstreamForm.append("model", model);
-  upstreamForm.append("image", image, image.name || "input.jpg");
+  if (clothingRef) {
+    // 複数枚を渡すときは image[] を使う。1枚目が加工対象、2枚目が服の見本。
+    upstreamForm.append("image[]", image, image.name || "input.jpg");
+    upstreamForm.append("image[]", clothingRef, clothingRef.name || "clothing.webp");
+  } else {
+    upstreamForm.append("image", image, image.name || "input.jpg");
+  }
   if (target === "wide" && mask instanceof File) {
     upstreamForm.append("mask", mask, mask.name || "mask.png");
   }

@@ -121,6 +121,19 @@ export const IEI_PHOTO_CLOTHING_PROMPTS: Record<IeiPhotoClothingStyle, string> =
       "服装は落ち着いた清潔感のあるカジュアル服にしてください。派手すぎず、自然で品のある印象にしてください。",
   };
 
+/**
+ * 服の見本画像を一緒に送るときの指示。
+ * 見本は「頭部の無いトルソーに着せた服」なので、体型・姿勢・背景まで真似されると別人になる。
+ * 使ってよいのは服だけであることを、繰り返し言い切る。
+ */
+export const IEI_PHOTO_CLOTHING_REFERENCE_PROMPT =
+  "2枚目の画像は服装の見本です。1枚目の人物に、この見本と同じ服を着せてください。" +
+  "見本から取り入れてよいのは、服の種類・色・柄・襟元の形・素材感だけです。" +
+  "見本のトルソー（人台）、体型、肩幅、姿勢、向き、背景、明るさは一切使わないでください。" +
+  "1枚目の人物の顔、髪、肌、体格、肩の位置と幅、顔の向き、構図は元のまま変えないでください。" +
+  "服は、その方の体に合わせて自然に着ている状態にし、切り貼りしたような境目、浮き、ずれを作らないでください。" +
+  "首元と肩のつながりが自然になるようにしてください。";
+
 /** UI 表示用の服装ラベル。 */
 export const IEI_PHOTO_CLOTHING_LABELS: Record<IeiPhotoClothingStyle, string> = {
   none: "服装はそのまま",
@@ -240,6 +253,8 @@ export function buildAiPrompt(
   backgroundGradient = false,
   expression?: IeiPhotoExpressionSettings,
   extraPrompt?: string,
+  /** 服の見本画像を同時に送るか。送る場合は文字の説明より見本を優先させる。 */
+  hasClothingReference = false,
 ): string {
   const parts: string[] = [IEI_PHOTO_AI_BASE_PROMPTS[mode]];
   parts.push(IEI_PHOTO_BACKGROUND_PROMPTS[backgroundType]);
@@ -248,9 +263,14 @@ export function buildAiPrompt(
       "背景は選択した色を基調に、淡く自然な縦方向のグラデーションにしてください。急な色変化や派手な模様は避け、人物の輪郭になじませてください。",
     );
   }
-  const clothing = IEI_PHOTO_CLOTHING_PROMPTS[clothingStyle];
-  if (clothing) {
-    parts.push(clothing);
+  if (hasClothingReference) {
+    // 見本画像がある場合は、文字の説明（「喪服の和装にして」等）より見本を正とする。
+    parts.push(IEI_PHOTO_CLOTHING_REFERENCE_PROMPT);
+  } else {
+    const clothing = IEI_PHOTO_CLOTHING_PROMPTS[clothingStyle];
+    if (clothing) {
+      parts.push(clothing);
+    }
   }
   parts.push(buildCompositionPrompt(clothingStyle));
   // 髪は背景生成で最も壊れやすいので、服装・体勢より前に置いて優先度を上げる
