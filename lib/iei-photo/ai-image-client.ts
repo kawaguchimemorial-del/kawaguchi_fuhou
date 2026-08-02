@@ -225,6 +225,8 @@ async function requestAiImageOnce(
   extraPrompt?: string,
   /** 服の見本画像。選ばれている場合だけ渡す（無ければ従来どおり文字指定のみ）。 */
   clothingSample?: Blob | null,
+  /** 入力写真の細部（髪の毛流れ等）を保つか。費用が上がるため画面で切り替えられる。 */
+  preserveDetail = true,
 ): Promise<Blob> {
   const imageBlob = await downscaleCanvasForAi(baseCanvas);
 
@@ -239,6 +241,7 @@ async function requestAiImageOnce(
   form.append("smileLevel", expression.smile);
   form.append("eyeBrightness", expression.eyeBrightness ? "true" : "false");
   form.append("teethVisibility", expression.teethVisibility);
+  form.append("preserveDetail", preserveDetail ? "true" : "false");
   if (clothingSample) {
     form.append("clothingRef", clothingSample, "clothing.webp");
   }
@@ -271,6 +274,7 @@ async function requestAiWideImageOnce(
   backgroundGradient: boolean,
   expression: IeiPhotoExpressionSettings,
   extraPrompt?: string,
+  preserveDetail = true,
 ): Promise<Blob> {
   const imageBlob = await canvasToPngBlob(
     createWideMonitorInputCanvas(verticalCanvas),
@@ -290,6 +294,7 @@ async function requestAiWideImageOnce(
   form.append("smileLevel", expression.smile);
   form.append("eyeBrightness", expression.eyeBrightness ? "true" : "false");
   form.append("teethVisibility", expression.teethVisibility);
+  form.append("preserveDetail", preserveDetail ? "true" : "false");
   const prompt = [extraPrompt?.trim(), WIDE_MONITOR_RETRY_PROMPT]
     .filter(Boolean)
     .join("\n");
@@ -330,6 +335,7 @@ export async function requestAiImage(
   expression: IeiPhotoExpressionSettings,
   extraPrompt?: string,
   clothingSample?: Blob | null,
+  preserveDetail = true,
 ): Promise<Blob> {
   try {
     return await requestAiImageOnce(
@@ -342,6 +348,7 @@ export async function requestAiImage(
       expression,
       extraPrompt,
       clothingSample,
+      preserveDetail,
     );
   } catch (error) {
     if (
@@ -368,6 +375,7 @@ export async function requestAiImage(
       expression,
       safetyPrompt,
       clothingSample,
+      preserveDetail,
     );
   } catch (retryError) {
     if (retryError instanceof IeiPhotoAiImageError) {
@@ -388,6 +396,7 @@ export async function requestAiWideImage(
   backgroundGradient: boolean,
   expression: IeiPhotoExpressionSettings,
   extraPrompt?: string,
+  preserveDetail = true,
 ): Promise<Blob> {
   try {
     return await requestAiWideImageOnce(
@@ -399,6 +408,7 @@ export async function requestAiWideImage(
       backgroundGradient,
       expression,
       extraPrompt,
+      preserveDetail,
     );
   } catch (error) {
     if (error instanceof IeiPhotoAiImageError) {
