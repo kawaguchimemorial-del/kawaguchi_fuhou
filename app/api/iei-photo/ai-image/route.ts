@@ -270,6 +270,10 @@ export async function POST(request: Request): Promise<Response> {
     upstreamForm.append("mask", mask, mask.name || "mask.png");
   }
   upstreamForm.append("prompt", prompt);
+  // 入力画像の細部をそのまま残す設定。既定(low)だと、AIが顔や髪を「描き直す」ため、
+  // 髪型の分け目・跳ねた毛・頭頂部の立ち上がりといった、その方の個性が
+  // きれいに整えられて失われる（実データで確認）。文章での指示では止めきれない。
+  upstreamForm.append("input_fidelity", "high");
   upstreamForm.append("n", "1");
   upstreamForm.append("output_format", "png");
   upstreamForm.append("quality", "high");
