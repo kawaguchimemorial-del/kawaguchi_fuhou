@@ -256,6 +256,12 @@ export default function IeiPhotoPage() {
   const [allowPortrait, setAllowPortrait] = useState<boolean>(false);
   const [allowAuto, setAllowAuto] = useState<boolean>(false);
   const [aiProcessing, setAiProcessing] = useState<boolean>(false);
+  // 16:9は縦のあとに続けて作る。ここが true の間も、縦の写真は見て・保存できる。
+  const [wideProcessing, setWideProcessing] = useState<boolean>(false);
+  // 生成は本番で1回あたり1〜2分かかる。止まったように見えないよう経過秒を出す。
+  const [aiElapsed, setAiElapsed] = useState<number>(0);
+  // 途中でやり直された古い生成結果を反映しないための通し番号。
+  const aiRunIdRef = useRef<number>(0);
   const [aiEnhancedUrl, setAiEnhancedUrl] = useState<string | null>(null);
   const [wideMasterUrl, setWideMasterUrl] = useState<string | null>(null);
   // 脱AI処理（肌なじませ。AI生成後画像にのみ適用）
@@ -518,6 +524,19 @@ export default function IeiPhotoPage() {
     });
   }, [clearTimers, resetResults]);
 
+  // 生成中だけ1秒ごとに経過を数える。
+  useEffect(() => {
+    if (!aiProcessing && !wideProcessing) return;
+    const id = window.setInterval(() => setAiElapsed((v) => v + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [aiProcessing, wideProcessing]);
+
+  /** 経過時間の表示（1分12秒 の形）。 */
+  const elapsedText =
+    aiElapsed >= 60
+      ? `${Math.floor(aiElapsed / 60)}分${String(aiElapsed % 60).padStart(2, "0")}秒`
+      : `${aiElapsed}秒`;
+
   const isProcessing =
     statusState.status !== "idle" &&
     statusState.status !== "completed" &&
@@ -617,7 +636,10 @@ export default function IeiPhotoPage() {
             ? "AI肖像生成中…"
             : "AIにお任せ生成中…";
       const processingLabel = options.processingLabel ?? defaultProcessingLabel;
+      const runId = ++aiRunIdRef.current;
+      setAiElapsed(0);
       setAiProcessing(true);
+      setWideProcessing(false);
       setError(null);
       setInfo(processingLabel);
       setStatusState({
@@ -668,11 +690,25 @@ export default function IeiPhotoPage() {
         replaceAiEnhancedUrl(url);
         pendingUrl = null;
 
-        setInfo("16:9モニター用の背景をAI生成中…");
+        // ここで縦は完成。16:9を待たずに見て・保存できるよう、先に画面へ反映して操作を解放する。
+        setAiResultMode(aiMode);
+        await generatePreview(
+          computeEffective(adjustments),
+          previewKind,
+          background,
+        );
+        setAiProcessing(false);
+        setWideProcessing(true);
+        setInfo(
+          "写真ができました。ご確認・ダウンロードいただけます。16:9モニター用は引き続き作成中です（あと1〜2分）。",
+        );
+        // 写真そのものは完成しているので「完了」にして操作を解放する。
+        // 16:9だけがまだであることは、上のメッセージと4サイズDLのボタンで示す。
+        // この間に作り直された場合は、古い16:9は通し番号で弾く。
         setStatusState({
-          status: "creating_base",
-          progress: 82,
-          label: "16:9背景生成中…",
+          status: "completed",
+          progress: 100,
+          label: "完了（16:9モニター用を作成中）",
         });
         const bgImage = await resolveBackgroundImage(background, "vertical");
         const effectiveAdjustments = computeEffective(adjustments);
@@ -708,6 +744,11 @@ export default function IeiPhotoPage() {
         const wideUrl = URL.createObjectURL(wideBlob);
         pendingWideUrl = wideUrl;
         const wideImg = await loadImageElement(wideUrl);
+        if (aiRunIdRef.current !== runId) {
+          // 待っている間に作り直された。古い結果は捨てる。
+          URL.revokeObjectURL(wideUrl);
+          return;
+        }
         wideMasterImgRef.current = wideImg;
         replaceWideMasterUrl(wideUrl);
         pendingWideUrl = null;
@@ -726,6 +767,7 @@ export default function IeiPhotoPage() {
         const doneLabel = options.doneLabel ?? defaultDoneLabel;
         setInfo(doneLabel);
         setStatusState({ status: "completed", progress: 100, label: "完了" });
+        setWideProcessing(false);
         await generatePreview(
           computeEffective(adjustments),
           previewKind,
@@ -744,15 +786,27 @@ export default function IeiPhotoPage() {
         if (pendingWideUrl) {
           URL.revokeObjectURL(pendingWideUrl);
         }
-        setInfo(null);
+        if (aiRunIdRef.current !== runId) return;
+        // 縦が出来たあとで16:9だけ失敗した場合は、出来た写真を残したまま知らせる。
+        const verticalDone = aiEnhancedImgRef.current !== null;
+        setInfo(
+          verticalDone
+            ? "写真はできています。16:9モニター用だけ作成できませんでした。"
+            : null,
+        );
         setStatusState({
-          status: "failed",
-          progress: 0,
-          label: "AI生成に失敗しました",
+          status: verticalDone ? "completed" : "failed",
+          progress: verticalDone ? 100 : 0,
+          label: verticalDone
+            ? "完了（16:9のみ失敗）"
+            : "AI生成に失敗しました",
         });
         setError(e instanceof Error ? e.message : "AI生成に失敗しました。");
       } finally {
-        setAiProcessing(false);
+        if (aiRunIdRef.current === runId) {
+          setAiProcessing(false);
+          setWideProcessing(false);
+        }
       }
     },
     [
@@ -1115,6 +1169,8 @@ export default function IeiPhotoPage() {
   }, []);
 
   const canExport = hasBase && !exporting;
+  // 4サイズには16:9が含まれる。作成中に保存すると未完成の16:9が混ざるため、そこだけ待つ。
+  const canExportAll = canExport && !wideProcessing;
   const controlsDisabled = !imgLoaded;
 
   // --- スタジオUI: ナビゲーション・スクロール ---
@@ -1260,11 +1316,14 @@ export default function IeiPhotoPage() {
             <button
               type="button"
               onClick={handleExportAll}
-              disabled={!canExport}
+              disabled={!canExportAll}
+              title={wideProcessing ? "16:9モニター用を作成中です" : undefined}
               className="hidden items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-100 disabled:opacity-40 sm:flex"
             >
               <IconSave />
-              <span className="hidden sm:inline">4サイズDL</span>
+              <span className="hidden sm:inline">
+                {wideProcessing ? "16:9作成中…" : "4サイズDL"}
+              </span>
             </button>
             <button
               type="button"
@@ -1293,6 +1352,15 @@ export default function IeiPhotoPage() {
             {info && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
                 {info}
+                {(aiProcessing || wideProcessing) && (
+                  // 1〜2分かかるため、止まっていないことが分かるように経過を出す。
+                  <span className="mt-1 block font-normal text-amber-700">
+                    経過 {elapsedText} ／ 目安 1〜2分。
+                    {aiProcessing
+                      ? "そのままお待ちください（画面を離れると最初からになります）。"
+                      : "この間も、できあがった写真はご確認・ダウンロードいただけます。"}
+                  </span>
+                )}
               </div>
             )}
             {error && (
@@ -1804,11 +1872,12 @@ export default function IeiPhotoPage() {
           <button
             type="button"
             onClick={handleExportAll}
-            disabled={!canExport}
+            disabled={!canExportAll}
+            title={wideProcessing ? "16:9モニター用を作成中です" : undefined}
             className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-stone-100 disabled:opacity-40"
           >
             <IconSave />
-            4サイズ
+            {wideProcessing ? "16:9作成中…" : "4サイズ"}
           </button>
         </div>
       </div>
