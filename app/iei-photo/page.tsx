@@ -245,9 +245,6 @@ export default function IeiPhotoPage() {
   const [clothingGender, setClothingGender] =
     useState<IeiPhotoClothingGender>("male");
   const [clothingItemId, setClothingItemId] = useState<string | null>(null);
-  // 入力写真の細部（髪の毛流れ・分け目・跳ねた毛）を保つか。
-  // これを切ると、AIが顔や髪を描き直して個性が均されるが、1回あたりの生成費用は下がる。
-  const [preserveDetail, setPreserveDetail] = useState<boolean>(true);
   const clothingItem = findClothingItem(clothingItemId);
   // 見本が未選択なら「服装はそのまま」。文字指定だけだった頃の経路をそのまま使う。
   const clothingStyle: IeiPhotoClothingStyle = clothingItem
@@ -663,7 +660,6 @@ export default function IeiPhotoPage() {
           },
           aiPrompt,
           clothingSample,
-          preserveDetail,
         );
         const url = URL.createObjectURL(blob);
         pendingUrl = url;
@@ -708,7 +704,6 @@ export default function IeiPhotoPage() {
             teethVisibility,
           },
           aiPrompt,
-          preserveDetail,
         );
         const wideUrl = URL.createObjectURL(wideBlob);
         pendingWideUrl = wideUrl;
@@ -765,7 +760,6 @@ export default function IeiPhotoPage() {
       allowAuto,
       clothingStyle,
       clothingItemId,
-      preserveDetail,
       pose,
       handsDown,
       expressionEnabled,
@@ -1548,25 +1542,7 @@ export default function IeiPhotoPage() {
                 disabled={controlsDisabled || isProcessing || aiProcessing}
                 onChange={setMode}
               />
-              {/* 髪の毛流れ・分け目・跳ねた毛といった、その方の個性を残すための設定。
-                  切ると生成費用は下がるが、AIが顔や髪を描き直して整った別人の印象になりやすい。 */}
-              <label className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                <input
-                  type="checkbox"
-                  checked={preserveDetail}
-                  onChange={(e) => setPreserveDetail(e.target.checked)}
-                  disabled={controlsDisabled || isProcessing || aiProcessing}
-                  className="mt-0.5 h-4 w-4 accent-amber-600"
-                />
-                <span>
-                  <span className="font-semibold">元写真の細部を残す（推奨）</span>
-                  <span className="mt-0.5 block font-normal leading-relaxed text-amber-800">
-                    髪の毛流れ・分け目・跳ねた毛など、その方の個性を残します。
-                    外すと生成費用は下がりますが、髪や顔が描き直されて整った印象になります。
-                  </span>
-                </span>
-              </label>
-              <button
+                            <button
                 type="button"
                 onClick={handleStart}
                 disabled={!previewUrl || isProcessing || aiProcessing}

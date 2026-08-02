@@ -8,8 +8,6 @@
  *  - image:        加工対象画像（基準写真など。クライアント側で長辺1600pxに縮小済み想定）
  *  - mode:         advanced | portrait | auto
  *  - clothingStyle: none | mourning_japanese | mourning_western | suit | casual
- *  - preserveDetail: true | false（省略時 true）。入力写真の細部（髪の毛流れ等）を保つか。
- *                  true で費用が上がるため、画面から切り替えられるようにしている。
  *  - clothingRef:  任意。服の見本画像（public/iei-clothing/*.webp）。
  *                  付いている場合は2枚目の入力画像として渡し、その服に着せ替える。
  *  - backgroundType: sky | light_gray | warm_beige | pale_blue | pale_pink | auto
@@ -240,9 +238,6 @@ export async function POST(request: Request): Promise<Response> {
       ? clothingRefRaw
       : null;
 
-  // 省略時は「残す」。古い呼び出しや取りこぼしで、黙って仕上がりが落ちないようにする。
-  const preserveDetail = String(form.get("preserveDetail") ?? "true") !== "false";
-
   const extraPromptRaw = form.get("prompt");
   const extraPrompt =
     typeof extraPromptRaw === "string" ? extraPromptRaw : undefined;
@@ -275,13 +270,10 @@ export async function POST(request: Request): Promise<Response> {
     upstreamForm.append("mask", mask, mask.name || "mask.png");
   }
   upstreamForm.append("prompt", prompt);
-  // 入力画像の細部をそのまま残す設定。既定(low)だと、AIが顔や髪を「描き直す」ため、
-  // 髪型の分け目・跳ねた毛・頭頂部の立ち上がりといった、その方の個性が
-  // きれいに整えられて失われる（実データで確認）。文章での指示では止めきれない。
-  // 入力画像分のトークンが増えて費用が上がるため、画面から切り替えられるようにしている。
-  if (preserveDetail) {
-    upstreamForm.append("input_fidelity", "high");
-  }
+  // ※ input_fidelity は付けないこと。gpt-image-2 は非対応で、送ると 400
+  //   "The model 'gpt-image-2' does not support the 'input_fidelity' parameter." になる
+  //   （gpt-image-1 のみ対応。gpt-image-2 は常に入力画像の細部を保って処理する）。
+  //   細部の保持は IEI_PHOTO_HAIR_PROMPT 側の指示で行っている。
   upstreamForm.append("n", "1");
   upstreamForm.append("output_format", "png");
   upstreamForm.append("quality", "high");
