@@ -279,6 +279,24 @@ export async function POST(request: Request): Promise<Response> {
   upstreamForm.append("quality", "high");
   upstreamForm.append("size", target === "wide" ? "1536x864" : "1024x1536");
 
+  // 生成条件を記録する。お客様の写真そのものは残さず、選ばれた設定だけを残す。
+  // 「別人が出た」といった報告を受けたとき、どの条件で起きたのかを後から追えるようにするため
+  // （実際に、条件が分からず再現に時間を要した）。
+  console.log(
+    "[iei-photo]",
+    JSON.stringify({
+      target,
+      mode,
+      background: backgroundType,
+      gradient: backgroundGradient,
+      clothing: clothingStyle,
+      clothingRef: Boolean(clothingRef),
+      pose,
+      expression: expression.enabled,
+      bytes: image.size,
+    }),
+  );
+
   let upstream: Response;
   try {
     upstream = await fetch(OPENAI_EDITS_URL, {

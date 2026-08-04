@@ -59,6 +59,8 @@ export const IEI_PHOTO_BACKGROUND_OPTIONS: {
   { type: "awafuji_kasumi", label: "淡藤霞", swatchCss: "linear-gradient(180deg, #efe9f7 0%, #d3c7e7 100%)" },
   { type: "sakura_gumo", label: "桜雲", swatchCss: "linear-gradient(180deg, #fdeff4 0%, #f4cdda 100%)" },
   { type: "sakura", label: "桜", swatchCss: "linear-gradient(180deg, #fbe2ea 0%, #f0bacd 100%)" },
+  // 迷ったとき用。元写真の人物・服装・明るさに合う背景をAIが選んで描く。
+  { type: "auto", label: "お任せ", swatchCss: "linear-gradient(135deg, #f3f4f6 0%, #e6ecf2 45%, #f5efe6 100%)" },
 ];
 
 /** 単色タイプの塗り色（Canvas fallback 用）。photo と gradient は旧UI互換値。 */
