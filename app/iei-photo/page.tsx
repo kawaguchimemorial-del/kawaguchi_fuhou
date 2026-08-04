@@ -199,6 +199,18 @@ type AiImageRunOptions = {
 const HANDS_DOWN_PROMPT =
   "顔や胸元の近くに上がっている手や腕がある場合は、顔の向き、体の向き、表情、髪型、本人らしさ、背景は保ったまま、手と腕だけを自然に下ろしてください。人物全体を小さくしたり、腕まで入れるために引きの構図にしたりしないでください。遺影写真として顔と上半身を大きめに保ち、頭から胸元までが画面の中心にしっかり入る構図にしてください。手や腕は体の横または画面下の目立たない低い位置にし、必要なら画面下で自然に切れてもかまいません。顔のサイズ、位置、視線は小さくしないでください。";
 
+// 花束・賞状・杯・マイク・お孫さんの手など、手に持っているものごと外して腕を下ろす。
+// 遺影では「持ち物が写っていると使えない」ことが多く、手作業で消すのは手間がかかるため。
+const HANDS_DOWN_REMOVE_PROMPT =
+  "人物が手に持っているもの（花束、賞状、杯、グラス、マイク、書類、荷物、たばこ、" +
+  "他の人の手や腕など）は、遺影写真として不要なため、すべて取り除いてください。" +
+  "持ち物を消したあとは、その裏にある服、体、背景が自然に続いているように補ってください。" +
+  "持ち物の影、透けた輪郭、握っていた形の跡、リボンや包み紙のかけらを残さないでください。" +
+  "そのうえで、顔や胸元の近くに上がっている手や腕は自然に下ろしてください。" +
+  "手や腕は体の横または画面下の目立たない低い位置にし、必要なら画面下で自然に切れてもかまいません。" +
+  "顔の向き、体の向き、表情、髪型、髪の量、服装、本人らしさ、顔のサイズと位置は変えないでください。" +
+  "人物全体を小さくしたり、引きの構図にしたりせず、頭から胸元が画面の中心に大きく入る構図を保ってください。";
+
 const HANDS_KEEP_PROMPT =
   "手や腕は元画像の位置、角度、見え方を維持してください。AI補正中に手や腕を下ろしたり、消したり、別の位置へ移動したりしないでください。";
 
@@ -254,6 +266,8 @@ export default function IeiPhotoPage() {
     : "none";
   const [pose, setPose] = useState<IeiPhotoPose>("none");
   const [handsDown, setHandsDown] = useState<boolean>(false);
+  // 手に持っているものごと外して腕を下ろす（花束・賞状など）。手を下ろすより一段強い指示。
+  const [removeHeldItems, setRemoveHeldItems] = useState<boolean>(false);
   const [aiResultMode, setAiResultMode] = useState<IeiPhotoAiResultMode>(null);
   const [allowPortrait, setAllowPortrait] = useState<boolean>(false);
   const [allowAuto, setAllowAuto] = useState<boolean>(false);
@@ -406,7 +420,7 @@ export default function IeiPhotoPage() {
         baseCanvasRef.current = canvas;
         setHasBase(true);
         setError(null);
-        const blob = await exportFromBaseByKind(canvas, kind);
+        const blob = await exportFromBaseByKind(canvas, kind, background);
         replaceOutputUrl(URL.createObjectURL(blob));
       } catch (e) {
         baseCanvasRef.current = null;
@@ -416,7 +430,7 @@ export default function IeiPhotoPage() {
         );
       }
     },
-    [getWideMasterSource, replaceOutputUrl],
+    [background, getWideMasterSource, replaceOutputUrl],
   );
 
   const replaceAiEnhancedUrl = useCallback((next: string | null) => {
@@ -660,7 +674,11 @@ export default function IeiPhotoPage() {
             clothingSample = null;
           }
         }
-        const handsPrompt = handsDown ? HANDS_DOWN_PROMPT : HANDS_KEEP_PROMPT;
+        const handsPrompt = removeHeldItems
+          ? HANDS_DOWN_REMOVE_PROMPT
+          : handsDown
+            ? HANDS_DOWN_PROMPT
+            : HANDS_KEEP_PROMPT;
         const aiPrompt = [handsPrompt, options.extraPrompt?.trim()]
           .filter(Boolean)
           .join("\n");
@@ -754,6 +772,7 @@ export default function IeiPhotoPage() {
       clothingItemId,
       pose,
       handsDown,
+      removeHeldItems,
       expressionEnabled,
       smileLevel,
       eyeBrightness,
@@ -949,9 +968,9 @@ export default function IeiPhotoPage() {
       r.onerror = () => reject(new Error("画像の変換に失敗しました。"));
       r.readAsDataURL(blob);
     });
-    const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
-    const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu");
-    const monitorBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "monitor169") : await exportFromBaseByKind(base as HTMLCanvasElement, "monitor169");
+    const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background);
+    const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu", background);
+    const monitorBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "monitor169") : await exportFromBaseByKind(base as HTMLCanvasElement, "monitor169", background);
     const [baseDataUrl, tefudaDataUrl, monitorDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob), toDataUrl(monitorBlob)]);
     const res = await fetch("/api/iei-photo/save", {
       method: "POST",
@@ -963,7 +982,7 @@ export default function IeiPhotoPage() {
     savedToListRef.current = true;
     if (!opts?.silent) setInfo(`${name} 様の遺影を一覧に保存しました。管理画面の「AI遺影写真」で確認できます。`);
     return true;
-  }, [adjustments, computeEffective, getWideMasterSource, portraitCtx]);
+  }, [adjustments, background, computeEffective, getWideMasterSource, portraitCtx]);
 
   const handleExport = useCallback(async (kind: keyof IeiPhotoExports) => {
     const wideSource = getWideMasterSource();
@@ -981,7 +1000,7 @@ export default function IeiPhotoPage() {
             computeEffective(adjustments),
             kind,
           )
-        : await exportFromBaseByKind(base as HTMLCanvasElement, kind);
+        : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background);
       // モバイルは共有シート（写真アプリへ保存）、PCはダウンロード。
       const result = await saveImageToDevice(blob, filenameForKind(kind));
       // 端末書き出しと同時に、まだ一覧未保存なら一覧へも保存する（誰の遺影か必ず残す）。
@@ -998,7 +1017,7 @@ export default function IeiPhotoPage() {
     } finally {
       setExporting(false);
     }
-  }, [adjustments, computeEffective, getWideMasterSource, saveToServer]);
+  }, [adjustments, background, computeEffective, getWideMasterSource, saveToServer]);
 
   /**
    * すべての出力サイズを1つの ZIP にまとめてダウンロードする。
@@ -1020,13 +1039,13 @@ export default function IeiPhotoPage() {
       for (const kind of IEI_PHOTO_EXPORT_ORDER) {
         const blob = wideSource
           ? await exportFromWideMasterByKind(wideSource, adj, kind)
-          : await exportFromBaseByKind(base as HTMLCanvasElement, kind);
+          : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background);
         items.push({ blob, filename: filenameForKind(kind) });
       }
       const result = await saveImagesToDevice(items, async () => {
         const zip = wideSource
           ? await exportAllZipFromWideMaster(wideSource, adj)
-          : await exportAllZipFromBase(base as HTMLCanvasElement);
+          : await exportAllZipFromBase(base as HTMLCanvasElement, background);
         downloadBlob(zip, "iei-photos.zip");
       });
       // 一括書き出しと同時に、まだ一覧未保存なら一覧へも保存する。
@@ -1045,7 +1064,7 @@ export default function IeiPhotoPage() {
     } finally {
       setExporting(false);
     }
-  }, [adjustments, computeEffective, getWideMasterSource, saveToServer]);
+  }, [adjustments, background, computeEffective, getWideMasterSource, saveToServer]);
 
   /** 「保存（PC＋一覧）」: 一覧に保存し、同時に基準写真を端末にもダウンロードする。 */
   const handleSaveToList = useCallback(async () => {
@@ -1062,7 +1081,7 @@ export default function IeiPhotoPage() {
       if (!ok) return; // エラー/キャンセルは saveToServer 側で処理済み
       // 同時に端末(PC)へもダウンロード
       const adj = computeEffective(adjustments);
-      const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base");
+      const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background);
       let downloaded = false;
       try { await saveImageToDevice(baseBlob, filenameForKind("base")); downloaded = true; } catch { /* DL失敗でも保存は成立 */ }
       setInfo(`遺影を一覧に保存しました${downloaded ? "（端末にもダウンロードしました）" : ""}。管理画面の「AI遺影写真」で確認できます。`);
@@ -1071,7 +1090,7 @@ export default function IeiPhotoPage() {
     } finally {
       setExporting(false);
     }
-  }, [adjustments, computeEffective, getWideMasterSource, saveToServer]);
+  }, [adjustments, background, computeEffective, getWideMasterSource, saveToServer]);
 
   const handleAdvancedAi = useCallback(() => {
     void runAiImage("advanced");
@@ -1586,6 +1605,21 @@ export default function IeiPhotoPage() {
                         className="mt-0.5 h-4 w-4 accent-sky-600"
                       />
                       手・腕を下ろす
+                    </label>
+                    <label className="mt-2 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs font-semibold text-sky-800">
+                      <input
+                        type="checkbox"
+                        checked={removeHeldItems}
+                        onChange={(e) => setRemoveHeldItems(e.target.checked)}
+                        disabled={controlsDisabled || isProcessing || aiProcessing}
+                        className="mt-0.5 h-4 w-4 accent-sky-600"
+                      />
+                      <span>
+                        持っているものを外して腕を下ろす
+                        <span className="mt-0.5 block font-normal text-sky-700">
+                          花束・賞状・杯・他の方の手などを消し、腕を下ろします。
+                        </span>
+                      </span>
                     </label>
                   </div>
 

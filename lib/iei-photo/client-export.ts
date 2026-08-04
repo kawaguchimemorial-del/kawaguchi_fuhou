@@ -339,52 +339,110 @@ export async function exportYotsugiriFromBase(
 }
 
 /**
- * 16:9 モニター用を書き出す。
- * 1920x1080 の横長キャンバスに、基準写真（縦長）を中央へ contain 配置（全体が切れない）。
+ * 16:9 モニター用の親画像を作る。
  *
- * 左右余白は白背景のまま残さず、AI生成済みの縦写真全体を横長に拡大してぼかした背景で埋める。
- * 中央の人物は元の縦写真を contain 配置するため、上下左右は切れない。AI で横長の再生成はしない。
+ * 経緯: もともとは横長をAIに生成させていたが、gpt-image は mask を渡しても画像全体を
+ * 描き直すため、中央の人物まで作り替えられ、実データで別人が出力された（2026-08-04）。
+ * そこで、人物にはAIを一切触らせず、ブラウザ内で組み立てる方式にした。
+ *
+ * 作り方:
+ *   1. 縦写真の左端・右端の帯を、そのまま左右へ引き伸ばして背景にする。
+ *      背景が単色・グラデーションならそのまま連続し、情景系でも色と明るさが途切れない。
+ *      （以前は写真全体をぼかして敷いていたため、左右に人物の影がぼんやり出て不自然だった）
+ *   2. 中央に縦写真を原寸比で置く。左右の端だけ薄くぼかしてつなぐので、継ぎ目が見えない。
+ * 人物は縦写真のピクセルそのままなので、別人化は起こらない。
  */
 export async function exportMonitor169FromBase(
   base: HTMLCanvasElement,
+  background?: IeiPhotoBackgroundSettings,
 ): Promise<Blob> {
+  return canvasToJpegBlob(renderMonitor169Canvas(base, background));
+}
+
+/**
+ * 縦写真の上部左右の隅から、実際の背景色を読み取る。
+ * 遺影の構図では上の隅はほぼ確実に背景なので、人物の色を拾わずに済む。
+ * 単調にならないよう、下側はわずかに沈めた色を返す。
+ */
+function sampleTopCornersColor(
+  base: HTMLCanvasElement,
+): { top: string; bottom: string } | null {
+  try {
+    const ctx = base.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    const w = Math.max(1, Math.round(base.width * 0.08));
+    const h = Math.max(1, Math.round(base.height * 0.06));
+    const patches = [
+      ctx.getImageData(0, 0, w, h).data,
+      ctx.getImageData(base.width - w, 0, w, h).data,
+    ];
+    let r = 0, g = 0, b = 0, n = 0;
+    for (const d of patches) {
+      for (let i = 0; i < d.length; i += 4) {
+        r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+      }
+    }
+    if (!n) return null;
+    r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+    const dim = (v: number) => Math.max(0, Math.round(v * 0.94));
+    return {
+      top: `rgb(${r}, ${g}, ${b})`,
+      bottom: `rgb(${dim(r)}, ${dim(g)}, ${dim(b)})`,
+    };
+  } catch {
+    // 別オリジンの画像が混ざると getImageData が失敗する。その場合は選んだ背景で塗る。
+    return null;
+  }
+}
+
+/** 16:9 親画像の描画本体（ZIP・プレビュー・各サイズの派生元で共用する）。 */
+export function renderMonitor169Canvas(
+  base: HTMLCanvasElement,
+  background?: IeiPhotoBackgroundSettings,
+): HTMLCanvasElement {
   const { width, height } = IEI_PHOTO_EXPORT_SIZES.monitor169.pixelGuide;
   const canvas = createCanvas(width, height);
   const ctx = get2dContext(canvas);
 
   const bw = base.width;
   const bh = base.height;
-  // 中央の人物（基準写真）を contain 配置する領域。
-  const scale = Math.min(width / bw, height / bh);
-  const pw = bw * scale;
-  const ph = bh * scale;
-  const px = (width - pw) / 2;
-  const py = (height - ph) / 2;
+  // 縦写真は上下を切らずに高さいっぱいに置く（頭や胸元が欠けないようにする）。
+  const scale = height / bh;
+  const pw = Math.round(bw * scale);
+  const px = Math.round((width - pw) / 2);
 
-  ctx.fillStyle = BASE_BG_COLOR;
-  ctx.fillRect(0, 0, width, height);
+  // 1) 左右も含めた全面の背景。
+  //    写真の端を引き伸ばす方法は、端に花束や服がかかっていると横に伸びて汚れたため不採用。
+  //    選んだ背景で塗るだけだと、AIが実際に描いた背景と色がずれて縦の継ぎ目が見えたため、
+  //    まず「写真そのものの上の左右隅」から実際の背景色を読み取り、それで塗る。
+  //    読み取れないときだけ、選んだ背景の色にフォールバックする。
+  const sampled = sampleTopCornersColor(base);
+  if (sampled) {
+    const g = ctx.createLinearGradient(0, 0, 0, height);
+    g.addColorStop(0, sampled.top);
+    g.addColorStop(1, sampled.bottom);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, width, height);
+  } else {
+    fillBackground(ctx, width, height, background);
+  }
 
-  // 1) AI生成済みの縦写真全体を横長背景として敷く。
-  //    端の白余白ではなく、同じAI生成画像由来の背景で16:9余白を埋める。
-  const bgScale = Math.max(width / bw, height / bh);
-  const bgW = bw * bgScale;
-  const bgH = bh * bgScale;
-  const bgPad = Math.round(width * 0.04);
-  ctx.save();
-  ctx.filter = "blur(28px) saturate(110%)";
-  ctx.drawImage(
-    base,
-    (width - bgW) / 2 - bgPad,
-    (height - bgH) / 2 - bgPad,
-    bgW + bgPad * 2,
-    bgH + bgPad * 2,
-  );
-  ctx.restore();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
-  ctx.fillRect(0, 0, width, height);
-
-  // 2) 中央に人物全体を配置（上下左右が切れない）。
-  ctx.drawImage(base, px, py, pw, ph);
+  // 2) 中央に縦写真。左右の端だけ透明へ落として、背景となじませる。
+  // ぼかし幅。狭いと縦の継ぎ目が線として見える。実データで確認し、写真幅の12%とした。
+  const feather = Math.max(8, Math.round(pw * 0.12));
+  const center = createCanvas(pw, height);
+  const cctx = get2dContext(center);
+  cctx.drawImage(base, 0, 0, bw, bh, 0, 0, pw, height);
+  const fade = cctx.createLinearGradient(0, 0, pw, 0);
+  fade.addColorStop(0, "rgba(0,0,0,0)");
+  fade.addColorStop(feather / pw, "rgba(0,0,0,1)");
+  fade.addColorStop(1 - feather / pw, "rgba(0,0,0,1)");
+  fade.addColorStop(1, "rgba(0,0,0,0)");
+  cctx.globalCompositeOperation = "destination-in";
+  cctx.fillStyle = fade;
+  cctx.fillRect(0, 0, pw, height);
+  cctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(center, px, 0);
 
   // 3) ごく弱いビネット（祭壇モニタとして人物を引き立てる）。
   const vignette = ctx.createRadialGradient(
@@ -400,7 +458,7 @@ export async function exportMonitor169FromBase(
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 
-  return canvasToJpegBlob(canvas);
+  return canvas;
 }
 
 export function renderWideMasterCanvas(
@@ -455,6 +513,7 @@ export async function exportFromWideMasterByKind(
 export async function exportFromBaseByKind(
   base: HTMLCanvasElement,
   kind: IeiPhotoExportKind,
+  background?: IeiPhotoBackgroundSettings,
 ): Promise<Blob> {
   switch (kind) {
     case "base":
@@ -464,7 +523,7 @@ export async function exportFromBaseByKind(
     case "yotsugiri":
       return exportYotsugiriFromBase(base);
     case "monitor169":
-      return exportMonitor169FromBase(base);
+      return exportMonitor169FromBase(base, background);
     default: {
       // 網羅性チェック
       const _exhaustive: never = kind;
@@ -485,10 +544,11 @@ export function filenameForKind(kind: IeiPhotoExportKind): string {
  */
 export async function exportAllZipFromBase(
   base: HTMLCanvasElement,
+  background?: IeiPhotoBackgroundSettings,
 ): Promise<Blob> {
   const entries: ZipEntry[] = [];
   for (const kind of IEI_PHOTO_EXPORT_ORDER) {
-    const blob = await exportFromBaseByKind(base, kind);
+    const blob = await exportFromBaseByKind(base, kind, background);
     const data = new Uint8Array(await blob.arrayBuffer());
     entries.push({ name: filenameForKind(kind), data });
   }
