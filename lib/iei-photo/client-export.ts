@@ -364,6 +364,61 @@ export async function exportMonitor169FromBase(
 }
 
 /**
+ * 背景透過の人物画像から、輪郭に残る白フチ（ハロ）を取り除く。
+ *
+ * AIが返す透過PNGは、髪や肩の縁が広めの半透明になっており、その半透明画素には
+ * 元の白い背景が混ざっている。淡い背景に重ねると人物の周りが白く光って見える（実データで確認）。
+ * 半透明画素は「人物の色 × α ＋ 白 × (1-α)」なので、白の分を差し引いて人物の色だけに戻す。
+ * αはそのまま残すため、髪の毛先の柔らかさは失われない。
+ */
+export async function removeWhiteFringe(blob: Blob): Promise<Blob> {
+  try {
+    const img = await blobToImage(blob);
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const canvas = createCanvas(w, h);
+    const ctx = get2dContext(canvas);
+    ctx.drawImage(img, 0, 0);
+    const image = ctx.getImageData(0, 0, w, h);
+    const d = image.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const a = d[i + 3];
+      if (a === 0 || a === 255) continue;
+      const k = a / 255;
+      for (let c = 0; c < 3; c++) {
+        const v = (d[i + c] - (1 - k) * 255) / k;
+        d[i + c] = v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
+      }
+    }
+    ctx.putImageData(image, 0, 0);
+    const out = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/png"),
+    );
+    return out ?? blob;
+  } catch {
+    // 失敗しても元の画像で続行する（フチが残るだけで、生成自体は成立する）。
+    return blob;
+  }
+}
+
+/** Blob を Image 要素として読み込む。 */
+function blobToImage(blob: Blob): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像を読み込めませんでした。"));
+    };
+    img.src = url;
+  });
+}
+
+/**
  * 縦写真の上部左右の隅から、実際の背景色を読み取る。
  * 遺影の構図では上の隅はほぼ確実に背景なので、人物の色を拾わずに済む。
  * 単調にならないよう、下側はわずかに沈めた色を返す。
