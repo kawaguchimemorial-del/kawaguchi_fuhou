@@ -31,7 +31,6 @@
 
 import {
   buildAiPrompt,
-  buildPersonLayerPrompt,
   buildWideMonitorPrompt,
 } from "@/lib/iei-photo/ai-prompts";
 import type {
@@ -242,24 +241,12 @@ export async function POST(request: Request): Promise<Response> {
       ? clothingRefRaw
       : null;
 
-  // 人物レイヤーモード。一色の緑背景で出させ、ブラウザ側で抜いて背景と重ねる。
-  // API の背景透過は gpt-image-1 のみ対応だが、そのモデルは顔を若返らせ服の色も変えるため使わない。
-  const personLayer = String(form.get("layer") ?? "") === "person";
-
   const extraPromptRaw = form.get("prompt");
   const extraPrompt =
     typeof extraPromptRaw === "string" ? extraPromptRaw : undefined;
 
-  const prompt = personLayer
-    ? buildPersonLayerPrompt(
-        mode,
-        clothingStyle,
-        pose,
-        expression,
-        extraPrompt,
-        Boolean(clothingRef),
-      )
-    : target === "wide"
+  const prompt =
+    target === "wide"
       ? buildWideMonitorPrompt(backgroundType, backgroundGradient, extraPrompt)
       : buildAiPrompt(
           mode,
@@ -302,7 +289,6 @@ export async function POST(request: Request): Promise<Response> {
     "[iei-photo]",
     JSON.stringify({
       target,
-      layer: personLayer ? "person" : "flat",
       mode,
       background: backgroundType,
       gradient: backgroundGradient,

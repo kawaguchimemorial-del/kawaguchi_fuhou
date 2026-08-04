@@ -355,76 +355,8 @@ export async function exportYotsugiriFromBase(
 export async function exportMonitor169FromBase(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
-  person?: HTMLImageElement | null,
-  bgImage?: HTMLImageElement | null,
 ): Promise<Blob> {
-  return canvasToJpegBlob(
-    renderMonitor169Canvas(base, background, person, bgImage),
-  );
-}
-
-/**
- * 一色の緑背景で生成された人物画像から、緑を抜いて透過にする（クロマキー）。
- *
- * 撮影のグリーンバックと同じ考え方。緑は肌・髪・衣服のどの色とも離れているため、
- * 明るい縞シャツや淡い花束でも穴が開かない（自前の色キーを白背景で試したときは
- * 服と花が抜けてしまった）。
- * 併せて、輪郭に残る緑かぶりも抑える。
- */
-export async function keyOutGreenScreen(blob: Blob): Promise<Blob> {
-  try {
-    const img = await blobToImage(blob);
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    const canvas = createCanvas(w, h);
-    const ctx = get2dContext(canvas);
-    ctx.drawImage(img, 0, 0);
-    const image = ctx.getImageData(0, 0, w, h);
-    const d = image.data;
-    // 緑の強さ = G が R・B より何段階強いか。実データを見て決めた閾値。
-    const OUT = 60; // これ以上なら背景
-    const IN = 18; // これ以下なら人物
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i];
-      const g = d[i + 1];
-      const b = d[i + 2];
-      const greenness = g - Math.max(r, b);
-      let a: number;
-      if (greenness >= OUT) a = 0;
-      else if (greenness <= IN) a = 255;
-      else a = Math.round((255 * (OUT - greenness)) / (OUT - IN));
-      d[i + 3] = a;
-      // 髪や肩の縁に乗った緑かぶりを抑える。
-      if (a > 0 && greenness > 0) {
-        d[i + 1] = Math.max(r, b) + Math.round(greenness * 0.15);
-      }
-    }
-    ctx.putImageData(image, 0, 0);
-    const out = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((b2) => resolve(b2), "image/png"),
-    );
-    return out ?? blob;
-  } catch {
-    // 失敗しても元の画像で続行する（緑背景のままになるが、生成自体は成立する）。
-    return blob;
-  }
-}
-
-/** Blob を Image 要素として読み込む。 */
-function blobToImage(blob: Blob): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("画像を読み込めませんでした。"));
-    };
-    img.src = url;
-  });
+  return canvasToJpegBlob(renderMonitor169Canvas(base, background));
 }
 
 /**
@@ -467,9 +399,6 @@ function sampleTopCornersColor(
 export function renderMonitor169Canvas(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
-  /** 背景透過の人物画像。あるときは「背景を全面に描いて人物を重ねる」＝継ぎ目が生まれない。 */
-  person?: HTMLImageElement | null,
-  bgImage?: HTMLImageElement | null,
 ): HTMLCanvasElement {
   const { width, height } = IEI_PHOTO_EXPORT_SIZES.monitor169.pixelGuide;
   const canvas = createCanvas(width, height);
@@ -481,19 +410,6 @@ export function renderMonitor169Canvas(
   const scale = height / bh;
   const pw = Math.round(bw * scale);
   const px = Math.round((width - pw) / 2);
-
-  if (person) {
-    // 背景と人物を分けて持てている場合。背景は1枚として全面に描き、その上に人物を置く。
-    // 継ぎ目・色ずれ・ぼかしの塊がいずれも生じない（ご提案の重ね合わせ方式）。
-    fillBackground(ctx, width, height, background, bgImage);
-    const iw = person.naturalWidth;
-    const ih = person.naturalHeight;
-    const s2 = height / ih;
-    const dw = Math.round(iw * s2);
-    // 下寄せにする。持ち物が下で切れていても、画面下に自然に収まって見える。
-    ctx.drawImage(person, Math.round((width - dw) / 2), 0, dw, height);
-    return canvas;
-  }
 
   // 1) 左右も含めた全面の背景。
   //    写真の端を引き伸ばす方法は、端に花束や服がかかっていると横に伸びて汚れたため不採用。
@@ -598,8 +514,6 @@ export async function exportFromBaseByKind(
   base: HTMLCanvasElement,
   kind: IeiPhotoExportKind,
   background?: IeiPhotoBackgroundSettings,
-  person?: HTMLImageElement | null,
-  bgImage?: HTMLImageElement | null,
 ): Promise<Blob> {
   switch (kind) {
     case "base":
@@ -609,7 +523,7 @@ export async function exportFromBaseByKind(
     case "yotsugiri":
       return exportYotsugiriFromBase(base);
     case "monitor169":
-      return exportMonitor169FromBase(base, background, person, bgImage);
+      return exportMonitor169FromBase(base, background);
     default: {
       // 網羅性チェック
       const _exhaustive: never = kind;
@@ -631,12 +545,10 @@ export function filenameForKind(kind: IeiPhotoExportKind): string {
 export async function exportAllZipFromBase(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
-  person?: HTMLImageElement | null,
-  bgImage?: HTMLImageElement | null,
 ): Promise<Blob> {
   const entries: ZipEntry[] = [];
   for (const kind of IEI_PHOTO_EXPORT_ORDER) {
-    const blob = await exportFromBaseByKind(base, kind, background, person, bgImage);
+    const blob = await exportFromBaseByKind(base, kind, background);
     const data = new Uint8Array(await blob.arrayBuffer());
     entries.push({ name: filenameForKind(kind), data });
   }

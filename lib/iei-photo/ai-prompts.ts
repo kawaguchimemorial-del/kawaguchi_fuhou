@@ -268,56 +268,6 @@ function buildCompositionPrompt(
 }
 
 /**
- * 人物レイヤー用のプロンプトを組み立てる。
- *
- * 背景と人物を1回のAI生成でまとめて作らせると、変更範囲が大きくなり、
- * gpt-image が写真を「編集」ではなく「描き直し」に倒れて別人が出る
- * （2026-08-04 に実データで発生）。そこで人物だけを切り出せる形で作らせ、
- * 背景はこちらで描いて後から重ねる。
- *
- * 切り出し方は「一色の緑背景で出させ、こちらで抜く」（撮影のグリーンバックと同じ考え方）。
- * APIの背景透過(background=transparent)も試したが、対応しているのが gpt-image-1 だけで、
- * このモデルは顔を若返らせ服の色まで変えてしまい、別人になった（実データで確認）。
- * gpt-image-2 は本人らしさと服装を保てるので、こちらに緑背景を描かせて抜く。
- */
-export function buildPersonLayerPrompt(
-  mode: IeiPhotoAiImageMode,
-  clothingStyle: IeiPhotoClothingStyle,
-  pose: IeiPhotoPose,
-  expression?: IeiPhotoExpressionSettings,
-  extraPrompt?: string,
-  hasClothingReference = false,
-): string {
-  const parts: string[] = [
-    "背景は、他に何も写っていない一色の明るい緑（RGBで 0,177,64 くらいの鮮やかな緑）の無地にしてください。",
-    "緑はムラなく均一にし、影・グラデーション・模様・風景・小物を一切入れないでください。",
-    "元の背景に写っていたもの（壁、飾り、家具、他の人）は、すべて緑に置き換えて消してください。",
-    "人物の肌、髪、服に緑色が反射したり、緑のフチが付いたりしないようにしてください。",
-    IEI_PHOTO_AI_BASE_PROMPTS[mode],
-    IEI_PHOTO_HAIR_PROMPT,
-  ];
-  if (hasClothingReference) {
-    parts.push(IEI_PHOTO_CLOTHING_REFERENCE_PROMPT);
-  } else {
-    const clothing = IEI_PHOTO_CLOTHING_PROMPTS[clothingStyle];
-    if (clothing) parts.push(clothing);
-  }
-  parts.push(buildCompositionPrompt(clothingStyle));
-  parts.push(IEI_PHOTO_REMOVE_STRAP_PROMPT);
-  parts.push(
-    "人物の輪郭、特に髪の毛先やほつれ毛は、緑の背景に対して自然になじませてください。" +
-      "輪郭に白いフチ、黒いフチ、光の輪、貼り付けたような境目を作らないでください。",
-  );
-  const poseText = IEI_PHOTO_POSE_PROMPTS[pose];
-  if (poseText) parts.push(poseText);
-  const expressionText = buildExpressionPrompt(expression);
-  if (expressionText) parts.push(expressionText);
-  const extra = extraPrompt?.trim();
-  if (extra) parts.push(extra);
-  return parts.join(" ");
-}
-
-/**
  * 最終プロンプトを組み立てる。
  * 統合順: 本人らしさ・顔特徴・背景明るさ（基本）→ 服装 → 体勢・向き → 追加指示。
  */
