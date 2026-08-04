@@ -268,6 +268,50 @@ function buildCompositionPrompt(
 }
 
 /**
+ * 人物レイヤー用のプロンプトを組み立てる。
+ *
+ * 背景と人物を1回のAI生成でまとめて作らせると、変更範囲が大きくなり、
+ * gpt-image が写真を「編集」ではなく「描き直し」に倒れて別人が出る
+ * （2026-08-04 に実データで発生）。そこで背景の指示を一切含めず、
+ * 人物だけを切り抜いた透過画像として作らせる。背景はこちらで描いて後から重ねる。
+ */
+export function buildPersonLayerPrompt(
+  mode: IeiPhotoAiImageMode,
+  clothingStyle: IeiPhotoClothingStyle,
+  pose: IeiPhotoPose,
+  expression?: IeiPhotoExpressionSettings,
+  extraPrompt?: string,
+  hasClothingReference = false,
+): string {
+  const parts: string[] = [
+    "元の写真から人物（と、人物が手に持っているもの）だけを取り出し、背景を完全に透明にしてください。",
+    "背景の描画・置き換え・色付けは一切しないでください。透明のままにしてください。",
+    IEI_PHOTO_AI_BASE_PROMPTS[mode],
+    IEI_PHOTO_HAIR_PROMPT,
+  ];
+  if (hasClothingReference) {
+    parts.push(IEI_PHOTO_CLOTHING_REFERENCE_PROMPT);
+  } else {
+    const clothing = IEI_PHOTO_CLOTHING_PROMPTS[clothingStyle];
+    if (clothing) parts.push(clothing);
+  }
+  parts.push(buildCompositionPrompt(clothingStyle));
+  parts.push(IEI_PHOTO_REMOVE_STRAP_PROMPT);
+  parts.push(
+    "人物の輪郭、特に髪の毛先やほつれ毛は、透明な背景に対して自然に透けるようにしてください。" +
+      "輪郭に白いフチ、黒いフチ、光の輪、元の背景の色が残った縁、貼り付けたような境目を作らないでください。" +
+      "元の背景に写っていたもの（壁、飾り、家具、他の人）は、透明にして完全に取り除いてください。",
+  );
+  const poseText = IEI_PHOTO_POSE_PROMPTS[pose];
+  if (poseText) parts.push(poseText);
+  const expressionText = buildExpressionPrompt(expression);
+  if (expressionText) parts.push(expressionText);
+  const extra = extraPrompt?.trim();
+  if (extra) parts.push(extra);
+  return parts.join(" ");
+}
+
+/**
  * 最終プロンプトを組み立てる。
  * 統合順: 本人らしさ・顔特徴・背景明るさ（基本）→ 服装 → 体勢・向き → 追加指示。
  */

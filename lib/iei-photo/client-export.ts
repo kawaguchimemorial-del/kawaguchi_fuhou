@@ -355,8 +355,12 @@ export async function exportYotsugiriFromBase(
 export async function exportMonitor169FromBase(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
+  person?: HTMLImageElement | null,
+  bgImage?: HTMLImageElement | null,
 ): Promise<Blob> {
-  return canvasToJpegBlob(renderMonitor169Canvas(base, background));
+  return canvasToJpegBlob(
+    renderMonitor169Canvas(base, background, person, bgImage),
+  );
 }
 
 /**
@@ -399,6 +403,9 @@ function sampleTopCornersColor(
 export function renderMonitor169Canvas(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
+  /** 背景透過の人物画像。あるときは「背景を全面に描いて人物を重ねる」＝継ぎ目が生まれない。 */
+  person?: HTMLImageElement | null,
+  bgImage?: HTMLImageElement | null,
 ): HTMLCanvasElement {
   const { width, height } = IEI_PHOTO_EXPORT_SIZES.monitor169.pixelGuide;
   const canvas = createCanvas(width, height);
@@ -410,6 +417,19 @@ export function renderMonitor169Canvas(
   const scale = height / bh;
   const pw = Math.round(bw * scale);
   const px = Math.round((width - pw) / 2);
+
+  if (person) {
+    // 背景と人物を分けて持てている場合。背景は1枚として全面に描き、その上に人物を置く。
+    // 継ぎ目・色ずれ・ぼかしの塊がいずれも生じない（ご提案の重ね合わせ方式）。
+    fillBackground(ctx, width, height, background, bgImage);
+    const iw = person.naturalWidth;
+    const ih = person.naturalHeight;
+    const s2 = height / ih;
+    const dw = Math.round(iw * s2);
+    // 下寄せにする。持ち物が下で切れていても、画面下に自然に収まって見える。
+    ctx.drawImage(person, Math.round((width - dw) / 2), 0, dw, height);
+    return canvas;
+  }
 
   // 1) 左右も含めた全面の背景。
   //    写真の端を引き伸ばす方法は、端に花束や服がかかっていると横に伸びて汚れたため不採用。
@@ -514,6 +534,8 @@ export async function exportFromBaseByKind(
   base: HTMLCanvasElement,
   kind: IeiPhotoExportKind,
   background?: IeiPhotoBackgroundSettings,
+  person?: HTMLImageElement | null,
+  bgImage?: HTMLImageElement | null,
 ): Promise<Blob> {
   switch (kind) {
     case "base":
@@ -523,7 +545,7 @@ export async function exportFromBaseByKind(
     case "yotsugiri":
       return exportYotsugiriFromBase(base);
     case "monitor169":
-      return exportMonitor169FromBase(base, background);
+      return exportMonitor169FromBase(base, background, person, bgImage);
     default: {
       // 網羅性チェック
       const _exhaustive: never = kind;
@@ -545,10 +567,12 @@ export function filenameForKind(kind: IeiPhotoExportKind): string {
 export async function exportAllZipFromBase(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
+  person?: HTMLImageElement | null,
+  bgImage?: HTMLImageElement | null,
 ): Promise<Blob> {
   const entries: ZipEntry[] = [];
   for (const kind of IEI_PHOTO_EXPORT_ORDER) {
-    const blob = await exportFromBaseByKind(base, kind, background);
+    const blob = await exportFromBaseByKind(base, kind, background, person, bgImage);
     const data = new Uint8Array(await blob.arrayBuffer());
     entries.push({ name: filenameForKind(kind), data });
   }

@@ -225,6 +225,8 @@ async function requestAiImageOnce(
   extraPrompt?: string,
   /** 服の見本画像。選ばれている場合だけ渡す（無ければ従来どおり文字指定のみ）。 */
   clothingSample?: Blob | null,
+  /** 背景を透明にした人物だけの画像を受け取るか（背景はブラウザ側で描いて重ねる）。 */
+  personLayer = false,
 ): Promise<Blob> {
   const imageBlob = await downscaleCanvasForAi(baseCanvas);
 
@@ -239,6 +241,9 @@ async function requestAiImageOnce(
   form.append("smileLevel", expression.smile);
   form.append("eyeBrightness", expression.eyeBrightness ? "true" : "false");
   form.append("teethVisibility", expression.teethVisibility);
+  if (personLayer) {
+    form.append("layer", "person");
+  }
   if (clothingSample) {
     form.append("clothingRef", clothingSample, "clothing.webp");
   }
@@ -330,6 +335,7 @@ export async function requestAiImage(
   expression: IeiPhotoExpressionSettings,
   extraPrompt?: string,
   clothingSample?: Blob | null,
+  personLayer = false,
 ): Promise<Blob> {
   try {
     return await requestAiImageOnce(
@@ -342,6 +348,7 @@ export async function requestAiImage(
       expression,
       extraPrompt,
       clothingSample,
+      personLayer,
     );
   } catch (error) {
     if (
@@ -368,6 +375,7 @@ export async function requestAiImage(
       expression,
       safetyPrompt,
       clothingSample,
+      personLayer,
     );
   } catch (retryError) {
     if (retryError instanceof IeiPhotoAiImageError) {

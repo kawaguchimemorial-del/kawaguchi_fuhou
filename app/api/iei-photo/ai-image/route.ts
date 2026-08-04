@@ -31,6 +31,7 @@
 
 import {
   buildAiPrompt,
+  buildPersonLayerPrompt,
   buildWideMonitorPrompt,
 } from "@/lib/iei-photo/ai-prompts";
 import type {
@@ -48,6 +49,9 @@ export const maxDuration = 300;
 
 const OPENAI_EDITS_URL = "https://api.openai.com/v1/images/edits";
 const DEFAULT_MODEL = "gpt-image-2";
+// 背景を透明にできるのは gpt-image-1 のみ。gpt-image-2 は
+// "Transparent background is not supported for this model." で 400 になる。
+const PERSON_LAYER_MODEL = "gpt-image-1";
 // OpenAI 呼び出しのタイムアウト（ミリ秒）。maxDuration 内に収める。
 const OPENAI_FETCH_TIMEOUT_MS = 240_000;
 
@@ -238,12 +242,24 @@ export async function POST(request: Request): Promise<Response> {
       ? clothingRefRaw
       : null;
 
+  // 人物レイヤー（背景透過）モード。背景はブラウザ側で描いて後から重ねる。
+  // 透過に対応しているのは gpt-image-1 のみ（gpt-image-2 は 400 を返す）。
+  const personLayer = String(form.get("layer") ?? "") === "person";
+
   const extraPromptRaw = form.get("prompt");
   const extraPrompt =
     typeof extraPromptRaw === "string" ? extraPromptRaw : undefined;
 
-  const prompt =
-    target === "wide"
+  const prompt = personLayer
+    ? buildPersonLayerPrompt(
+        mode,
+        clothingStyle,
+        pose,
+        expression,
+        extraPrompt,
+        Boolean(clothingRef),
+      )
+    : target === "wide"
       ? buildWideMonitorPrompt(backgroundType, backgroundGradient, extraPrompt)
       : buildAiPrompt(
           mode,
@@ -258,7 +274,11 @@ export async function POST(request: Request): Promise<Response> {
 
   // OpenAI Images edit へ転送する multipart を組み立てる。
   const upstreamForm = new FormData();
-  upstreamForm.append("model", model);
+  // 人物だけを透過で切り出すときは、透過に対応する gpt-image-1 を使う。
+  upstreamForm.append("model", personLayer ? PERSON_LAYER_MODEL : model);
+  if (personLayer) {
+    upstreamForm.append("background", "transparent");
+  }
   if (clothingRef) {
     // 複数枚を渡すときは image[] を使う。1枚目が加工対象、2枚目が服の見本。
     upstreamForm.append("image[]", image, image.name || "input.jpg");
@@ -286,6 +306,7 @@ export async function POST(request: Request): Promise<Response> {
     "[iei-photo]",
     JSON.stringify({
       target,
+      layer: personLayer ? "person" : "flat",
       mode,
       background: backgroundType,
       gradient: backgroundGradient,

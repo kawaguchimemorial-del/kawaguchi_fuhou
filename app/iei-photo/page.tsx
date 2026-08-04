@@ -420,7 +420,7 @@ export default function IeiPhotoPage() {
         baseCanvasRef.current = canvas;
         setHasBase(true);
         setError(null);
-        const blob = await exportFromBaseByKind(canvas, kind, background);
+        const blob = await exportFromBaseByKind(canvas, kind, background, aiEnhancedImgRef.current);
         replaceOutputUrl(URL.createObjectURL(blob));
       } catch (e) {
         baseCanvasRef.current = null;
@@ -698,6 +698,9 @@ export default function IeiPhotoPage() {
           },
           aiPrompt,
           clothingSample,
+          // 背景と人物を分けて作る。背景はこちらで描いて重ねるので、
+          // AIには人物だけを透過で出してもらう（別人化と継ぎ目の両方をここで断つ）。
+          true,
         );
         const url = URL.createObjectURL(blob);
         pendingUrl = url;
@@ -968,9 +971,9 @@ export default function IeiPhotoPage() {
       r.onerror = () => reject(new Error("画像の変換に失敗しました。"));
       r.readAsDataURL(blob);
     });
-    const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background);
-    const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu", background);
-    const monitorBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "monitor169") : await exportFromBaseByKind(base as HTMLCanvasElement, "monitor169", background);
+    const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background, aiEnhancedImgRef.current);
+    const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu", background, aiEnhancedImgRef.current);
+    const monitorBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "monitor169") : await exportFromBaseByKind(base as HTMLCanvasElement, "monitor169", background, aiEnhancedImgRef.current);
     const [baseDataUrl, tefudaDataUrl, monitorDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob), toDataUrl(monitorBlob)]);
     const res = await fetch("/api/iei-photo/save", {
       method: "POST",
@@ -1000,7 +1003,7 @@ export default function IeiPhotoPage() {
             computeEffective(adjustments),
             kind,
           )
-        : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background);
+        : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background, aiEnhancedImgRef.current);
       // モバイルは共有シート（写真アプリへ保存）、PCはダウンロード。
       const result = await saveImageToDevice(blob, filenameForKind(kind));
       // 端末書き出しと同時に、まだ一覧未保存なら一覧へも保存する（誰の遺影か必ず残す）。
@@ -1039,13 +1042,13 @@ export default function IeiPhotoPage() {
       for (const kind of IEI_PHOTO_EXPORT_ORDER) {
         const blob = wideSource
           ? await exportFromWideMasterByKind(wideSource, adj, kind)
-          : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background);
+          : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background, aiEnhancedImgRef.current);
         items.push({ blob, filename: filenameForKind(kind) });
       }
       const result = await saveImagesToDevice(items, async () => {
         const zip = wideSource
           ? await exportAllZipFromWideMaster(wideSource, adj)
-          : await exportAllZipFromBase(base as HTMLCanvasElement, background);
+          : await exportAllZipFromBase(base as HTMLCanvasElement, background, aiEnhancedImgRef.current);
         downloadBlob(zip, "iei-photos.zip");
       });
       // 一括書き出しと同時に、まだ一覧未保存なら一覧へも保存する。
@@ -1081,7 +1084,7 @@ export default function IeiPhotoPage() {
       if (!ok) return; // エラー/キャンセルは saveToServer 側で処理済み
       // 同時に端末(PC)へもダウンロード
       const adj = computeEffective(adjustments);
-      const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background);
+      const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background, aiEnhancedImgRef.current);
       let downloaded = false;
       try { await saveImageToDevice(baseBlob, filenameForKind("base")); downloaded = true; } catch { /* DL失敗でも保存は成立 */ }
       setInfo(`遺影を一覧に保存しました${downloaded ? "（端末にもダウンロードしました）" : ""}。管理画面の「AI遺影写真」で確認できます。`);
