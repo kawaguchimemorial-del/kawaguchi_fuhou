@@ -40,6 +40,7 @@ import {
 } from "@/lib/iei-photo/ai-generation-provider";
 import {
   requestAiImage,
+  requestAiWideImage,
 } from "@/lib/iei-photo/ai-image-client";
 import {
   applyDeAiEffectToImage,
@@ -217,7 +218,6 @@ const HANDS_KEEP_PROMPT =
 // 「手・腕を下ろす」を選んだときの最小拡大率。16:9のAI生成をやめた際に参照元が消えたが、
 // 手を下ろす指示は縦の生成でも使うため、値の意味は残しておく。
 const HANDS_DOWN_MIN_ZOOM = 118;
-void HANDS_DOWN_MIN_ZOOM;
 
 export default function IeiPhotoPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -266,6 +266,11 @@ export default function IeiPhotoPage() {
     : "none";
   const [pose, setPose] = useState<IeiPhotoPose>("none");
   const [handsDown, setHandsDown] = useState<boolean>(false);
+  // 16:9をAIで作るか。AIに任せると左右が自然に広がるが、
+  // gpt-image は mask を渡しても全体を描き直すため、人物が別人になることがある
+  // （実データで発生）。しかも16:9をAIで作ると、他のサイズもそこから切り出されるため
+  // すべてのサイズが別人になる。危険なので既定はオフ。
+  const [aiWideMonitor, setAiWideMonitor] = useState<boolean>(false);
   // 手に持っているものごと外して腕を下ろす（花束・賞状など）。手を下ろすより一段強い指示。
   const [removeHeldItems, setRemoveHeldItems] = useState<boolean>(false);
   const [aiResultMode, setAiResultMode] = useState<IeiPhotoAiResultMode>(null);
@@ -706,13 +711,62 @@ export default function IeiPhotoPage() {
         replaceAiEnhancedUrl(url);
         pendingUrl = null;
 
-        // 16:9は「縦の結果から局所合成」で作る（exportMonitor169FromBase）。
-        // 以前はここでAIに横長を生成させていたが、gpt-image は mask を指定しても
-        // 画像全体を描き直すため、守っていたはずの中央の人物まで作り替えられ、
-        // 実データで別人（髪がふさふさの別の男性）が出力された。二度と起こさないため、
-        // 16:9では人物をAIに触らせない。左右の余白は同じ写真由来の背景でぼかして埋める。
-        wideMasterImgRef.current = null;
-        replaceWideMasterUrl(null);
+        // 16:9モニター用をAIで生成する（設定でオンのときだけ）。
+        // ※ gpt-image は mask を渡しても画像全体を描き直すため、中央の人物が
+        //   作り替えられて別人になることがある（2026-08-04 に実データで発生）。
+        //   危険を承知のうえで、仕上がりの好みを優先して戻している。
+        //   別人が出た場合は、この工程を止めれば再発しない。
+        if (aiWideMonitor) {
+        setInfo("16:9モニター用の背景をAI生成中…");
+        setStatusState({
+          status: "creating_base",
+          progress: 82,
+          label: "16:9背景生成中…",
+        });
+        const bgImage = await resolveBackgroundImage(background, "vertical");
+        const effectiveAdjustments = computeEffective(adjustments);
+        const wideBaseAdjustments = handsDown
+          ? {
+              ...effectiveAdjustments,
+              zoom: Math.max(effectiveAdjustments.zoom, HANDS_DOWN_MIN_ZOOM),
+            }
+          : effectiveAdjustments;
+        const verticalCanvas = renderBasePhotoCanvas(
+          img,
+          wideBaseAdjustments,
+          background,
+          bgImage,
+        );
+        baseCanvasRef.current = verticalCanvas;
+        const wideBlob = await requestAiWideImage(
+          verticalCanvas,
+          aiMode,
+          clothingStyle,
+          pose,
+          background.type,
+          supportsBackgroundGradient(background.type) &&
+            Boolean(background.gradient),
+          {
+            enabled: expressionEnabled,
+            smile: smileLevel,
+            eyeBrightness,
+            teethVisibility,
+          },
+          aiPrompt,
+        );
+        const wideUrl = URL.createObjectURL(wideBlob);
+        const wideImg = await loadImageElement(wideUrl);
+        if (aiRunIdRef.current !== runId) {
+          URL.revokeObjectURL(wideUrl);
+          return;
+        }
+        wideMasterImgRef.current = wideImg;
+        replaceWideMasterUrl(wideUrl);
+        } else {
+          // オフのときは、縦の結果から16:9を組み立てる（人物はAIに触らせない）。
+          wideMasterImgRef.current = null;
+          replaceWideMasterUrl(null);
+        }
 
         // 新しいAI結果が出たら、古い脱AI結果は解除する（AI画像から派生し直す）。
         deAiImgRef.current = null;
@@ -770,6 +824,7 @@ export default function IeiPhotoPage() {
       allowAuto,
       clothingStyle,
       clothingItemId,
+      aiWideMonitor,
       pose,
       handsDown,
       removeHeldItems,
@@ -1605,6 +1660,23 @@ export default function IeiPhotoPage() {
                         className="mt-0.5 h-4 w-4 accent-sky-600"
                       />
                       手・腕を下ろす
+                    </label>
+                    <label className="mt-2 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+                      <input
+                        type="checkbox"
+                        checked={aiWideMonitor}
+                        onChange={(e) => setAiWideMonitor(e.target.checked)}
+                        disabled={controlsDisabled || isProcessing || aiProcessing}
+                        className="mt-0.5 h-4 w-4 accent-rose-600"
+                      />
+                      <span>
+                        16:9もAIで作る
+                        <span className="mt-0.5 block font-normal leading-relaxed text-rose-700">
+                          左右まで自然に広がりますが、AIが人物を描き直して
+                          <strong>別人になることがあります</strong>。
+                          その場合は4サイズすべてが別人になります。必ず仕上がりをご確認ください。
+                        </span>
+                      </span>
                     </label>
                     <label className="mt-2 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs font-semibold text-sky-800">
                       <input
