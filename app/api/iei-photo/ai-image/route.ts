@@ -49,9 +49,9 @@ export const maxDuration = 300;
 
 const OPENAI_EDITS_URL = "https://api.openai.com/v1/images/edits";
 const DEFAULT_MODEL = "gpt-image-2";
-// 背景を透明にできるのは gpt-image-1 のみ。gpt-image-2 は
-// "Transparent background is not supported for this model." で 400 になる。
-const PERSON_LAYER_MODEL = "gpt-image-1";
+// ※ background="transparent" は使わないこと。対応しているのは gpt-image-1 だけで、
+//   そのモデルは顔を若返らせ服の色まで変える（実データで別人になった）。
+//   人物の切り出しは「緑背景で出させてブラウザ側で抜く」方式で行う。
 // OpenAI 呼び出しのタイムアウト（ミリ秒）。maxDuration 内に収める。
 const OPENAI_FETCH_TIMEOUT_MS = 240_000;
 
@@ -242,8 +242,8 @@ export async function POST(request: Request): Promise<Response> {
       ? clothingRefRaw
       : null;
 
-  // 人物レイヤー（背景透過）モード。背景はブラウザ側で描いて後から重ねる。
-  // 透過に対応しているのは gpt-image-1 のみ（gpt-image-2 は 400 を返す）。
+  // 人物レイヤーモード。一色の緑背景で出させ、ブラウザ側で抜いて背景と重ねる。
+  // API の背景透過は gpt-image-1 のみ対応だが、そのモデルは顔を若返らせ服の色も変えるため使わない。
   const personLayer = String(form.get("layer") ?? "") === "person";
 
   const extraPromptRaw = form.get("prompt");
@@ -274,11 +274,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // OpenAI Images edit へ転送する multipart を組み立てる。
   const upstreamForm = new FormData();
-  // 人物だけを透過で切り出すときは、透過に対応する gpt-image-1 を使う。
-  upstreamForm.append("model", personLayer ? PERSON_LAYER_MODEL : model);
-  if (personLayer) {
-    upstreamForm.append("background", "transparent");
-  }
+  upstreamForm.append("model", model);
   if (clothingRef) {
     // 複数枚を渡すときは image[] を使う。1枚目が加工対象、2枚目が服の見本。
     upstreamForm.append("image[]", image, image.name || "input.jpg");

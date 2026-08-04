@@ -74,7 +74,7 @@ import {
   renderBasePhotoCanvas,
   resolveBackgroundImage,
   exportFromBaseByKind,
-  removeWhiteFringe,
+  keyOutGreenScreen,
   exportAllZipFromBase,
   exportFromWideMasterByKind,
   exportAllZipFromWideMaster,
@@ -703,8 +703,8 @@ export default function IeiPhotoPage() {
           // AIには人物だけを透過で出してもらう（別人化と継ぎ目の両方をここで断つ）。
           true,
         );
-        // 透過画像の縁に残る白フチを取り除いてから使う。
-        const cleaned = await removeWhiteFringe(blob);
+        // 緑背景で返ってくるので、ここで抜いて透過にする。
+        const cleaned = await keyOutGreenScreen(blob);
         const url = URL.createObjectURL(cleaned);
         pendingUrl = url;
         const img = await loadImageElement(url);

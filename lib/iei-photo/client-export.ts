@@ -364,14 +364,14 @@ export async function exportMonitor169FromBase(
 }
 
 /**
- * 背景透過の人物画像から、輪郭に残る白フチ（ハロ）を取り除く。
+ * 一色の緑背景で生成された人物画像から、緑を抜いて透過にする（クロマキー）。
  *
- * AIが返す透過PNGは、髪や肩の縁が広めの半透明になっており、その半透明画素には
- * 元の白い背景が混ざっている。淡い背景に重ねると人物の周りが白く光って見える（実データで確認）。
- * 半透明画素は「人物の色 × α ＋ 白 × (1-α)」なので、白の分を差し引いて人物の色だけに戻す。
- * αはそのまま残すため、髪の毛先の柔らかさは失われない。
+ * 撮影のグリーンバックと同じ考え方。緑は肌・髪・衣服のどの色とも離れているため、
+ * 明るい縞シャツや淡い花束でも穴が開かない（自前の色キーを白背景で試したときは
+ * 服と花が抜けてしまった）。
+ * 併せて、輪郭に残る緑かぶりも抑える。
  */
-export async function removeWhiteFringe(blob: Blob): Promise<Blob> {
+export async function keyOutGreenScreen(blob: Blob): Promise<Blob> {
   try {
     const img = await blobToImage(blob);
     const w = img.naturalWidth;
@@ -381,22 +381,31 @@ export async function removeWhiteFringe(blob: Blob): Promise<Blob> {
     ctx.drawImage(img, 0, 0);
     const image = ctx.getImageData(0, 0, w, h);
     const d = image.data;
+    // 緑の強さ = G が R・B より何段階強いか。実データを見て決めた閾値。
+    const OUT = 60; // これ以上なら背景
+    const IN = 18; // これ以下なら人物
     for (let i = 0; i < d.length; i += 4) {
-      const a = d[i + 3];
-      if (a === 0 || a === 255) continue;
-      const k = a / 255;
-      for (let c = 0; c < 3; c++) {
-        const v = (d[i + c] - (1 - k) * 255) / k;
-        d[i + c] = v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
+      const r = d[i];
+      const g = d[i + 1];
+      const b = d[i + 2];
+      const greenness = g - Math.max(r, b);
+      let a: number;
+      if (greenness >= OUT) a = 0;
+      else if (greenness <= IN) a = 255;
+      else a = Math.round((255 * (OUT - greenness)) / (OUT - IN));
+      d[i + 3] = a;
+      // 髪や肩の縁に乗った緑かぶりを抑える。
+      if (a > 0 && greenness > 0) {
+        d[i + 1] = Math.max(r, b) + Math.round(greenness * 0.15);
       }
     }
     ctx.putImageData(image, 0, 0);
     const out = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((b) => resolve(b), "image/png"),
+      canvas.toBlob((b2) => resolve(b2), "image/png"),
     );
     return out ?? blob;
   } catch {
-    // 失敗しても元の画像で続行する（フチが残るだけで、生成自体は成立する）。
+    // 失敗しても元の画像で続行する（緑背景のままになるが、生成自体は成立する）。
     return blob;
   }
 }
