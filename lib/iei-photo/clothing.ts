@@ -233,6 +233,15 @@ export const IEI_PHOTO_CLOTHING_ITEMS: IeiPhotoClothingItem[] = [
     sample: "淡い藤色の小紋の着物。礼装ではない普段の和装。",
   },
   {
+    // 「和装にしたいが黒の喪服は避けたい」というご要望のために足した明るい和装。
+    id: "female_kimono_beige",
+    gender: "female",
+    category: "casual",
+    label: "和装（ベージュ）",
+    sample:
+      "淡いベージュ（生成り）の色無地の着物。控えめな金茶の帯、白い半襟。落ち着いた上品な和装。",
+  },
+  {
     id: "female_casual_09",
     gender: "female",
     category: "casual",
