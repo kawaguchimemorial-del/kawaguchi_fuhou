@@ -186,17 +186,95 @@ function drawAdjustedCover(
   zoom: number,
   offsetX: number,
   offsetY: number,
+  fitWhole = false,
 ): void {
   if (!srcWidth || !srcHeight) {
     throw new Error("画像サイズを取得できませんでした。");
   }
-  const baseScale = Math.max(destWidth / srcWidth, destHeight / srcHeight);
+  // fitWhole: 原稿を切り取らず全体を収める（contain）。余白は背景色のまま残る。
+  const baseScale = fitWhole
+    ? Math.min(destWidth / srcWidth, destHeight / srcHeight)
+    : Math.max(destWidth / srcWidth, destHeight / srcHeight);
   const scale = baseScale * (zoom / 100);
   const drawWidth = srcWidth * scale;
   const drawHeight = srcHeight * scale;
   const dx = (destWidth - drawWidth) / 2 + (offsetX / 100) * destWidth;
   const dy = (destHeight - drawHeight) / 2 + (offsetY / 100) * destHeight;
   ctx.drawImage(src, dx, dy, drawWidth, drawHeight);
+}
+
+/**
+ * アンシャープマスク（くっきりさ＝ピントの調整）。
+ *
+ * スキャンしたプリントは輪郭が眠くなるため、書き出し直前に1回だけかける。
+ * AI生成ではなく、書き出したピクセルに対する畳み込み処理のみ。
+ * amount は 0〜100（0 なら何もしない）。半径は出力サイズに比例させ、
+ * 手札でも四つ切りでも見た目の効き方が揃うようにする。
+ */
+function sharpenCanvas(canvas: HTMLCanvasElement, amount: number): void {
+  if (!amount || amount <= 0) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  if (!w || !h) return;
+  let ctx: CanvasRenderingContext2D | null = null;
+  let src: ImageData;
+  try {
+    ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    src = ctx.getImageData(0, 0, w, h);
+  } catch {
+    // 別オリジンの画像が混ざると getImageData が失敗する。その場合は何もしない。
+    return;
+  }
+  // 半径は長辺の 0.05%（1800px で約1px、3000px で約1.5px）。最低1px。
+  const radius = Math.max(1, Math.round(Math.max(w, h) * 0.0005));
+  const strength = (amount / 100) * 1.2; // 100 で 1.2 倍まで
+  const data = src.data;
+  const blur = new Uint8ClampedArray(data.length);
+  const tmp = new Uint8ClampedArray(data.length);
+  const win = radius * 2 + 1;
+  // 横方向のボックスブラー
+  for (let y = 0; y < h; y++) {
+    const row = y * w * 4;
+    for (let c = 0; c < 3; c++) {
+      let sum = 0;
+      for (let x = -radius; x <= radius; x++) {
+        const xi = Math.min(w - 1, Math.max(0, x));
+        sum += data[row + xi * 4 + c];
+      }
+      for (let x = 0; x < w; x++) {
+        tmp[row + x * 4 + c] = sum / win;
+        const outX = Math.min(w - 1, Math.max(0, x - radius));
+        const inX = Math.min(w - 1, Math.max(0, x + radius + 1));
+        sum += data[row + inX * 4 + c] - data[row + outX * 4 + c];
+      }
+    }
+  }
+  // 縦方向のボックスブラー
+  for (let x = 0; x < w; x++) {
+    const col = x * 4;
+    for (let c = 0; c < 3; c++) {
+      let sum = 0;
+      for (let y = -radius; y <= radius; y++) {
+        const yi = Math.min(h - 1, Math.max(0, y));
+        sum += tmp[yi * w * 4 + col + c];
+      }
+      for (let y = 0; y < h; y++) {
+        blur[y * w * 4 + col + c] = sum / win;
+        const outY = Math.min(h - 1, Math.max(0, y - radius));
+        const inY = Math.min(h - 1, Math.max(0, y + radius + 1));
+        sum += tmp[inY * w * 4 + col + c] - tmp[outY * w * 4 + col + c];
+      }
+    }
+  }
+  // 元 + strength * (元 - ぼかし)
+  for (let i = 0; i < data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      const v = data[i + c];
+      data[i + c] = v + strength * (v - blur[i + c]);
+    }
+  }
+  ctx.putImageData(src, 0, 0);
 }
 
 function sourceSize(
@@ -270,6 +348,7 @@ export function renderBasePhotoCanvas(
     a.zoom,
     a.offsetX,
     a.offsetY,
+    a.fitWhole,
   );
 
   // フィルタが他描画に残らないよう必ず reset する。
@@ -305,37 +384,65 @@ export async function createBasePhotoFromImage(
   }
 }
 
-/** 基準写真そのものを JPEG 出力する。 */
+/**
+ * 派生サイズの余白色。fitWhole のときは基準写真の上の隅から実際の色を読み、
+ * 帯が白く浮かないようにする（読めなければ白）。
+ */
+function paddingColor(base: HTMLCanvasElement): string {
+  return sampleTopCornersColor(base)?.top ?? BASE_BG_COLOR;
+}
+
+/** 基準写真そのものを JPEG 出力する（くっきりさのみ適用）。 */
 export async function exportBaseFromBase(
   base: HTMLCanvasElement,
+  adjustments?: Partial<IeiPhotoAdjustments>,
 ): Promise<Blob> {
+  const a = clampAdjustments(adjustments);
+  if (a.sharpness > 0) {
+    const canvas = createCanvas(base.width, base.height);
+    get2dContext(canvas).drawImage(base, 0, 0);
+    sharpenCanvas(canvas, a.sharpness);
+    return canvasToJpegBlob(canvas);
+  }
   return canvasToJpegBlob(base);
 }
 
-/** 基準写真から手札サイズ（縦長, cover）を書き出す。 */
-export async function exportTesatsuFromBase(
+/** 基準写真から縦の派生サイズ（手札・四つ切り）を書き出す。 */
+function renderDerivedVertical(
   base: HTMLCanvasElement,
-): Promise<Blob> {
-  const { width, height } = IEI_PHOTO_EXPORT_SIZES.tesatsu.pixelGuide;
+  kind: "tesatsu" | "yotsugiri",
+  adjustments?: Partial<IeiPhotoAdjustments>,
+): HTMLCanvasElement {
+  const a = clampAdjustments(adjustments);
+  const { width, height } = IEI_PHOTO_EXPORT_SIZES[kind].pixelGuide;
   const canvas = createCanvas(width, height);
   const ctx = get2dContext(canvas);
-  ctx.fillStyle = BASE_BG_COLOR;
+  ctx.fillStyle = a.fitWhole ? paddingColor(base) : BASE_BG_COLOR;
   ctx.fillRect(0, 0, width, height);
-  drawCover(ctx, base, base.width, base.height, width, height);
-  return canvasToJpegBlob(canvas);
+  if (a.fitWhole) {
+    // 原稿を切り取らない: contain で全体を入れ、足りない側は余白にする。
+    drawAdjustedCover(ctx, base, base.width, base.height, width, height, 100, 0, 0, true);
+  } else {
+    drawCover(ctx, base, base.width, base.height, width, height);
+  }
+  sharpenCanvas(canvas, a.sharpness);
+  return canvas;
 }
 
-/** 基準写真から四つ切りサイズ（縦長, cover）を書き出す。 */
+/** 基準写真から手札サイズを書き出す。 */
+export async function exportTesatsuFromBase(
+  base: HTMLCanvasElement,
+  adjustments?: Partial<IeiPhotoAdjustments>,
+): Promise<Blob> {
+  return canvasToJpegBlob(renderDerivedVertical(base, "tesatsu", adjustments));
+}
+
+/** 基準写真から四つ切りサイズを書き出す。 */
 export async function exportYotsugiriFromBase(
   base: HTMLCanvasElement,
+  adjustments?: Partial<IeiPhotoAdjustments>,
 ): Promise<Blob> {
-  const { width, height } = IEI_PHOTO_EXPORT_SIZES.yotsugiri.pixelGuide;
-  const canvas = createCanvas(width, height);
-  const ctx = get2dContext(canvas);
-  ctx.fillStyle = BASE_BG_COLOR;
-  ctx.fillRect(0, 0, width, height);
-  drawCover(ctx, base, base.width, base.height, width, height);
-  return canvasToJpegBlob(canvas);
+  return canvasToJpegBlob(renderDerivedVertical(base, "yotsugiri", adjustments));
 }
 
 /**
@@ -355,8 +462,11 @@ export async function exportYotsugiriFromBase(
 export async function exportMonitor169FromBase(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
+  adjustments?: Partial<IeiPhotoAdjustments>,
 ): Promise<Blob> {
-  return canvasToJpegBlob(renderMonitor169Canvas(base, background));
+  const canvas = renderMonitor169Canvas(base, background);
+  sharpenCanvas(canvas, clampAdjustments(adjustments).sharpness);
+  return canvasToJpegBlob(canvas);
 }
 
 /**
@@ -489,10 +599,12 @@ export function renderWideMasterCanvas(
       a.zoom,
       a.offsetX,
       a.offsetY,
+      a.fitWhole,
     );
   }
 
   ctx.filter = "none";
+  sharpenCanvas(canvas, a.sharpness);
   return canvas;
 }
 
@@ -514,16 +626,17 @@ export async function exportFromBaseByKind(
   base: HTMLCanvasElement,
   kind: IeiPhotoExportKind,
   background?: IeiPhotoBackgroundSettings,
+  adjustments?: Partial<IeiPhotoAdjustments>,
 ): Promise<Blob> {
   switch (kind) {
     case "base":
-      return exportBaseFromBase(base);
+      return exportBaseFromBase(base, adjustments);
     case "tesatsu":
-      return exportTesatsuFromBase(base);
+      return exportTesatsuFromBase(base, adjustments);
     case "yotsugiri":
-      return exportYotsugiriFromBase(base);
+      return exportYotsugiriFromBase(base, adjustments);
     case "monitor169":
-      return exportMonitor169FromBase(base, background);
+      return exportMonitor169FromBase(base, background, adjustments);
     default: {
       // 網羅性チェック
       const _exhaustive: never = kind;
@@ -545,10 +658,11 @@ export function filenameForKind(kind: IeiPhotoExportKind): string {
 export async function exportAllZipFromBase(
   base: HTMLCanvasElement,
   background?: IeiPhotoBackgroundSettings,
+  adjustments?: Partial<IeiPhotoAdjustments>,
 ): Promise<Blob> {
   const entries: ZipEntry[] = [];
   for (const kind of IEI_PHOTO_EXPORT_ORDER) {
-    const blob = await exportFromBaseByKind(base, kind, background);
+    const blob = await exportFromBaseByKind(base, kind, background, adjustments);
     const data = new Uint8Array(await blob.arrayBuffer());
     entries.push({ name: filenameForKind(kind), data });
   }

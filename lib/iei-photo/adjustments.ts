@@ -7,7 +7,12 @@
 
 import type { IeiPhotoAdjustments } from "./types";
 
-export type IeiPhotoAdjustmentKey = keyof IeiPhotoAdjustments;
+/** スライダーで扱う数値項目のキー（fitWhole のような真偽値は含めない）。 */
+export type IeiPhotoAdjustmentKey = {
+  [K in keyof IeiPhotoAdjustments]: IeiPhotoAdjustments[K] extends number
+    ? K
+    : never;
+}[keyof IeiPhotoAdjustments];
 
 /** スライダーの範囲（min / max / step）。クランプにも使用する。 */
 export const IEI_PHOTO_ADJUSTMENT_RANGES: Record<
@@ -17,6 +22,7 @@ export const IEI_PHOTO_ADJUSTMENT_RANGES: Record<
   brightness: { min: 70, max: 130, step: 1 },
   contrast: { min: 70, max: 130, step: 1 },
   saturation: { min: 70, max: 130, step: 1 },
+  sharpness: { min: 0, max: 100, step: 1 },
   zoom: { min: 50, max: 180, step: 1 },
   offsetX: { min: -50, max: 50, step: 1 },
   offsetY: { min: -50, max: 50, step: 1 },
@@ -27,9 +33,11 @@ export const IEI_PHOTO_DEFAULT_ADJUSTMENTS: IeiPhotoAdjustments = {
   brightness: 100,
   contrast: 100,
   saturation: 100,
+  sharpness: 0,
   zoom: 100,
   offsetX: 0,
   offsetY: 0,
+  fitWhole: false,
 };
 
 /** UI スライダーの表示定義（表示順）。 */
@@ -41,6 +49,7 @@ export const IEI_PHOTO_ADJUSTMENT_SLIDERS: {
   { key: "brightness", label: "明るさ", unit: "%" },
   { key: "contrast", label: "コントラスト", unit: "%" },
   { key: "saturation", label: "彩度", unit: "%" },
+  { key: "sharpness", label: "くっきりさ", unit: "" },
   { key: "zoom", label: "拡大率", unit: "%" },
   { key: "offsetX", label: "横位置", unit: "" },
   { key: "offsetY", label: "縦位置", unit: "" },
@@ -102,6 +111,12 @@ export function clampAdjustments(
       IEI_PHOTO_ADJUSTMENT_RANGES.saturation.min,
       IEI_PHOTO_ADJUSTMENT_RANGES.saturation.max,
     ),
+    sharpness: clampValue(
+      source.sharpness,
+      IEI_PHOTO_ADJUSTMENT_RANGES.sharpness.min,
+      IEI_PHOTO_ADJUSTMENT_RANGES.sharpness.max,
+    ),
+    fitWhole: source.fitWhole === true,
     zoom: clampValue(
       source.zoom,
       IEI_PHOTO_ADJUSTMENT_RANGES.zoom.min,

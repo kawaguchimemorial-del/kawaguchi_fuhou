@@ -97,9 +97,16 @@ export type IeiPhotoAdjustments = {
   brightness: number;
   contrast: number;
   saturation: number;
+  /** くっきりさ（ピント）。0 で無処理、上げるほどアンシャープマスクを強くかける。 */
+  sharpness: number;
   zoom: number;
   offsetX: number;
   offsetY: number;
+  /**
+   * 原稿を切り取らずに全体を入れる（true でトリミングせず、余白は背景色で埋める）。
+   * スキャンした写真など「元の原稿の比率を変えたくない」ときに使う。
+   */
+  fitWhole: boolean;
 };
 
 /**

@@ -425,7 +425,7 @@ export default function IeiPhotoPage() {
         baseCanvasRef.current = canvas;
         setHasBase(true);
         setError(null);
-        const blob = await exportFromBaseByKind(canvas, kind, background);
+        const blob = await exportFromBaseByKind(canvas, kind, background, adj);
         replaceOutputUrl(URL.createObjectURL(blob));
       } catch (e) {
         baseCanvasRef.current = null;
@@ -1023,9 +1023,9 @@ export default function IeiPhotoPage() {
       r.onerror = () => reject(new Error("画像の変換に失敗しました。"));
       r.readAsDataURL(blob);
     });
-    const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background);
-    const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu", background);
-    const monitorBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "monitor169") : await exportFromBaseByKind(base as HTMLCanvasElement, "monitor169", background);
+    const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background, adj);
+    const tefudaBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "tesatsu") : await exportFromBaseByKind(base as HTMLCanvasElement, "tesatsu", background, adj);
+    const monitorBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "monitor169") : await exportFromBaseByKind(base as HTMLCanvasElement, "monitor169", background, adj);
     const [baseDataUrl, tefudaDataUrl, monitorDataUrl] = await Promise.all([toDataUrl(baseBlob), toDataUrl(tefudaBlob), toDataUrl(monitorBlob)]);
     const res = await fetch("/api/iei-photo/save", {
       method: "POST",
@@ -1055,7 +1055,7 @@ export default function IeiPhotoPage() {
             computeEffective(adjustments),
             kind,
           )
-        : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background);
+        : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background, computeEffective(adjustments));
       // モバイルは共有シート（写真アプリへ保存）、PCはダウンロード。
       const result = await saveImageToDevice(blob, filenameForKind(kind));
       // 端末書き出しと同時に、まだ一覧未保存なら一覧へも保存する（誰の遺影か必ず残す）。
@@ -1094,13 +1094,13 @@ export default function IeiPhotoPage() {
       for (const kind of IEI_PHOTO_EXPORT_ORDER) {
         const blob = wideSource
           ? await exportFromWideMasterByKind(wideSource, adj, kind)
-          : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background);
+          : await exportFromBaseByKind(base as HTMLCanvasElement, kind, background, adj);
         items.push({ blob, filename: filenameForKind(kind) });
       }
       const result = await saveImagesToDevice(items, async () => {
         const zip = wideSource
           ? await exportAllZipFromWideMaster(wideSource, adj)
-          : await exportAllZipFromBase(base as HTMLCanvasElement, background);
+          : await exportAllZipFromBase(base as HTMLCanvasElement, background, adj);
         downloadBlob(zip, "iei-photos.zip");
       });
       // 一括書き出しと同時に、まだ一覧未保存なら一覧へも保存する。
@@ -1136,7 +1136,7 @@ export default function IeiPhotoPage() {
       if (!ok) return; // エラー/キャンセルは saveToServer 側で処理済み
       // 同時に端末(PC)へもダウンロード
       const adj = computeEffective(adjustments);
-      const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background);
+      const baseBlob = wideSource ? await exportFromWideMasterByKind(wideSource, adj, "base") : await exportFromBaseByKind(base as HTMLCanvasElement, "base", background, adj);
       let downloaded = false;
       try { await saveImageToDevice(baseBlob, filenameForKind("base")); downloaded = true; } catch { /* DL失敗でも保存は成立 */ }
       setInfo(`遺影を一覧に保存しました${downloaded ? "（端末にもダウンロードしました）" : ""}。管理画面の「AI遺影写真」で確認できます。`);
@@ -1207,6 +1207,16 @@ export default function IeiPhotoPage() {
     },
     [],
   );
+
+  // 原稿を切り取らない: ON で拡大率・位置を初期に戻し、原稿全体が入る状態にする
+  const handleFitWholeChange = useCallback((next: boolean) => {
+    setAdjustments((prev) =>
+      next
+        ? { ...prev, fitWhole: true, zoom: 100, offsetX: 0, offsetY: 0 }
+        : { ...prev, fitWhole: false },
+    );
+    if (next) setFaceCenter(true);
+  }, []);
 
   // 顔を中心に配置: ON で横位置・縦位置を中央へ戻す
   const handleToggleFaceCenter = useCallback((next: boolean) => {
@@ -1482,6 +1492,15 @@ export default function IeiPhotoPage() {
                 disabled={controlsDisabled}
                 onChange={(v) => handleAdjustmentChange("saturation", v)}
               />
+              <StudioSlider
+                label="くっきりさ"
+                value={adjustments.sharpness}
+                min={IEI_PHOTO_ADJUSTMENT_RANGES.sharpness.min}
+                max={IEI_PHOTO_ADJUSTMENT_RANGES.sharpness.max}
+                valueLabel={String(adjustments.sharpness)}
+                disabled={controlsDisabled}
+                onChange={(v) => handleAdjustmentChange("sharpness", v)}
+              />
               <div className="mt-1 border-t border-stone-100 pt-1">
                 <StudioToggle
                   label="自動補正を適用"
@@ -1531,6 +1550,12 @@ export default function IeiPhotoPage() {
                     onChange={(v) => handleAdjustmentChange("offsetY", v)}
                   />
                 </div>
+                <StudioToggle
+                  label="原稿を切り取らない"
+                  checked={adjustments.fitWhole}
+                  disabled={controlsDisabled}
+                  onChange={(v) => handleFitWholeChange(v)}
+                />
                 <StudioToggle
                   label="顔を中心に配置"
                   checked={faceCenter}
