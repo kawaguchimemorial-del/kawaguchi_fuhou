@@ -33,6 +33,10 @@ import {
   buildAiPrompt,
   buildWideMonitorPrompt,
 } from "@/lib/iei-photo/ai-prompts";
+import {
+  IEI_PHOTO_BACKGROUND_OPTIONS,
+  supportsBackgroundGradient,
+} from "@/lib/iei-photo/backgrounds";
 import type {
   IeiPhotoAiImageMode,
   IeiPhotoBackgroundType,
@@ -55,19 +59,17 @@ const DEFAULT_MODEL = "gpt-image-2";
 const OPENAI_FETCH_TIMEOUT_MS = 240_000;
 
 const VALID_MODES: IeiPhotoAiImageMode[] = ["advanced", "portrait", "auto"];
+// 背景の一覧は backgrounds.ts を唯一の正とする。
+// ここに手書きの配列を置いていたため、2026-07-28 に背景を19種へ入れ替えたあとも
+// 旧6種（sky / light_gray / warm_beige / pale_blue / pale_pink / auto）のままになっており、
+// パープルや情景系を選んでも黙って "auto" に落ちて色指定が効かなかった。
 const VALID_BACKGROUND_TYPES: IeiPhotoBackgroundType[] = [
+  ...IEI_PHOTO_BACKGROUND_OPTIONS.map((o) => o.type),
+  // 旧データ互換（過去の保存値がそのまま送られてくることがある）
   "sky",
-  "light_gray",
   "warm_beige",
-  "pale_blue",
-  "pale_pink",
-  "auto",
-];
-const GRADIENT_BACKGROUND_TYPES: IeiPhotoBackgroundType[] = [
-  "light_gray",
-  "warm_beige",
-  "pale_blue",
-  "pale_pink",
+  "gradient",
+  "photo",
 ];
 const VALID_CLOTHING: IeiPhotoClothingStyle[] = [
   "none",
@@ -221,7 +223,7 @@ export async function POST(request: Request): Promise<Response> {
     : "auto";
   const backgroundGradient =
     String(form.get("backgroundGradient") ?? "false") === "true" &&
-    GRADIENT_BACKGROUND_TYPES.includes(backgroundType);
+    supportsBackgroundGradient(backgroundType);
   const expression: IeiPhotoExpressionSettings = {
     enabled: String(form.get("expressionEnabled") ?? "false") === "true",
     smile: readOption(form, "smileLevel", VALID_SMILE_LEVELS, "natural"),
