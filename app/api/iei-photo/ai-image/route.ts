@@ -446,6 +446,8 @@ export async function POST(request: Request): Promise<Response> {
       "Cache-Control": "no-store",
       // どのモデルで作ったかを確認できるようにする（本番のログを見なくても分かる）
       "X-Iei-Model": usedModel,
+      // 本来使おうとしたモデル。usedModel と食い違っていれば、まだ組織認証が済んでいない。
+      "X-Iei-Model-Preferred": PREFERRED_MODEL,
       "X-Iei-Quality": IMAGE_QUALITY,
     },
   });
