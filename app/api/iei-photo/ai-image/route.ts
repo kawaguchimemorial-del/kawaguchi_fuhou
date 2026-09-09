@@ -52,6 +52,34 @@ export const maxDuration = 300;
 
 const OPENAI_EDITS_URL = "https://api.openai.com/v1/images/edits";
 const DEFAULT_MODEL = "gpt-image-2";
+// GPT Image 2.5（2026-09-08 提供開始）。
+//  - sunburst: 編集精度・指示への忠実さ重視 → 遺影の「元写真を活かして補正する」用途はこちら
+//  - flare:    速度重視。案を何枚も試す用途向け
+// 使うには OpenAI の組織認証（Verify Organization）が必要で、未認証だと 403 が返る。
+// そのため「使えなければ従来モデルへ自動で切り替える」形にしてある。
+// 切替は環境変数だけで行う: OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst
+// 既定で使うモデル。組織認証が済めばそのまま 2.5 に切り替わる。
+// 認証前は下の FALLBACK_MODEL（従来の gpt-image-2）へ自動で戻す。
+const PREFERRED_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+const FALLBACK_MODEL = process.env.OPENAI_IMAGE_MODEL_FALLBACK || DEFAULT_MODEL;
+// 一度「使えない」と分かったら、そのプロセスの間は最初から従来モデルで送る
+// （毎回むだに403を1往復しないため）。デプロイやコールドスタートで解除されるので、
+// 組織認証が済めば放っておいても数分で 2.5 に切り替わる。
+let preferredUnavailable = false;
+// 2.5 系では xhigh / max が増えた。既定は従来どおり high。
+const VALID_QUALITIES = ["auto", "low", "medium", "high", "xhigh", "max"];
+const IMAGE_QUALITY = VALID_QUALITIES.includes(
+  String(process.env.OPENAI_IMAGE_QUALITY ?? ""),
+)
+  ? String(process.env.OPENAI_IMAGE_QUALITY)
+  : "high";
+
+/** そのモデルが「このアカウントでは使えない」ことを示す応答か。 */
+function isModelUnavailable(status: number, code?: string, message?: string): boolean {
+  if (status === 404 && (code === "model_not_found" || /model/i.test(message ?? ""))) return true;
+  if (status === 403 && /verified|verify|does not have access|model/i.test(message ?? "")) return true;
+  return false;
+}
 // ※ background="transparent" は使わないこと。対応しているのは gpt-image-1 だけで、
 //   そのモデルは顔を若返らせ服の色まで変える（実データで別人になった）。
 //   人物の切り出しは「緑背景で出させてブラウザ側で抜く」方式で行う。
@@ -114,6 +142,8 @@ function jsonError(
 type OpenAiErrorSummary = {
   code?: string;
   type?: string;
+  /** 判定用。モデル未開放（組織認証待ち）などを見分けるためだけに使い、画面には出さない。 */
+  message?: string;
   moderationStage?: string;
   categories?: string[];
 };
@@ -127,6 +157,7 @@ function summarizeOpenAiError(data: unknown): OpenAiErrorSummary {
   const record = error as {
     code?: unknown;
     type?: unknown;
+    message?: unknown;
     moderation_details?: unknown;
   };
   const details =
@@ -140,6 +171,7 @@ function summarizeOpenAiError(data: unknown): OpenAiErrorSummary {
   return {
     code: typeof record.code === "string" ? record.code : undefined,
     type: typeof record.type === "string" ? record.type : undefined,
+    message: typeof record.message === "string" ? record.message : undefined,
     moderationStage:
       typeof details?.moderation_stage === "string"
         ? details.moderation_stage
@@ -172,7 +204,7 @@ export async function POST(request: Request): Promise<Response> {
       503,
     );
   }
-  const model = process.env.OPENAI_IMAGE_MODEL || DEFAULT_MODEL;
+  const model = preferredUnavailable ? FALLBACK_MODEL : PREFERRED_MODEL;
 
   let form: FormData;
   try {
@@ -262,8 +294,10 @@ export async function POST(request: Request): Promise<Response> {
         );
 
   // OpenAI Images edit へ転送する multipart を組み立てる。
+  // モデルを差し替えて再送できるよう、毎回作り直せる関数にしてある。
+  const buildForm = (useModel: string) => {
   const upstreamForm = new FormData();
-  upstreamForm.append("model", model);
+  upstreamForm.append("model", useModel);
   if (clothingRef) {
     // 複数枚を渡すときは image[] を使う。1枚目が加工対象、2枚目が服の見本。
     upstreamForm.append("image[]", image, image.name || "input.jpg");
@@ -281,8 +315,10 @@ export async function POST(request: Request): Promise<Response> {
   //   細部の保持は IEI_PHOTO_HAIR_PROMPT 側の指示で行っている。
   upstreamForm.append("n", "1");
   upstreamForm.append("output_format", "png");
-  upstreamForm.append("quality", "high");
+  upstreamForm.append("quality", IMAGE_QUALITY);
   upstreamForm.append("size", target === "wide" ? "1536x864" : "1024x1536");
+  return upstreamForm;
+  };
 
   // 生成条件を記録する。お客様の写真そのものは残さず、選ばれた設定だけを残す。
   // 「別人が出た」といった報告を受けたとき、どの条件で起きたのかを後から追えるようにするため
@@ -302,14 +338,31 @@ export async function POST(request: Request): Promise<Response> {
     }),
   );
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(OPENAI_EDITS_URL, {
+  const send = (useModel: string) =>
+    fetch(OPENAI_EDITS_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
-      body: upstreamForm,
+      body: buildForm(useModel),
       signal: AbortSignal.timeout(OPENAI_FETCH_TIMEOUT_MS),
     });
+
+  let upstream: Response;
+  let usedModel = model;
+  try {
+    upstream = await send(model);
+    // 指定モデルがこのアカウントで使えない場合だけ、従来モデルで作り直す。
+    // （組織認証が済むまで本番が止まらないようにするための保険）
+    if (!upstream.ok && model !== FALLBACK_MODEL) {
+      const peek = summarizeOpenAiError(await upstream.clone().json().catch(() => ({})));
+      if (isModelUnavailable(upstream.status, peek.code, peek.message)) {
+        console.log(
+          `[iei-photo/ai-image] model=${model} は使えないため ${FALLBACK_MODEL} で再送 status=${upstream.status} code=${peek.code ?? "unknown"}`,
+        );
+        preferredUnavailable = true;
+        upstream = await send(FALLBACK_MODEL);
+        usedModel = FALLBACK_MODEL;
+      }
+    }
   } catch (e) {
     if (e instanceof DOMException && e.name === "TimeoutError") {
       return jsonError(
@@ -353,7 +406,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     // ログは状態コードのみ（本文・キー・base64 は出さない）。
     console.log(
-      `[iei-photo/ai-image] openai error status=${status} mode=${mode} target=${target} code=${openAiError.code ?? "unknown"} stage=${openAiError.moderationStage ?? "unknown"} categories=${openAiError.categories?.join(",") ?? "none"}`,
+      `[iei-photo/ai-image] openai error status=${status} model=${usedModel} mode=${mode} target=${target} code=${openAiError.code ?? "unknown"} stage=${openAiError.moderationStage ?? "unknown"} categories=${openAiError.categories?.join(",") ?? "none"}`,
     );
     return jsonError(
       message,
@@ -383,12 +436,17 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError("AI生成画像のデコードに失敗しました。", 502);
   }
 
-  console.log(`[iei-photo/ai-image] success mode=${mode} target=${target}`);
+  console.log(
+    `[iei-photo/ai-image] success model=${usedModel} quality=${IMAGE_QUALITY} mode=${mode} target=${target}`,
+  );
   return new Response(new Uint8Array(pngBuffer), {
     status: 200,
     headers: {
       "Content-Type": "image/png",
       "Cache-Control": "no-store",
+      // どのモデルで作ったかを確認できるようにする（本番のログを見なくても分かる）
+      "X-Iei-Model": usedModel,
+      "X-Iei-Quality": IMAGE_QUALITY,
     },
   });
 }
