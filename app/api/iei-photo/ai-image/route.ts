@@ -57,10 +57,14 @@ const DEFAULT_MODEL = "gpt-image-2";
 //  - flare:    速度重視。案を何枚も試す用途向け
 // 使うには OpenAI の組織認証（Verify Organization）が必要で、未認証だと 403 が返る。
 // そのため「使えなければ従来モデルへ自動で切り替える」形にしてある。
-// 切替は環境変数だけで行う: OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst
+// モデルを固定したいときだけ OPENAI_IMAGE_MODEL_OVERRIDE を設定する。
 // 既定で使うモデル。組織認証が済めばそのまま 2.5 に切り替わる。
 // 認証前は下の FALLBACK_MODEL（従来の gpt-image-2）へ自動で戻す。
-const PREFERRED_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+// ※ 上書きは OPENAI_IMAGE_MODEL_OVERRIDE で行う。旧来の OPENAI_IMAGE_MODEL は見ない。
+//   本番の環境変数に OPENAI_IMAGE_MODEL=gpt-image-2 が残っており、それを見ていると
+//   組織認証が済んでも 2.5 に切り替わらないため（実際にヘッダで確認した）。
+const PREFERRED_MODEL =
+  process.env.OPENAI_IMAGE_MODEL_OVERRIDE || "gpt-image-2.5-sunburst";
 const FALLBACK_MODEL = process.env.OPENAI_IMAGE_MODEL_FALLBACK || DEFAULT_MODEL;
 // 一度「使えない」と分かったら、そのプロセスの間は最初から従来モデルで送る
 // （毎回むだに403を1往復しないため）。デプロイやコールドスタートで解除されるので、
