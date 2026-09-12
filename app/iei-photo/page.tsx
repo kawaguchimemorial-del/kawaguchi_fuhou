@@ -54,6 +54,7 @@ import {
 import {
   IEI_PHOTO_POSE_LABELS,
   IEI_PHOTO_POSE_ORDER,
+  IEI_PHOTO_BUST_FRAMING_PROMPT,
 } from "@/lib/iei-photo/ai-prompts";
 import {
   clothingSampleUrl,
@@ -273,6 +274,8 @@ export default function IeiPhotoPage() {
   const [aiWideMonitor, setAiWideMonitor] = useState<boolean>(false);
   // 手に持っているものごと外して腕を下ろす（花束・賞状など）。手を下ろすより一段強い指示。
   const [removeHeldItems, setRemoveHeldItems] = useState<boolean>(false);
+  // 胸元まで写す（引きの構図）。既定OFF＝従来どおりAIに任せる（顔のアップ寄りになる）。
+  const [bustFraming, setBustFraming] = useState<boolean>(false);
   const [aiResultMode, setAiResultMode] = useState<IeiPhotoAiResultMode>(null);
   const [allowPortrait, setAllowPortrait] = useState<boolean>(false);
   const [allowAuto, setAllowAuto] = useState<boolean>(false);
@@ -684,7 +687,11 @@ export default function IeiPhotoPage() {
           : handsDown
             ? HANDS_DOWN_PROMPT
             : HANDS_KEEP_PROMPT;
-        const aiPrompt = [handsPrompt, options.extraPrompt?.trim()]
+        const aiPrompt = [
+          handsPrompt,
+          options.extraPrompt?.trim(),
+          bustFraming ? IEI_PHOTO_BUST_FRAMING_PROMPT : "",
+        ]
           .filter(Boolean)
           .join("\n");
         const blob = await requestAiImage(
@@ -828,6 +835,7 @@ export default function IeiPhotoPage() {
       pose,
       handsDown,
       removeHeldItems,
+      bustFraming,
       expressionEnabled,
       smileLevel,
       eyeBrightness,
@@ -1715,6 +1723,21 @@ export default function IeiPhotoPage() {
                         持っているものを外して腕を下ろす
                         <span className="mt-0.5 block font-normal text-sky-700">
                           花束・賞状・杯・他の方の手などを消し、腕を下ろします。
+                        </span>
+                      </span>
+                    </label>
+                    <label className="mt-2 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs font-semibold text-sky-800">
+                      <input
+                        type="checkbox"
+                        checked={bustFraming}
+                        onChange={(e) => setBustFraming(e.target.checked)}
+                        disabled={controlsDisabled || isProcessing || aiProcessing}
+                        className="mt-0.5 h-4 w-4 accent-sky-600"
+                      />
+                      <span>
+                        胸元まで写す（引きの構図）
+                        <span className="mt-0.5 block font-normal text-sky-700">
+                          顔のアップにせず、頭の上に余白を取って帯の上あたりまで入れます。
                         </span>
                       </span>
                     </label>
